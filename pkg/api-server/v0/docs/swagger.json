@@ -17591,7 +17591,7 @@
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -17611,7 +17611,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -17680,7 +17680,7 @@
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -17707,7 +17707,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -17769,7 +17769,7 @@
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -17789,7 +17789,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -17843,7 +17843,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -17863,7 +17863,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -17962,7 +17962,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -17982,7 +17982,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18087,7 +18087,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18107,7 +18107,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18214,7 +18214,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18234,7 +18234,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18370,7 +18370,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18390,7 +18390,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18500,7 +18500,7 @@
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18520,7 +18520,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18580,7 +18580,7 @@
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18600,7 +18600,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18679,7 +18679,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18699,7 +18699,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18799,7 +18799,7 @@
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18823,7 +18823,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18891,7 +18891,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18911,7 +18911,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18967,7 +18967,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18987,7 +18987,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19178,7 +19178,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19198,7 +19198,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19267,7 +19267,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19287,7 +19287,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19343,7 +19343,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19363,7 +19363,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19434,7 +19434,7 @@
                     "type": "boolean"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19454,7 +19454,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19622,7 +19622,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19642,7 +19642,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19707,7 +19707,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19727,7 +19727,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19784,7 +19784,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19804,7 +19804,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19981,7 +19981,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20001,7 +20001,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20058,7 +20058,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20078,7 +20078,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20126,7 +20126,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20146,7 +20146,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20235,7 +20235,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20255,7 +20255,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20380,7 +20380,7 @@
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20400,7 +20400,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20597,7 +20597,7 @@
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20625,7 +20625,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20670,7 +20670,7 @@
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20690,7 +20690,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20763,7 +20763,7 @@
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20783,7 +20783,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20832,7 +20832,7 @@
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20852,7 +20852,7 @@
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {

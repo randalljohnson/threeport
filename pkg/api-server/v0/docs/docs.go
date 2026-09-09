@@ -17598,7 +17598,7 @@ const docTemplate = `{
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -17618,7 +17618,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -17687,7 +17687,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -17714,7 +17714,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -17776,7 +17776,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -17796,7 +17796,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -17850,7 +17850,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -17870,7 +17870,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -17969,7 +17969,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -17989,7 +17989,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18094,7 +18094,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18114,7 +18114,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18221,7 +18221,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18241,7 +18241,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18377,7 +18377,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18397,7 +18397,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18507,7 +18507,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18527,7 +18527,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18587,7 +18587,7 @@ const docTemplate = `{
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18607,7 +18607,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18686,7 +18686,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18706,7 +18706,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18806,7 +18806,7 @@ const docTemplate = `{
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18830,7 +18830,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18898,7 +18898,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18918,7 +18918,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -18974,7 +18974,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -18994,7 +18994,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19185,7 +19185,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19205,7 +19205,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19274,7 +19274,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19294,7 +19294,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19350,7 +19350,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19370,7 +19370,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19441,7 +19441,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19461,7 +19461,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19629,7 +19629,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19649,7 +19649,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19714,7 +19714,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19734,7 +19734,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19791,7 +19791,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -19811,7 +19811,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -19988,7 +19988,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20008,7 +20008,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20065,7 +20065,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20085,7 +20085,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20133,7 +20133,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20153,7 +20153,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20242,7 +20242,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20262,7 +20262,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20387,7 +20387,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20407,7 +20407,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20604,7 +20604,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20632,7 +20632,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20677,7 +20677,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20697,7 +20697,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20770,7 +20770,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20790,7 +20790,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {
@@ -20839,7 +20839,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "Used by controllers to acknowledge creation and indicate that creation\nreconciliation has begun.",
+                    "description": "The last time creation was acknowledged as begun",
                     "type": "string"
                 },
                 "CreationConfirmed": {
@@ -20859,7 +20859,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "DeletionFailed": {
-                    "description": "Gets set to true if deletion process fails.",
+                    "description": "A flag set to true if deletion of the object fails",
                     "type": "boolean"
                 },
                 "DeletionScheduled": {

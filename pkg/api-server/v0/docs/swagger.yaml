@@ -181,9 +181,7 @@ definitions:
           $ref: '#/definitions/v0.ControlPlaneInstance'
         type: array
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -200,7 +198,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -262,9 +260,7 @@ definitions:
         description: The definition used to configure the control plane instance.
         type: integer
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -290,7 +286,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -350,9 +346,7 @@ definitions:
         description: The email address of the domain administrator.
         type: string
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -369,7 +363,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -423,9 +417,7 @@ definitions:
   v0.DomainNameInstance:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -442,7 +434,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -532,9 +524,7 @@ definitions:
   v0.GatewayDefinition:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -551,7 +541,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -638,9 +628,7 @@ definitions:
   v0.GatewayInstance:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -657,7 +645,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -752,9 +740,7 @@ definitions:
   v0.GcpGceMachineRuntimeInstance:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -771,7 +757,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -886,9 +872,7 @@ definitions:
   v0.GcpGkeKubernetesRuntimeInstance:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -905,7 +889,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1001,9 +985,7 @@ definitions:
           1.2.3
         type: string
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1020,7 +1002,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1085,9 +1067,7 @@ definitions:
           $ref: '#/definitions/datatypes.JSON'
         type: array
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1104,7 +1084,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1182,9 +1162,7 @@ definitions:
   v0.KubernetesRuntimeDefinition:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1201,7 +1179,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1304,9 +1282,7 @@ definitions:
           $ref: '#/definitions/v0.ControlPlaneInstance'
         type: array
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1328,7 +1304,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1398,9 +1374,7 @@ definitions:
   v0.KubernetesWorkloadDefinition:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1417,7 +1391,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1470,9 +1444,7 @@ definitions:
   v0.KubernetesWorkloadInstance:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1489,7 +1461,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1649,9 +1621,7 @@ definitions:
   v0.LoggingDefinition:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1668,7 +1638,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1735,9 +1705,7 @@ definitions:
   v0.LoggingInstance:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1754,7 +1722,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1810,9 +1778,7 @@ definitions:
   v0.MachineRuntimeDefinition:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1829,7 +1795,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -1907,9 +1873,7 @@ definitions:
           the assigned address into Hostname after provisioning when true.
         type: boolean
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -1926,7 +1890,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2100,9 +2064,7 @@ definitions:
   v0.MachineWorkloadInstance:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -2119,7 +2081,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2176,9 +2138,7 @@ definitions:
   v0.MetricsDefinition:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -2195,7 +2155,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2251,9 +2211,7 @@ definitions:
   v0.MetricsInstance:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -2270,7 +2228,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2424,9 +2382,7 @@ definitions:
   v0.ObservabilityDashboardDefinition:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -2443,7 +2399,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2498,9 +2454,7 @@ definitions:
   v0.ObservabilityDashboardInstance:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -2517,7 +2471,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2565,9 +2519,7 @@ definitions:
   v0.ObservabilityStackDefinition:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -2584,7 +2536,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2678,9 +2630,7 @@ definitions:
   v0.ObservabilityStackInstance:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -2697,7 +2647,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -2817,9 +2767,7 @@ definitions:
           cluster creation.
         type: string
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -2836,7 +2784,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -3000,9 +2948,7 @@ definitions:
         description: The AWS account ID, if the provider is AWS.
         type: integer
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -3023,7 +2969,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -3066,9 +3012,7 @@ definitions:
   v0.SecretInstance:
     properties:
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -3085,7 +3029,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -3153,9 +3097,7 @@ definitions:
           extension.
         type: string
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -3172,7 +3114,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-
@@ -3219,9 +3161,7 @@ definitions:
         description: The AWS provider in which the resources will be provisioned.
         type: integer
       CreationAcknowledged:
-        description: |-
-          Used by controllers to acknowledge creation and indicate that creation
-          reconciliation has begun.
+        description: The last time creation was acknowledged as begun
         type: string
       CreationConfirmed:
         description: Used by controllers to confirm creation of an object.
@@ -3238,7 +3178,7 @@ definitions:
         description: Used by controllers to confirm deletion of an object.
         type: string
       DeletionFailed:
-        description: Gets set to true if deletion process fails.
+        description: A flag set to true if deletion of the object fails
         type: boolean
       DeletionScheduled:
         description: |-

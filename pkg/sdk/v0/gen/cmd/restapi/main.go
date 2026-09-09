@@ -596,7 +596,12 @@ func GenRestApiMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 
 			Comment("create certificate pool and add server root certificate authority"),
 			Id("caCertPool").Op(":=").Qual("crypto/x509", "NewCertPool").Call(),
-			Id("caCertPool.AppendCertsFromPEM").Call(Id("caCert")),
+			If(
+				Id("ok").Op(":=").Id("caCertPool.AppendCertsFromPEM").Call(Id("caCert")),
+				Op("!").Id("ok"),
+			).Block(
+				Id("e.Logger.Fatal").Call(Lit("failed to parse certificate authority")),
+			),
 			Line(),
 
 			Comment("configure https server"),
@@ -617,9 +622,9 @@ func GenRestApiMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				"GetVersion",
 			).Call()),
 			Id("configureHealthCheckEndpoint").Call(),
-			// bind the serve result to its own name: err still holds the
-			// certificate authority read above, which is nil once that read
-			// succeeded, so logging it reports <nil> for every serve failure
+			// bind the listen error to serveErr; err holds the
+			// certificate authority read and is nil once that
+			// read succeeds, so logging err reports <nil>
 			If(
 				Id("serveErr").Op(":=").Id("server").Dot("ListenAndServeTLS").Call(Lit(""), Lit("")),
 				Id("serveErr").Op("!=").Qual("net/http", "ErrServerClosed"),

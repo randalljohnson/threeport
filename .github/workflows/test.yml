@@ -46,6 +46,9 @@ jobs:
     - name: Unit tests
       run: mage test:unit
 
+    - name: Generate and type-check a module
+      run: mage test:moduleGen
+
   cockroach-tests:
     name: CockroachDB Tests
     runs-on: ubuntu-24.04

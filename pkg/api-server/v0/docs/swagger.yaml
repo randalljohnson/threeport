@@ -1,7 +1,5 @@
 basePath: /
 definitions:
-  datatypes.JSON:
-    type: object
   v0.ApiObjectVersions:
     properties:
       API:
@@ -66,8 +64,123 @@ definitions:
     - ObjectType
     type: object
   v0.AwsEksKubernetesRuntimeDefinition:
+    properties:
+      AwsEksKubernetesRuntimeInstances:
+        description: The AWS EKS kubernetes runtime instances derived from this definition.
+        items:
+          $ref: '#/definitions/v0.AwsEksKubernetesRuntimeInstance'
+        type: array
+      DefaultNodeGroupInitialSize:
+        description: The number of nodes in the default initial node group.
+        type: integer
+      DefaultNodeGroupInstanceType:
+        description: The AWS instance type for the default initial node group.
+        type: string
+      DefaultNodeGroupMaximumSize:
+        description: The maximum number of nodes the default initial node group should
+          have.
+        type: integer
+      DefaultNodeGroupMinimumSize:
+        description: The minimum number of nodes the default initial node group should
+          have.
+        type: integer
+      KubernetesRuntimeDefinitionID:
+        description: The kubernetes runtime definition for an EKS cluster in AWS.
+        type: integer
+      Name:
+        description: An arbitrary name for the definition.
+        type: string
+      ProfileID:
+        description: |-
+          The profile to associate with the definition.  Profile is a named
+          standard configuration for a definition object.
+        type: integer
+      TierID:
+        description: |-
+          The tier to associate with the definition.  Tier is a level of
+          criticality for access control.
+        type: integer
+      ZoneCount:
+        description: The number of zones the cluster should span for availability.
+        type: integer
+    required:
+    - DefaultNodeGroupInitialSize
+    - DefaultNodeGroupInstanceType
+    - DefaultNodeGroupMaximumSize
+    - DefaultNodeGroupMinimumSize
+    - KubernetesRuntimeDefinitionID
+    - Name
+    - ZoneCount
     type: object
   v0.AwsEksKubernetesRuntimeInstance:
+    properties:
+      AwsEksKubernetesRuntimeDefinitionID:
+        description: The definition that configures this instance.
+        type: integer
+      AwsProviderID:
+        description: The AWS provider in which the EKS cluster is provisioned.
+        type: integer
+      CreationAcknowledged:
+        description: |-
+          Used by controllers to acknowledge deletion and indicate that deletion
+          reconciliation has begun so that subsequent reconciliation attempts can
+          act accordingly.
+        type: string
+      CreationConfirmed:
+        description: Used by controllers to confirm deletion of an object.
+        type: string
+      CreationFailed:
+        description: Gets set to true if creation process fails.
+        type: boolean
+      DeletionAcknowledged:
+        description: |-
+          Used by controllers to acknowledge deletion and indicate that deletion
+          reconciliation has begun so that subsequent reconciliation attempts can
+          act accordingly.
+        type: string
+      DeletionConfirmed:
+        description: Used by controllers to confirm deletion of an object.
+        type: string
+      DeletionScheduled:
+        description: |-
+          Used to inform reconcilers that an object is being deleted so they may
+          complete delete reconciliation before actually deleting the object from the database.
+        type: string
+      InterruptReconciliation:
+        description: |-
+          InterruptReconciliation is used by the controller to indicated that future
+          reconcilation should be interrupted.  Useful in cases where there is a
+          situation where future reconciliation could be descructive such as
+          spinning up more infrastructure when there is a unresolved problem.
+        type: boolean
+      KubernetesRuntimeInstanceID:
+        description: The kubernetes runtime instance associated with the AWS EKS cluster.
+        type: integer
+      Name:
+        description: An arbitrary name the instance
+        type: string
+      Reconciled:
+        description: Indicates if object is considered to be reconciled by the object's
+          controller.
+        type: boolean
+      Region:
+        description: The AWS region in which the cluster is provisioned.
+        type: string
+      ResourceInventory:
+        description: An inventory of all AWS resources for the EKS cluster.
+        items:
+          type: integer
+        type: array
+      Status:
+        description: |-
+          The status of the instance.
+          TODO: use a custom type
+        type: string
+    required:
+    - AwsEksKubernetesRuntimeDefinitionID
+    - AwsProviderID
+    - KubernetesRuntimeInstanceID
+    - Name
     type: object
   v0.AwsProvider:
     properties:
@@ -110,20 +223,23 @@ definitions:
   v0.ControlPlaneComponent:
     properties:
       AdditionalEnvRef:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: The additional env reference to be added to the environment variables
           of the component.
+        items:
+          type: integer
+        type: array
       AdditionalVolumeMounts:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: The additional volume mounts to be added to the deployment spec
           of the component.
+        items:
+          type: integer
+        type: array
       AdditionalVolumes:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: The additional volumes to be added to the deployment spec of
           the component.
+        items:
+          type: integer
+        type: array
       BinaryName:
         description: The binary name of the component.
         type: string
@@ -959,9 +1075,10 @@ definitions:
         description: The GCP region in which the cluster is provisioned.
         type: string
       ResourceInventory:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: An inventory of all GCP resources for the GKE cluster.
+        items:
+          type: integer
+        type: array
       Status:
         description: |-
           The status of the instance.
@@ -1011,7 +1128,9 @@ definitions:
           Complete kubernetes resources that will be appended to the provided
           helm chart.
         items:
-          $ref: '#/definitions/datatypes.JSON'
+          items:
+            type: integer
+          type: array
         type: array
       Chart:
         description: The name of the helm chart to use from the helm repo, e.g. wordpress
@@ -1101,7 +1220,9 @@ definitions:
           Complete kubernetes resources that will be appended to the provided
           helm chart.
         items:
-          $ref: '#/definitions/datatypes.JSON'
+          items:
+            type: integer
+          type: array
         type: array
       CreationAcknowledged:
         description: |-
@@ -1517,9 +1638,10 @@ definitions:
   v0.KubernetesWorkloadResourceDefinition:
     properties:
       JSONDefinition:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: The individual manifest in JSON format.
+        items:
+          type: integer
+        type: array
       KubernetesWorkloadDefinitionID:
         description: The kubernetes workload definition this resource belongs to.
         type: integer
@@ -1530,13 +1652,14 @@ definitions:
   v0.KubernetesWorkloadResourceInstance:
     properties:
       JSONDefinition:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: |-
           The individual manifest in JSON format.  This field is a superset of
           KubernetesWorkloadResourceDefinition.JSONDefinition in that it has
           namespace management and other configuration — such as resource
           allocation management — added.
+        items:
+          type: integer
+        type: array
       KubernetesWorkloadInstanceID:
         description: The kubernetes workload instance this resource belongs to.
         type: integer
@@ -1551,11 +1674,12 @@ definitions:
           kubernetes workload controller.
         type: boolean
       RuntimeDefinition:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: |-
           The JSON definition of a Kubernetes resource as stored in etcd in the
           kubernetes runtime.
+        items:
+          type: integer
+        type: array
       ScheduledForDeletion:
         description: Whether another controller has scheduled this resource for deletion
         type: string
@@ -2803,9 +2927,10 @@ definitions:
           definition will not move a cluster.
         type: string
       ResourceInventory:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: An inventory of all OCI resources for the OKE cluster.
+        items:
+          type: integer
+        type: array
       Status:
         description: |-
           The status of the instance.
@@ -2941,9 +3066,10 @@ definitions:
         description: Gets set to true if creation process fails.
         type: boolean
       Data:
-        allOf:
-        - $ref: '#/definitions/datatypes.JSON'
         description: The secret value to be stored in the provider.
+        items:
+          type: integer
+        type: array
       DeletionAcknowledged:
         description: |-
           Used by controllers to acknowledge deletion and indicate that deletion
@@ -3946,7 +4072,7 @@ paths:
       description: Get all attached object references from the Threeport database.
       operationId: get-v0-attachedObjectReferences
       parameters:
-      - description: attached object reference search by name
+      - description: filter by exact attached object reference name (case sensitive)
         in: query
         name: name
         type: string
@@ -4147,7 +4273,8 @@ paths:
         database.
       operationId: get-v0-awsEksKubernetesRuntimeDefinitions
       parameters:
-      - description: aws eks kubernetes runtime definition search by name
+      - description: filter by exact aws eks kubernetes runtime definition name (case
+          sensitive)
         in: query
         name: name
         type: string
@@ -4351,7 +4478,8 @@ paths:
         database.
       operationId: get-v0-awsEksKubernetesRuntimeInstances
       parameters:
-      - description: aws eks kubernetes runtime instance search by name
+      - description: filter by exact aws eks kubernetes runtime instance name (case
+          sensitive)
         in: query
         name: name
         type: string
@@ -4553,7 +4681,7 @@ paths:
       description: Get all aws providers from the Threeport database.
       operationId: get-v0-awsProviders
       parameters:
-      - description: aws provider search by name
+      - description: filter by exact aws provider name (case sensitive)
         in: query
         name: name
         type: string
@@ -4752,7 +4880,7 @@ paths:
       description: Get all control plane definitions from the Threeport database.
       operationId: get-v0-controlPlaneDefinitions
       parameters:
-      - description: control plane definition search by name
+      - description: filter by exact control plane definition name (case sensitive)
         in: query
         name: name
         type: string
@@ -4952,7 +5080,7 @@ paths:
       description: Get all control plane instances from the Threeport database.
       operationId: get-v0-controlPlaneInstances
       parameters:
-      - description: control plane instance search by name
+      - description: filter by exact control plane instance name (case sensitive)
         in: query
         name: name
         type: string
@@ -5152,7 +5280,7 @@ paths:
       description: Get all domain name definitions from the Threeport database.
       operationId: get-v0-domainNameDefinitions
       parameters:
-      - description: domain name definition search by name
+      - description: filter by exact domain name definition name (case sensitive)
         in: query
         name: name
         type: string
@@ -5352,7 +5480,7 @@ paths:
       description: Get all domain name instances from the Threeport database.
       operationId: get-v0-domainNameInstances
       parameters:
-      - description: domain name instance search by name
+      - description: filter by exact domain name instance name (case sensitive)
         in: query
         name: name
         type: string
@@ -5551,7 +5679,7 @@ paths:
       description: Get all events from the Threeport database.
       operationId: get-v0-events
       parameters:
-      - description: event search by name
+      - description: filter by exact event name (case sensitive)
         in: query
         name: name
         type: string
@@ -5795,7 +5923,7 @@ paths:
       description: Get all gateway definitions from the Threeport database.
       operationId: get-v0-gatewayDefinitions
       parameters:
-      - description: gateway definition search by name
+      - description: filter by exact gateway definition name (case sensitive)
         in: query
         name: name
         type: string
@@ -5994,7 +6122,7 @@ paths:
       description: Get all gateway http ports from the Threeport database.
       operationId: get-v0-gatewayHttpPorts
       parameters:
-      - description: gateway http port search by name
+      - description: filter by exact gateway http port name (case sensitive)
         in: query
         name: name
         type: string
@@ -6193,7 +6321,7 @@ paths:
       description: Get all gateway instances from the Threeport database.
       operationId: get-v0-gatewayInstances
       parameters:
-      - description: gateway instance search by name
+      - description: filter by exact gateway instance name (case sensitive)
         in: query
         name: name
         type: string
@@ -6392,7 +6520,7 @@ paths:
       description: Get all gateway tcp ports from the Threeport database.
       operationId: get-v0-gatewayTcpPorts
       parameters:
-      - description: gateway tcp port search by name
+      - description: filter by exact gateway tcp port name (case sensitive)
         in: query
         name: name
         type: string
@@ -6993,7 +7121,8 @@ paths:
         database.
       operationId: get-v0-gcpGkeKubernetesRuntimeDefinitions
       parameters:
-      - description: gcp gke kubernetes runtime definition search by name
+      - description: filter by exact gcp gke kubernetes runtime definition name (case
+          sensitive)
         in: query
         name: name
         type: string
@@ -7197,7 +7326,8 @@ paths:
         database.
       operationId: get-v0-gcpGkeKubernetesRuntimeInstances
       parameters:
-      - description: gcp gke kubernetes runtime instance search by name
+      - description: filter by exact gcp gke kubernetes runtime instance name (case
+          sensitive)
         in: query
         name: name
         type: string
@@ -7399,7 +7529,7 @@ paths:
       description: Get all gcp providers from the Threeport database.
       operationId: get-v0-gcpProviders
       parameters:
-      - description: gcp provider search by name
+      - description: filter by exact gcp provider name (case sensitive)
         in: query
         name: name
         type: string
@@ -7598,7 +7728,7 @@ paths:
       description: Get all helm workload definitions from the Threeport database.
       operationId: get-v0-helmWorkloadDefinitions
       parameters:
-      - description: helm workload definition search by name
+      - description: filter by exact helm workload definition name (case sensitive)
         in: query
         name: name
         type: string
@@ -7798,7 +7928,7 @@ paths:
       description: Get all helm workload instances from the Threeport database.
       operationId: get-v0-helmWorkloadInstances
       parameters:
-      - description: helm workload instance search by name
+      - description: filter by exact helm workload instance name (case sensitive)
         in: query
         name: name
         type: string
@@ -7998,7 +8128,7 @@ paths:
       description: Get all kubernetes runtime definitions from the Threeport database.
       operationId: get-v0-kubernetesRuntimeDefinitions
       parameters:
-      - description: kubernetes runtime definition search by name
+      - description: filter by exact kubernetes runtime definition name (case sensitive)
         in: query
         name: name
         type: string
@@ -8198,7 +8328,7 @@ paths:
       description: Get all kubernetes runtime instances from the Threeport database.
       operationId: get-v0-kubernetesRuntimeInstances
       parameters:
-      - description: kubernetes runtime instance search by name
+      - description: filter by exact kubernetes runtime instance name (case sensitive)
         in: query
         name: name
         type: string
@@ -8398,7 +8528,7 @@ paths:
       description: Get all kubernetes workload definitions from the Threeport database.
       operationId: get-v0-kubernetesWorkloadDefinitions
       parameters:
-      - description: kubernetes workload definition search by name
+      - description: filter by exact kubernetes workload definition name (case sensitive)
         in: query
         name: name
         type: string
@@ -8598,7 +8728,7 @@ paths:
       description: Get all kubernetes workload instances from the Threeport database.
       operationId: get-v0-kubernetesWorkloadInstances
       parameters:
-      - description: kubernetes workload instance search by name
+      - description: filter by exact kubernetes workload instance name (case sensitive)
         in: query
         name: name
         type: string
@@ -8831,7 +8961,8 @@ paths:
         database.
       operationId: get-v0-kubernetesWorkloadResourceDefinitions
       parameters:
-      - description: kubernetes workload resource definition search by name
+      - description: filter by exact kubernetes workload resource definition name
+          (case sensitive)
         in: query
         name: name
         type: string
@@ -9036,7 +9167,8 @@ paths:
         database.
       operationId: get-v0-kubernetesWorkloadResourceInstances
       parameters:
-      - description: kubernetes workload resource instance search by name
+      - description: filter by exact kubernetes workload resource instance name (case
+          sensitive)
         in: query
         name: name
         type: string
@@ -9239,7 +9371,7 @@ paths:
       description: Get all log backends from the Threeport database.
       operationId: get-v0-logBackends
       parameters:
-      - description: log backend search by name
+      - description: filter by exact log backend name (case sensitive)
         in: query
         name: name
         type: string
@@ -9438,7 +9570,7 @@ paths:
       description: Get all log storage definitions from the Threeport database.
       operationId: get-v0-logStorageDefinitions
       parameters:
-      - description: log storage definition search by name
+      - description: filter by exact log storage definition name (case sensitive)
         in: query
         name: name
         type: string
@@ -9638,7 +9770,7 @@ paths:
       description: Get all log storage instances from the Threeport database.
       operationId: get-v0-logStorageInstances
       parameters:
-      - description: log storage instance search by name
+      - description: filter by exact log storage instance name (case sensitive)
         in: query
         name: name
         type: string
@@ -9837,7 +9969,7 @@ paths:
       description: Get all logging definitions from the Threeport database.
       operationId: get-v0-loggingDefinitions
       parameters:
-      - description: logging definition search by name
+      - description: filter by exact logging definition name (case sensitive)
         in: query
         name: name
         type: string
@@ -10036,7 +10168,7 @@ paths:
       description: Get all logging instances from the Threeport database.
       operationId: get-v0-loggingInstances
       parameters:
-      - description: logging instance search by name
+      - description: filter by exact logging instance name (case sensitive)
         in: query
         name: name
         type: string
@@ -10235,7 +10367,7 @@ paths:
       description: Get all machine runtime definitions from the Threeport database.
       operationId: get-v0-machineRuntimeDefinitions
       parameters:
-      - description: machine runtime definition search by name
+      - description: filter by exact machine runtime definition name (case sensitive)
         in: query
         name: name
         type: string
@@ -10435,7 +10567,7 @@ paths:
       description: Get all machine runtime instances from the Threeport database.
       operationId: get-v0-machineRuntimeInstances
       parameters:
-      - description: machine runtime instance search by name
+      - description: filter by exact machine runtime instance name (case sensitive)
         in: query
         name: name
         type: string
@@ -10635,7 +10767,7 @@ paths:
       description: Get all machine workload definitions from the Threeport database.
       operationId: get-v0-machineWorkloadDefinitions
       parameters:
-      - description: machine workload definition search by name
+      - description: filter by exact machine workload definition name (case sensitive)
         in: query
         name: name
         type: string
@@ -10835,7 +10967,7 @@ paths:
       description: Get all machine workload instances from the Threeport database.
       operationId: get-v0-machineWorkloadInstances
       parameters:
-      - description: machine workload instance search by name
+      - description: filter by exact machine workload instance name (case sensitive)
         in: query
         name: name
         type: string
@@ -11035,7 +11167,7 @@ paths:
       description: Get all metrics definitions from the Threeport database.
       operationId: get-v0-metricsDefinitions
       parameters:
-      - description: metrics definition search by name
+      - description: filter by exact metrics definition name (case sensitive)
         in: query
         name: name
         type: string
@@ -11234,7 +11366,7 @@ paths:
       description: Get all metrics instances from the Threeport database.
       operationId: get-v0-metricsInstances
       parameters:
-      - description: metrics instance search by name
+      - description: filter by exact metrics instance name (case sensitive)
         in: query
         name: name
         type: string
@@ -11466,7 +11598,7 @@ paths:
       description: Get all module api routes from the Threeport database.
       operationId: get-v0-moduleApiRoutes
       parameters:
-      - description: module api route search by name
+      - description: filter by exact module api route name (case sensitive)
         in: query
         name: name
         type: string
@@ -11665,7 +11797,7 @@ paths:
       description: Get all module apis from the Threeport database.
       operationId: get-v0-moduleApis
       parameters:
-      - description: module api search by name
+      - description: filter by exact module api name (case sensitive)
         in: query
         name: name
         type: string
@@ -11864,7 +11996,7 @@ paths:
       description: Get all module controllers from the Threeport database.
       operationId: get-v0-moduleControllers
       parameters:
-      - description: module controller search by name
+      - description: filter by exact module controller name (case sensitive)
         in: query
         name: name
         type: string
@@ -12063,7 +12195,7 @@ paths:
       description: Get all module objects from the Threeport database.
       operationId: get-v0-moduleObjects
       parameters:
-      - description: module object search by name
+      - description: filter by exact module object name (case sensitive)
         in: query
         name: name
         type: string
@@ -12119,7 +12251,7 @@ paths:
         module api routes.
       operationId: get-v0-moduleObjectsModuleApiRoutes
       parameters:
-      - description: module object search by name
+      - description: filter by exact module object name (case sensitive)
         in: query
         name: name
         type: string
@@ -12320,7 +12452,8 @@ paths:
         database.
       operationId: get-v0-observabilityDashboardDefinitions
       parameters:
-      - description: observability dashboard definition search by name
+      - description: filter by exact observability dashboard definition name (case
+          sensitive)
         in: query
         name: name
         type: string
@@ -12520,7 +12653,7 @@ paths:
       description: Get all observability dashboard instances from the Threeport database.
       operationId: get-v0-observabilityDashboardInstances
       parameters:
-      - description: observability dashboard instance search by name
+      - description: filter by exact observability dashboard instance name (case sensitive)
         in: query
         name: name
         type: string
@@ -12720,7 +12853,7 @@ paths:
       description: Get all observability stack definitions from the Threeport database.
       operationId: get-v0-observabilityStackDefinitions
       parameters:
-      - description: observability stack definition search by name
+      - description: filter by exact observability stack definition name (case sensitive)
         in: query
         name: name
         type: string
@@ -12920,7 +13053,7 @@ paths:
       description: Get all observability stack instances from the Threeport database.
       operationId: get-v0-observabilityStackInstances
       parameters:
-      - description: observability stack instance search by name
+      - description: filter by exact observability stack instance name (case sensitive)
         in: query
         name: name
         type: string
@@ -13121,7 +13254,8 @@ paths:
         database.
       operationId: get-v0-ociOkeKubernetesRuntimeDefinitions
       parameters:
-      - description: oci oke kubernetes runtime definition search by name
+      - description: filter by exact oci oke kubernetes runtime definition name (case
+          sensitive)
         in: query
         name: name
         type: string
@@ -13325,7 +13459,8 @@ paths:
         database.
       operationId: get-v0-ociOkeKubernetesRuntimeInstances
       parameters:
-      - description: oci oke kubernetes runtime instance search by name
+      - description: filter by exact oci oke kubernetes runtime instance name (case
+          sensitive)
         in: query
         name: name
         type: string
@@ -13527,7 +13662,7 @@ paths:
       description: Get all oci providers from the Threeport database.
       operationId: get-v0-ociProviders
       parameters:
-      - description: oci provider search by name
+      - description: filter by exact oci provider name (case sensitive)
         in: query
         name: name
         type: string
@@ -13726,7 +13861,7 @@ paths:
       description: Get all profiles from the Threeport database.
       operationId: get-v0-profiles
       parameters:
-      - description: profile search by name
+      - description: filter by exact profile name (case sensitive)
         in: query
         name: name
         type: string
@@ -13925,7 +14060,7 @@ paths:
       description: Get all secret definitions from the Threeport database.
       operationId: get-v0-secretDefinitions
       parameters:
-      - description: secret definition search by name
+      - description: filter by exact secret definition name (case sensitive)
         in: query
         name: name
         type: string
@@ -14124,7 +14259,7 @@ paths:
       description: Get all secret instances from the Threeport database.
       operationId: get-v0-secretInstances
       parameters:
-      - description: secret instance search by name
+      - description: filter by exact secret instance name (case sensitive)
         in: query
         name: name
         type: string
@@ -14323,7 +14458,7 @@ paths:
       description: Get all terraform definitions from the Threeport database.
       operationId: get-v0-terraformDefinitions
       parameters:
-      - description: terraform definition search by name
+      - description: filter by exact terraform definition name (case sensitive)
         in: query
         name: name
         type: string
@@ -14522,7 +14657,7 @@ paths:
       description: Get all terraform instances from the Threeport database.
       operationId: get-v0-terraformInstances
       parameters:
-      - description: terraform instance search by name
+      - description: filter by exact terraform instance name (case sensitive)
         in: query
         name: name
         type: string
@@ -14721,7 +14856,7 @@ paths:
       description: Get all tiers from the Threeport database.
       operationId: get-v0-tiers
       parameters:
-      - description: tier search by name
+      - description: filter by exact tier name (case sensitive)
         in: query
         name: name
         type: string

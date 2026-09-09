@@ -257,6 +257,29 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		)
 	})
 
+	// build and push all development images
+	buildAllDevImagesFuncName := "AllImagesDev"
+	f.Comment(fmt.Sprintf("%s builds and pushes development images for all components.", buildAllDevImagesFuncName))
+	f.Func().Params(Id("Build")).Id(buildAllDevImagesFuncName).Params().Error().BlockFunc(func(g *Group) {
+		emitPrebuildBlock(g, allComponents)
+
+		g.Id("build").Op(":=").Id("Build").Values()
+		emitWrapHelper(g,
+			Qual(installerPkg, "DevImageNamespace"),
+			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
+		)
+		g.Id("tasks").Op(":=").Index().Func().Params().Error().ValuesFunc(func(v *Group) {
+			for _, c := range allComponents {
+				v.Line().Id("wrap").Call(Id("build").Dot(c.PackageFuncName))
+			}
+			v.Line()
+		})
+		g.Return().Qual("github.com/threeport/threeport/pkg/util/v0", "RunParallel").Call(
+			Id("parallelFromEnv").Call(),
+			Id("tasks"),
+		)
+	})
+
 	// Package.Manifest stitches per-arch image tags into a multi-arch
 	// manifest list under the canonical tag.
 	f.Comment("Manifest stitches per-arch images for one component into a multi-arch")

@@ -105,7 +105,6 @@ func (h Handler) AddEvent(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/events [GET]
 func (h Handler) GetEvents(c echo.Context) error {
-	objectType := api_v0.ObjectTypeEvent
 	fullyQualifiedType := new(api_v0.Event).GetFullyQualifiedType()
 
 	// get pagination parameters

@@ -1164,7 +1164,6 @@ func (h Handler) AddGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gke-kubernetes-runtime-definitions [GET]
 func (h Handler) GetGcpGkeKubernetesRuntimeDefinitions(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeDefinition
 	fullyQualifiedType := new(api_v0.GcpGkeKubernetesRuntimeDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -1659,7 +1658,6 @@ func (h Handler) AddGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-gke-kubernetes-runtime-instances [GET]
 func (h Handler) GetGcpGkeKubernetesRuntimeInstances(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGcpGkeKubernetesRuntimeInstance
 	fullyQualifiedType := new(api_v0.GcpGkeKubernetesRuntimeInstance).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -2218,7 +2216,6 @@ func (h Handler) AddGcpProvider(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gcp-providers [GET]
 func (h Handler) GetGcpProviders(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGcpProvider
 	fullyQualifiedType := new(api_v0.GcpProvider).GetFullyQualifiedType()
 
 	// get pagination parameters

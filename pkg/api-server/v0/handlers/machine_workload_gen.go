@@ -110,7 +110,6 @@ func (h Handler) AddMachineWorkloadDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/machine-workload-definitions [GET]
 func (h Handler) GetMachineWorkloadDefinitions(c echo.Context) error {
-	objectType := api_v0.ObjectTypeMachineWorkloadDefinition
 	fullyQualifiedType := new(api_v0.MachineWorkloadDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -605,7 +604,6 @@ func (h Handler) AddMachineWorkloadInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/machine-workload-instances [GET]
 func (h Handler) GetMachineWorkloadInstances(c echo.Context) error {
-	objectType := api_v0.ObjectTypeMachineWorkloadInstance
 	fullyQualifiedType := new(api_v0.MachineWorkloadInstance).GetFullyQualifiedType()
 
 	// get pagination parameters

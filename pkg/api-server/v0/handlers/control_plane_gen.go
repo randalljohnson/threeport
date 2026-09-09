@@ -125,7 +125,6 @@ func (h Handler) AddControlPlaneDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/control-plane-definitions [GET]
 func (h Handler) GetControlPlaneDefinitions(c echo.Context) error {
-	objectType := api_v0.ObjectTypeControlPlaneDefinition
 	fullyQualifiedType := new(api_v0.ControlPlaneDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -711,7 +710,6 @@ func (h Handler) AddControlPlaneInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/control-plane-instances [GET]
 func (h Handler) GetControlPlaneInstances(c echo.Context) error {
-	objectType := api_v0.ObjectTypeControlPlaneInstance
 	fullyQualifiedType := new(api_v0.ControlPlaneInstance).GetFullyQualifiedType()
 
 	// get pagination parameters

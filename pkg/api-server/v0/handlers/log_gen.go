@@ -106,7 +106,6 @@ func (h Handler) AddLogBackend(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-backends [GET]
 func (h Handler) GetLogBackends(c echo.Context) error {
-	objectType := api_v0.ObjectTypeLogBackend
 	fullyQualifiedType := new(api_v0.LogBackend).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -574,7 +573,6 @@ func (h Handler) AddLogStorageDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-definitions [GET]
 func (h Handler) GetLogStorageDefinitions(c echo.Context) error {
-	objectType := api_v0.ObjectTypeLogStorageDefinition
 	fullyQualifiedType := new(api_v0.LogStorageDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -1055,7 +1053,6 @@ func (h Handler) AddLogStorageInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-instances [GET]
 func (h Handler) GetLogStorageInstances(c echo.Context) error {
-	objectType := api_v0.ObjectTypeLogStorageInstance
 	fullyQualifiedType := new(api_v0.LogStorageInstance).GetFullyQualifiedType()
 
 	// get pagination parameters

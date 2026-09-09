@@ -110,7 +110,6 @@ func (h Handler) AddOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/oci-oke-kubernetes-runtime-definitions [GET]
 func (h Handler) GetOciOkeKubernetesRuntimeDefinitions(c echo.Context) error {
-	objectType := api_v0.ObjectTypeOciOkeKubernetesRuntimeDefinition
 	fullyQualifiedType := new(api_v0.OciOkeKubernetesRuntimeDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -605,7 +604,6 @@ func (h Handler) AddOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/oci-oke-kubernetes-runtime-instances [GET]
 func (h Handler) GetOciOkeKubernetesRuntimeInstances(c echo.Context) error {
-	objectType := api_v0.ObjectTypeOciOkeKubernetesRuntimeInstance
 	fullyQualifiedType := new(api_v0.OciOkeKubernetesRuntimeInstance).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -1164,7 +1162,6 @@ func (h Handler) AddOciProvider(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/oci-providers [GET]
 func (h Handler) GetOciProviders(c echo.Context) error {
-	objectType := api_v0.ObjectTypeOciProvider
 	fullyQualifiedType := new(api_v0.OciProvider).GetFullyQualifiedType()
 
 	// get pagination parameters

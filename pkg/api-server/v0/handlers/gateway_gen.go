@@ -110,7 +110,6 @@ func (h Handler) AddDomainNameDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/domain-name-definitions [GET]
 func (h Handler) GetDomainNameDefinitions(c echo.Context) error {
-	objectType := api_v0.ObjectTypeDomainNameDefinition
 	fullyQualifiedType := new(api_v0.DomainNameDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -605,7 +604,6 @@ func (h Handler) AddDomainNameInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/domain-name-instances [GET]
 func (h Handler) GetDomainNameInstances(c echo.Context) error {
-	objectType := api_v0.ObjectTypeDomainNameInstance
 	fullyQualifiedType := new(api_v0.DomainNameInstance).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -1178,7 +1176,6 @@ func (h Handler) AddGatewayDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gateway-definitions [GET]
 func (h Handler) GetGatewayDefinitions(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGatewayDefinition
 	fullyQualifiedType := new(api_v0.GatewayDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -1750,7 +1747,6 @@ func (h Handler) AddGatewayHttpPort(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gateway-http-ports [GET]
 func (h Handler) GetGatewayHttpPorts(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGatewayHttpPort
 	fullyQualifiedType := new(api_v0.GatewayHttpPort).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -2232,7 +2228,6 @@ func (h Handler) AddGatewayInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gateway-instances [GET]
 func (h Handler) GetGatewayInstances(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGatewayInstance
 	fullyQualifiedType := new(api_v0.GatewayInstance).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -2791,7 +2786,6 @@ func (h Handler) AddGatewayTcpPort(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/gateway-tcp-ports [GET]
 func (h Handler) GetGatewayTcpPorts(c echo.Context) error {
-	objectType := api_v0.ObjectTypeGatewayTcpPort
 	fullyQualifiedType := new(api_v0.GatewayTcpPort).GetFullyQualifiedType()
 
 	// get pagination parameters

@@ -124,7 +124,6 @@ func (h Handler) AddKubernetesRuntimeDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-runtime-definitions [GET]
 func (h Handler) GetKubernetesRuntimeDefinitions(c echo.Context) error {
-	objectType := api_v0.ObjectTypeKubernetesRuntimeDefinition
 	fullyQualifiedType := new(api_v0.KubernetesRuntimeDefinition).GetFullyQualifiedType()
 
 	// get pagination parameters
@@ -710,7 +709,6 @@ func (h Handler) AddKubernetesRuntimeInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-runtime-instances [GET]
 func (h Handler) GetKubernetesRuntimeInstances(c echo.Context) error {
-	objectType := api_v0.ObjectTypeKubernetesRuntimeInstance
 	fullyQualifiedType := new(api_v0.KubernetesRuntimeInstance).GetFullyQualifiedType()
 
 	// get pagination parameters

@@ -29,20 +29,20 @@ Install a local control plane using images pulled from the local registry.
 
 ## Update Dev Environment
 
-If you need to update the image for a control plane component after making code
-changes, do the following.
+Build new images and reinstall the stateless control plane so every
+controller and the API server come back on the current specs.
 
-Build a new container image and load it into the development kind cluster.  The
-following example is for the kubernetes workload controller.
+```bash
+./bin/tptdev build -r localhost:5001 -t dev --push
+./bin/tptdev reinstall -r localhost:5001 -t dev
+```
+
+To refresh a single component image without a full reinstall, build it
+and load it into kind, then delete that pod so it restarts on the new
+image:
 
 ```bash
 ./bin/tptdev build -r localhost:5001 -t dev --load --names kubernetes-workload-controller
-```
-
-Then delete the pod for the controller.  When it restarts, it will use the new
-image.
-
-```bash
 kubectl delete po [kubernetes workload controller pod name]
 ```
 

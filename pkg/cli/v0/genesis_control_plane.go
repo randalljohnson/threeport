@@ -1546,6 +1546,12 @@ func bootstrapKubernetesRuntimeInstance(controlPlaneConfig *ControlPlane) (*v0.K
 			controlPlaneConfig.Provider,
 		)
 	}
+	if controlPlaneConfig.Provider == v0.KubernetesRuntimeInfraProviderOKE {
+		return nil, fmt.Errorf(
+			"cannot rebuild kubernetes runtime instance for control plane on provider %s: it mints kube API tokens from oci provider rows a database drop removes, and the threeport config cannot rebuild those rows",
+			controlPlaneConfig.Provider,
+		)
+	}
 
 	// decode kube API credentials; the config stores them base64 encoded
 	caCertificate, err := util.Base64Decode(controlPlaneConfig.KubeAPI.CACertificate)

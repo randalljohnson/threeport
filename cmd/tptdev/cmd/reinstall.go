@@ -268,7 +268,7 @@ func init() {
 	)
 	reinstallCmd.Flags().StringVar(
 		&reinstallApis,
-		"apis", "", "Optional. Comma-separated list of sdk-config api object group names (e.g. kubernetes_workload,gateway) to limit the reinstall to those apis' controllers. Defaults to empty, which auto-detects the controller subset from the cluster's installer-managed deployments.",
+		"apis", "", "Optional. Comma-separated list of sdk-config api object group names (e.g. kubernetes_workload,gateway) to install as the resulting controller set. Controllers not named are deleted and not recreated. Use none to install zero optional controllers. Defaults to empty, which auto-detects the controller subset from the cluster's installer-managed deployments.",
 	)
 	reinstallCmd.Flags().BoolVar(
 		&reinstallDropDatabase,

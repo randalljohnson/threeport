@@ -158,7 +158,7 @@ func (i *KubernetesRuntimeInfraGKE) DestroyInfra() error {
 func (i *KubernetesRuntimeInfraGKE) pulumiProgram() pulumi.RunFunc {
 	return func(ctx *pulumi.Context) error {
 
-		// thread this stack's credentials into the GCP provider
+		// create GCP provider with instance credentials JSON when set
 		providerArgs := &gcp.ProviderArgs{
 			Project: pulumi.String(i.ProjectID),
 			Region:  pulumi.String(i.Region),
@@ -406,7 +406,7 @@ func (i *KubernetesRuntimeInfraGKE) GetConnection() (*kube.KubeConnectionInfo, e
 		return nil, fmt.Errorf("failed to decode CA certificate: %w", err)
 	}
 
-	// get access token for authentication
+	// get token source
 	tokenSource, err := i.tokenSource(ctx, "https://www.googleapis.com/auth/cloud-platform")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token source: %w", err)
@@ -570,8 +570,8 @@ func (i *KubernetesRuntimeInfraGKE) loadGCPConfigFromFile() error {
 	return nil
 }
 
-// gcpClientOptions returns client options that attach this instance's credentials
-// JSON when set, otherwise ADC.
+// gcpClientOptions appends WithCredentialsJSON when ServiceAccountCredentials
+// is set. Otherwise it returns the base options.
 func (i *KubernetesRuntimeInfraGKE) gcpClientOptions(base ...gcpoption.ClientOption) []gcpoption.ClientOption {
 	if i.ServiceAccountCredentials == "" {
 		return base
@@ -579,8 +579,8 @@ func (i *KubernetesRuntimeInfraGKE) gcpClientOptions(base ...gcpoption.ClientOpt
 	return append(base, gcpoption.WithCredentialsJSON([]byte(i.ServiceAccountCredentials)))
 }
 
-// tokenSource returns an OAuth2 token source from this instance's service account
-// JSON when set, otherwise ADC.
+// tokenSource returns an OAuth2 token source from this instance's service
+// account JSON when set, otherwise Application Default Credentials.
 func (i *KubernetesRuntimeInfraGKE) tokenSource(ctx context.Context, scopes ...string) (oauth2.TokenSource, error) {
 	if i.ServiceAccountCredentials == "" {
 		return google.DefaultTokenSource(ctx, scopes...)

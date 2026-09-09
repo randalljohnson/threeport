@@ -193,7 +193,7 @@ func TestHandleInfraDelete_AckedInventoryCleared_Confirms(t *testing.T) {
 }
 
 // TestHandleInfraDelete_AckedInventoryClearedButDeletionFailed_Confirms
-// covers a failed destroy whose inventory is already cleared.
+// covers a cleared inventory that still confirms when DeletionFailed is set.
 func TestHandleInfraDelete_AckedInventoryClearedButDeletionFailed_Confirms(t *testing.T) {
 	// set up an acknowledged failed delete with inventory "{}"
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
@@ -274,9 +274,9 @@ func TestHandleInfraDelete_AckedInventoryNotCleared_FreshAck_Requeue60(t *testin
 }
 
 // TestHandleInfraDelete_AckedFreshButDeletionFailed_RelaunchesPromptly
-// covers a failed delete relaunching instead of waiting for a stale ack.
+// covers a failed delete that relaunches instead of waiting for a stale ack.
 func TestHandleInfraDelete_AckedFreshButDeletionFailed_RelaunchesPromptly(t *testing.T) {
-	// one semaphore slot and a frozen clock
+	// install a one-slot semaphore and frozen clock
 	cfg := testLifecycleConfig()
 	cfg.SemaphoreCapacity = 1
 	restoreCfg := setLifecycleConfig(cfg)
@@ -288,8 +288,7 @@ func TestHandleInfraDelete_AckedFreshButDeletionFailed_RelaunchesPromptly(t *tes
 	fi := newFakeInfra()
 	fi.setDestroy(infraBlock, nil)
 	inventory := validStackState()
-	// ack aged one minute against a 240 second threshold: fresh, so without
-	// the failed flag this would requeue at 60 instead of relaunching
+	// set up remaining inventory, a one-minute-old ack against a 240s stale threshold, and DeletionFailed
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
 		DeletionScheduled:    util.Ptr(deleteTestBase.Add(-time.Hour)),
 		DeletionAcknowledged: util.Ptr(deleteTestBase.Add(-time.Minute)),
@@ -298,10 +297,10 @@ func TestHandleInfraDelete_AckedFreshButDeletionFailed_RelaunchesPromptly(t *tes
 	})
 	fl.setInfra(fi)
 
-	// run delete against a failed destroy with a still-fresh ack
+	// run delete
 	requeue, err := HandleInfraDelete(fl, newTestLogger())
 
-	// relaunch immediately at 300 seconds
+	// relaunch destroy and requeue 300 seconds
 	require.NoError(t, err)
 	assert.Equal(t, int64(300), requeue)
 	require.Eventually(t, func() bool {
@@ -310,11 +309,11 @@ func TestHandleInfraDelete_AckedFreshButDeletionFailed_RelaunchesPromptly(t *tes
 	assert.Equal(t, 1, fl.callCount("AckDeletion"))
 	assert.Equal(t, 1, fl.callCount("BuildInfra"))
 
-	// surviving inventory is restored before the relaunched destroy
+	// restore surviving inventory before the relaunched destroy
 	assert.Equal(t, 1, fi.setStackStateCallCount())
 	assert.Equal(t, inventory, fi.lastRestoredState())
 
-	// drain the blocked destroy
+	// release destroy and drain in-flight work
 	fi.releaseDestroy()
 	drainDeleteOps(t)
 	assert.Equal(t, 1, fl.callCount("ClearInventory"))
@@ -322,9 +321,9 @@ func TestHandleInfraDelete_AckedFreshButDeletionFailed_RelaunchesPromptly(t *tes
 }
 
 // TestHandleInfraDelete_AckedInventoryNotCleared_StaleAck_Relaunches
-// covers a stale deletion ack relaunching destroy.
+// covers a stale deletion ack that relaunches destroy.
 func TestHandleInfraDelete_AckedInventoryNotCleared_StaleAck_Relaunches(t *testing.T) {
-	// one semaphore slot and a frozen clock
+	// install a one-slot semaphore and frozen clock
 	cfg := testLifecycleConfig()
 	cfg.SemaphoreCapacity = 1
 	restoreCfg := setLifecycleConfig(cfg)

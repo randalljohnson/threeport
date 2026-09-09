@@ -122,8 +122,8 @@ func TestVerifyState_DeploymentFormat(t *testing.T) {
 	assert.NoError(t, verifyState(state, newTestLogger()))
 }
 
-// TestVerifyState_UnrecognizedSchema_Rejected rejects JSON that is not a
-// Pulumi snapshot, including a resources field that is not a list.
+// TestVerifyState_UnrecognizedSchema_Rejected rejects JSON missing both
+// formats, and a format whose resources field is not a list.
 func TestVerifyState_UnrecognizedSchema_Rejected(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -152,7 +152,7 @@ func TestVerifyState_UnrecognizedSchema_Rejected(t *testing.T) {
 }
 
 // TestVerifyState_EmptyStack_Accepted accepts checkpoint and deployment
-// snapshots whose resource lists are present but empty.
+// states whose resource lists are present but empty.
 func TestVerifyState_EmptyStack_Accepted(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -335,8 +335,8 @@ func TestDefaultLifecycleConfig_ProductionValues(t *testing.T) {
 	assert.Equal(t, 10*time.Second, defaultLifecycleConfig.PersistRetryDelay)
 }
 
-// TestInfraSemaphore_CapacityMatchesActiveConfig asserts the semaphore
-// capacity matches the active config rather than the defaults.
+// TestInfraSemaphore_CapacityMatchesActiveConfig asserts the live
+// semaphore capacity matches the active config.
 func TestInfraSemaphore_CapacityMatchesActiveConfig(t *testing.T) {
 	assert.Equal(t, currentConfig().SemaphoreCapacity, cap(currentSemaphore()))
 }

@@ -21,8 +21,7 @@ type Reconciliation struct {
 	// Indicates if object is considered to be reconciled by the object's controller.
 	Reconciled *bool `validate:"optional" gorm:"default:false"`
 
-	// Used by controllers to acknowledge creation and indicate that creation
-	// reconciliation has begun.
+	// The last time creation was acknowledged as begun
 	CreationAcknowledged *time.Time `validate:"optional"`
 
 	// Used by controllers to confirm creation of an object.
@@ -42,7 +41,7 @@ type Reconciliation struct {
 	// Used by controllers to confirm deletion of an object.
 	DeletionConfirmed *time.Time `validate:"optional"`
 
-	// Gets set to true if deletion process fails.
+	// A flag set to true if deletion of the object fails
 	DeletionFailed *bool `validate:"optional" gorm:"default:false"`
 
 	// InterruptReconciliation is used by the controller to indicated that future

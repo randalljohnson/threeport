@@ -45,7 +45,7 @@ func newOkeLifecycleProvider(
 }
 
 // StackKey returns the runtime instance name used to serialize operations on one stack.
-// That name also identifies the Pulumi stack on disk.
+// Threeport also uses that name for the Pulumi stack and the file-backend directory.
 func (o *okeLifecycle) StackKey() string {
 	if o.instance == nil || o.instance.Name == nil {
 		return ""

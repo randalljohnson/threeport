@@ -111,8 +111,9 @@ func ensureGCPAuth(serviceAccountCredentials string, interactive bool) error {
 	return nil
 }
 
-// validateServiceAccountCredentials parses service account JSON. A well-formed
-// document with a corrupt key still fails later, at the first token request.
+// validateServiceAccountCredentials parses service-account JSON for
+// the configured OAuth scopes. A well-formed document with a bad
+// private key fails later, when a token is first requested.
 func validateServiceAccountCredentials(ctx context.Context, credentialsJSON string) error {
 	if _, err := google.CredentialsFromJSON(ctx, []byte(credentialsJSON), GcpOAuthScopes...); err != nil {
 		return fmt.Errorf("failed to parse service account credentials: %w", err)
@@ -298,9 +299,9 @@ func saveADCCredentials(token *oauth2.Token) error {
 	return nil
 }
 
-// getADCPath returns the well-known gcloud Application Default Credentials
-// file path. It ignores GOOGLE_APPLICATION_CREDENTIALS. Following that env
-// var would write authorized_user JSON over an operator-chosen key file.
+// getADCPath returns the well-known gcloud Application Default
+// Credentials file path. It ignores GOOGLE_APPLICATION_CREDENTIALS
+// so an OAuth save cannot overwrite the file that variable names.
 func getADCPath() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {

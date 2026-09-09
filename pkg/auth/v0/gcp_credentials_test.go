@@ -18,9 +18,9 @@ import (
 // Service account credentials must never become process state.
 //
 // Two concurrent operations for different service accounts have to use
-// their own credentials. Setting GOOGLE_APPLICATION_CREDENTIALS to a key
-// file path makes the last writer choose the account every other in-flight
-// operation uses. Callers pass the JSON into each GCP client per call;
+// their own credentials. GOOGLE_APPLICATION_CREDENTIALS names one file
+// for the whole process, so a write there is what the next ADC lookup
+// sees. Callers attach the JSON when they build each GCP client;
 // the service-account path stores nothing.
 
 // serviceAccountJSON returns well-formed service-account JSON with a
@@ -33,7 +33,7 @@ func serviceAccountJSON(t *testing.T, clientEmail string) string {
 	der, err := x509.MarshalPKCS8PrivateKey(key)
 	require.NoError(t, err)
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
-	// marshal a service-account credential document
+	// fill the service-account credential document
 	creds := map[string]string{
 		"type":                        "service_account",
 		"project_id":                  "test-project",
@@ -63,6 +63,7 @@ func TestEnsureGCPAuthWithServiceAccountDoesNotSetProcessGlobal(t *testing.T) {
 			os.Unsetenv(envKey)
 		}
 	})
+	// start from an unset env var
 	os.Unsetenv(envKey)
 
 	// call EnsureGCPAuth with service-account JSON
@@ -117,5 +118,6 @@ func TestValidateServiceAccountCredentialsAcceptsWellFormedKey(t *testing.T) {
 		serviceAccountJSON(t, "sa@test-project.iam.gserviceaccount.com"),
 	)
 
+	// assert the document is accepted
 	assert.NoError(t, err)
 }

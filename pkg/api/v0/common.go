@@ -22,10 +22,10 @@ type Reconciliation struct {
 	Reconciled *bool `validate:"optional" gorm:"default:false"`
 
 	// Used by controllers to acknowledge creation and indicate that creation
-	// reconciliation has begun. Change detection compares only nil versus set.
+	// reconciliation has begun.
 	CreationAcknowledged *time.Time `validate:"optional"`
 
-	// Used by controllers to confirm deletion of an object.
+	// Used by controllers to confirm creation of an object.
 	CreationConfirmed *time.Time `validate:"optional"`
 
 	// Gets set to true if creation process fails.
@@ -36,7 +36,7 @@ type Reconciliation struct {
 	DeletionScheduled *time.Time `validate:"optional"`
 
 	// Used by controllers to acknowledge deletion and indicate that deletion
-	// reconciliation has begun. Change detection compares only nil versus set.
+	// reconciliation has begun.
 	DeletionAcknowledged *time.Time `validate:"optional"`
 
 	// Used by controllers to confirm deletion of an object.

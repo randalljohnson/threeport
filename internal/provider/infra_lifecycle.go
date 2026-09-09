@@ -643,7 +643,7 @@ func launchInfraDelete(config infraConfig) (int64, error) {
 	// acquire the per-stack lock without waiting
 	sl, ok := tryAcquireStackLock(config.StackKey)
 	if !ok {
-		config.Log.Info("stack operation already in flight, requeuing")
+		config.Log.V(1).Info("stack operation already in flight, requeuing")
 		return 30, nil
 	}
 
@@ -654,7 +654,7 @@ func launchInfraDelete(config infraConfig) (int64, error) {
 		// acquired slot
 	default:
 		releaseStackLock(config.StackKey, sl)
-		config.Log.Info("infrastructure worker pool full, requeuing")
+		config.Log.V(1).Info("infrastructure worker pool full, requeuing")
 		return 30, nil
 	}
 
@@ -1002,10 +1002,10 @@ func persistFailure(
 func verifyState(state *datatypes.JSON, log *logr.Logger) error {
 	// reject a missing state
 	if state == nil {
-		return fmt.Errorf("state is nil")
+		return errors.New("state is nil")
 	}
 	if len(*state) == 0 {
-		return fmt.Errorf("state is empty")
+		return errors.New("state is empty")
 	}
 
 	// parse as generic JSON
@@ -1036,7 +1036,7 @@ func verifyState(state *datatypes.JSON, log *logr.Logger) error {
 
 	// reject JSON that is not a Pulumi stack snapshot
 	if !recognizedSchema {
-		return fmt.Errorf("state does not match a known Pulumi stack schema")
+		return errors.New("state does not match a known Pulumi stack schema")
 	}
 
 	// log the verified resource count

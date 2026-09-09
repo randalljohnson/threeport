@@ -24,8 +24,8 @@ import (
 )
 
 // transientPulumiErrorMarkers are substrings of Pulumi and provider error
-// text that classify a failure as transient. executeInfraCreate skips
-// SetCreationFailed on a match.
+// text that classify a failure as transient. A matching create failure
+// does not set creation-failed.
 var transientPulumiErrorMarkers = []string{
 	// match a Pulumi DIY backend lock held by another process
 	"stack is currently locked",

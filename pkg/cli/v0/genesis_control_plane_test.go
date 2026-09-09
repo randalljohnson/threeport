@@ -103,7 +103,7 @@ func TestBootstrapKubernetesRuntimeInstance(t *testing.T) {
 }
 
 // TestBootstrapKubernetesRuntimeInstanceOnTokenMintingProviders covers a
-// GKE or OKE runtime instance built from a token and no certificate pair.
+// GKE runtime instance built from a token and no certificate pair.
 func TestBootstrapKubernetesRuntimeInstanceOnTokenMintingProviders(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -112,10 +112,6 @@ func TestBootstrapKubernetesRuntimeInstanceOnTokenMintingProviders(t *testing.T)
 		{
 			name:     "gke control plane is rebuilt with no kube API credential",
 			provider: v0.KubernetesRuntimeInfraProviderGKE,
-		},
-		{
-			name:     "oke control plane is rebuilt with no kube API credential",
-			provider: v0.KubernetesRuntimeInfraProviderOKE,
 		},
 	}
 
@@ -193,6 +189,21 @@ func TestBootstrapKubernetesRuntimeInstanceRefusesEks(t *testing.T) {
 	// check the error names the EKS provider
 	if !strings.Contains(err.Error(), v0.KubernetesRuntimeInfraProviderEKS) {
 		t.Errorf("expected error to name the provider %q, got %q", v0.KubernetesRuntimeInfraProviderEKS, err.Error())
+	}
+}
+
+// TestBootstrapKubernetesRuntimeInstanceRefusesOke covers refusing an
+// OKE rebuild whose token minting depends on provider rows a drop removes.
+func TestBootstrapKubernetesRuntimeInstanceRefusesOke(t *testing.T) {
+	controlPlaneConfig := testCloudControlPlaneConfig("dev-0", v0.KubernetesRuntimeInfraProviderOKE)
+
+	_, err := bootstrapKubernetesRuntimeInstance(controlPlaneConfig)
+	if err == nil {
+		t.Fatal("expected an error, got none")
+	}
+
+	if !strings.Contains(err.Error(), v0.KubernetesRuntimeInfraProviderOKE) {
+		t.Errorf("expected error to name the provider %q, got %q", v0.KubernetesRuntimeInfraProviderOKE, err.Error())
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
 	tptdev "github.com/threeport/threeport/pkg/threeport-installer/v0/tptdev"
 	util "github.com/threeport/threeport/pkg/util/v0"
+	"go/build"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -41,6 +42,7 @@ func (Test) Unit() error {
 	args := []string{
 		"test",
 		"-count=1",
+		"-race",
 		fmt.Sprintf("-p=%d", util.BuildParallelism()),
 		"./pkg/...",
 		"./internal/...",
@@ -69,6 +71,16 @@ func (Test) Integration() error {
 	}
 
 	return nil
+}
+
+// installDir returns the directory `go install` writes binaries to:
+// $GOBIN if set, otherwise $GOPATH/bin. build.Default.GOPATH falls back
+// to ~/go when $GOPATH is unset, so the result is always non-empty.
+func installDir() string {
+	if gobin := os.Getenv("GOBIN"); gobin != "" {
+		return gobin
+	}
+	return filepath.Join(build.Default.GOPATH, "bin")
 }
 
 // downloadThreeportBinary downloads the named binary from a threeport github
@@ -284,7 +296,7 @@ func (Build) ApiImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
@@ -360,7 +372,7 @@ func (Build) DbMigratorImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
@@ -436,7 +448,7 @@ func (Build) AgentImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
@@ -512,7 +524,7 @@ func (Build) SecretControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
@@ -588,7 +600,7 @@ func (Build) AwsControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
@@ -664,7 +676,7 @@ func (Build) OciControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
@@ -740,7 +752,7 @@ func (Build) GcpControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
@@ -816,7 +828,7 @@ func (Build) ControlPlaneControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
@@ -892,7 +904,7 @@ func (Build) GatewayControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
@@ -968,7 +980,7 @@ func (Build) HelmWorkloadControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
@@ -1044,7 +1056,7 @@ func (Build) MachineRuntimeControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
@@ -1120,7 +1132,7 @@ func (Build) MachineWorkloadControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
@@ -1196,7 +1208,7 @@ func (Build) KubernetesRuntimeControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
@@ -1272,7 +1284,7 @@ func (Build) ObservabilityControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
@@ -1348,7 +1360,7 @@ func (Build) TerraformControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
@@ -1424,7 +1436,7 @@ func (Build) KubernetesWorkloadControllerImage() error {
 		return fmt.Errorf("failed to get build values: %w", err)
 	}
 
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
@@ -1564,7 +1576,7 @@ func (Build) AllImages() error {
 		return fmt.Errorf("failed to pre-build binaries: %w", err)
 	}
 
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
 	if err != nil {
 		return fmt.Errorf("failed to resolve image coordinates: %w", err)
 	}
@@ -1674,9 +1686,10 @@ func (Build) AllImagesDev() error {
 // arch and combined into <repo>/<image>:<tag> via
 // `docker buildx imagetools create`.
 func (Package) Manifest(imageName string) error {
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo := util.ResolveImageRepo(installer.DevImageNamespace)
+	imageTag, err := util.ResolveImageTag(".", version.GetVersion())
 	if err != nil {
-		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+		return fmt.Errorf("failed to resolve image tag: %w", err)
 	}
 
 	arches, err := util.DiscoverArches(imageRepo+"/"+imageName, imageTag)
@@ -1697,9 +1710,10 @@ func (Package) Manifest(imageName string) error {
 // control worker concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage
 // package:allManifests`).
 func (Package) AllManifests() error {
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(installer.DevImageNamespace, version.GetVersion())
+	imageRepo := util.ResolveImageRepo(installer.DevImageNamespace)
+	imageTag, err := util.ResolveImageTag(".", version.GetVersion())
 	if err != nil {
-		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+		return fmt.Errorf("failed to resolve image tag: %w", err)
 	}
 
 	// gather every component image: rest-api, db migrator, agent, and
@@ -1781,6 +1795,14 @@ func (Dev) LoadImage(kindClusterName string, component string) error {
 		dockerfileTarget = t
 	}
 
+	// tag the loaded image the way an install resolves its tag, so a
+	// later tptctl up with no --tag references the image just loaded
+	// rather than the bare version, which names no image in the cluster.
+	imageTag, err := util.ResolveImageTag(workingDir, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image tag: %w", err)
+	}
+
 	if err := util.BuildImage(
 		workingDir,
 		"Dockerfile",
@@ -1791,7 +1813,7 @@ func (Dev) LoadImage(kindClusterName string, component string) error {
 		nil,
 		installer.DevImageNamespace,
 		imageName,
-		version.GetVersion(),
+		imageTag,
 		false,
 		true,
 		kindClusterName,

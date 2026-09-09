@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
@@ -21,16 +23,24 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
-// memBytesPerWorker is the runner memory budgeted per build worker, 5 GB.
-// Observed per-link peak is ~4.5 GB when go links the static binaries, so
-// budgeting 5 GB per worker keeps an 8 GB container at -p=1 (the kubelet
+// memBytesPerWorker is the runner memory budgeted per build worker, 5 GiB.
+// Observed per-link peak is ~4.5 GiB when go links the static binaries, so
+// budgeting 5 GiB per worker keeps an 8 GiB container at -p=1 (the kubelet
 // eviction threshold can't tolerate more) and still scales up on a roomier
 // runner. Dividing available memory by this yields a memory-bound worker
 // count that the runner can sustain without an out-of-memory kill.
 const memBytesPerWorker = 1024 * 1024 * 1024 * 5
 
+// archToken matches a bare GOARCH value, which is the only suffix shape a
+// per-arch image tag carries. Every GOARCH go supports is lowercase letters and
+// digits, so a suffix holding a dot or a hyphen came from a longer tag.
+var archToken = regexp.MustCompile(`^[a-z0-9]+$`)
+
+// registryListTimeout bounds a repository tag listing against a registry.
+const registryListTimeout = 60 * time.Second
+
 // BuildParallelism derives a build worker count from the runner's available
-// memory, budgeting roughly one worker per 5 GB and clamping the result to
+// memory, budgeting roughly one worker per 5 GiB and clamping the result to
 // the range [1, NumCPU]. Available memory is the smaller of /proc/meminfo
 // MemAvailable (host view) and the cgroup memory limit (container budget),
 // so a pod on a roomy node still sizes parallelism to its own limit rather
@@ -79,7 +89,7 @@ func ReleaseParallelism() int {
 	return 1
 }
 
-// availableMemoryBytes returns the runner's available memory budget — the
+// availableMemoryBytes returns the runner's available memory budget: the
 // smaller of /proc/meminfo MemAvailable (host view) and the cgroup memory
 // limit (container budget). Reporting the lower of the two means a pod
 // running on a beefy node still sizes parallelism to its own limit rather
@@ -107,7 +117,7 @@ func availableMemoryBytes() (int64, bool) {
 // procMemAvailable returns the host's available memory in bytes by reading
 // MemAvailable from /proc/meminfo, reporting false when the file is
 // unreadable or the field is absent (non-Linux runners). On a container,
-// /proc/meminfo reflects the node, not the container — see
+// /proc/meminfo reflects the node, not the container, so see
 // cgroupMemoryLimit for the container-budget reading.
 func procMemAvailable() (int64, bool) {
 	contents, err := os.ReadFile("/proc/meminfo")
@@ -121,7 +131,7 @@ func procMemAvailable() (int64, bool) {
 // cgroup v2 (/sys/fs/cgroup/memory.max) and falling back to v1
 // (/sys/fs/cgroup/memory/memory.limit_in_bytes). It reports false when
 // neither file is readable, when v2 reports "max" (unlimited), or when v1
-// reports the sentinel near-int64-max value cgroup v1 uses for "no limit".
+// reports the near-int64-max value it uses to mean "no limit".
 // In a container with a memory limit this returns the container's budget;
 // outside a container or on an unconstrained cgroup it returns false so
 // the host reading takes over.
@@ -151,10 +161,10 @@ func parseCgroupV2Max(contents string) (int64, bool) {
 }
 
 // parseCgroupV1Limit parses a cgroup v1 memory.limit_in_bytes file's
-// contents. cgroup v1 represents "no limit" with a sentinel near int64
-// max (typically 9223372036854771712); values at or above 1<<62 are
-// treated as unlimited and report false. Returns false on parse failure
-// or a non-positive value.
+// contents. cgroup v1 means "no limit" with a value near int64 max
+// (typically 9223372036854771712); values at or above 1<<62 are treated as
+// unlimited and report false. Returns false on parse failure or a
+// non-positive value.
 func parseCgroupV1Limit(contents string) (int64, bool) {
 	s := strings.TrimSpace(contents)
 	v, err := strconv.ParseInt(s, 10, 64)
@@ -593,13 +603,17 @@ func buildxBuildArgs(
 	// caller extras emitted in sorted order so command output stays
 	// stable across runs
 	args = append(args, "--build-arg", fmt.Sprintf("BINARY=%s", binary))
-	if extraBuildArgs == nil {
-		extraBuildArgs = map[string]string{}
+	// copy the caller's extras before filling in the label defaults, so the
+	// resolved labels do not land in a map the caller still holds and reuses for
+	// a later component's build
+	buildArgs := make(map[string]string, len(extraBuildArgs)+3)
+	for k, v := range extraBuildArgs {
+		buildArgs[k] = v
 	}
-	resolveLabelArg(extraBuildArgs, "GIT_REVISION", func() string {
+	resolveLabelArg(buildArgs, "GIT_REVISION", func() string {
 		return gitOutput(threeportPath, "rev-parse", "HEAD")
 	})
-	resolveLabelArg(extraBuildArgs, "GIT_TAG", func() string {
+	resolveLabelArg(buildArgs, "GIT_TAG", func() string {
 		// self-derived builds leave GIT_TAG unset; fall back to the tag the
 		// image is published under so the OCI version label is never blank.
 		if imageTag != "" {
@@ -607,16 +621,16 @@ func buildxBuildArgs(
 		}
 		return gitOutput(threeportPath, "describe", "--tags", "--always", "--dirty")
 	})
-	resolveLabelArg(extraBuildArgs, "BUILD_CREATED", func() string {
+	resolveLabelArg(buildArgs, "BUILD_CREATED", func() string {
 		return time.Now().UTC().Format(time.RFC3339)
 	})
-	keys := make([]string, 0, len(extraBuildArgs))
-	for k := range extraBuildArgs {
+	keys := make([]string, 0, len(buildArgs))
+	for k := range buildArgs {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, extraBuildArgs[k]))
+		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, buildArgs[k]))
 	}
 
 	// plain progress keeps lines independent so concurrent builds
@@ -652,8 +666,7 @@ func resolveLabelArg(args map[string]string, key string, fallback func() string)
 // trimmed stdout, or "" if git fails. Used to derive label values for
 // local builds where the caller hasn't set GIT_REVISION/GIT_TAG.
 func gitOutput(workingDir string, args ...string) string {
-	cmd := exec.Command("git", append([]string{"-C", workingDir}, args...)...)
-	out, err := cmd.Output()
+	out, err := gitCommand(workingDir, args...).Output()
 	if err != nil {
 		return ""
 	}
@@ -666,28 +679,55 @@ func gitOutput(workingDir string, args ...string) string {
 // arch set. imageRef is a repository with no tag, e.g.
 // "ghcr.io/owner/threeport-rest-api".
 func DiscoverArches(imageRef, baseTag string) ([]string, error) {
-	repo, err := name.NewRepository(imageRef)
+	opts := []name.Option{}
+	if registryAllowsHTTP(imageRef) {
+		opts = append(opts, name.Insecure)
+	}
+	repo, err := name.NewRepository(imageRef, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse image repository %q: %w", imageRef, err)
 	}
-	tags, err := remote.List(repo, remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithContext(context.Background()))
+	// the response is a list of tag names, so a call still running after the
+	// timeout has stalled rather than merely being slow, and a manifest stitch
+	// that hangs holds up every other component's stitch behind it
+	ctx, cancel := context.WithTimeout(context.Background(), registryListTimeout)
+	defer cancel()
+	tags, err := remote.List(repo, remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tags for %q: %w", imageRef, err)
 	}
 	return archSuffixes(tags, baseTag), nil
 }
 
+// registryAllowsHTTP reports whether imageRef's registry is a loopback
+// address, which the local kind registry serves over HTTP.
+func registryAllowsHTTP(imageRef string) bool {
+	host := imageRef
+	if i := strings.Index(imageRef, "/"); i >= 0 {
+		host = imageRef[:i]
+	}
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
+}
+
 // archSuffixes returns the sorted arch suffixes of every tag shaped
 // <baseTag>-<arch>. Tags without the <baseTag>- prefix, the bare baseTag, and
-// an empty suffix are dropped, so a base that prefixes a longer base does not
-// cross-contaminate.
+// an empty suffix are dropped. So is any suffix that is not a bare arch token,
+// which is what keeps a release base from claiming its own prerelease tags: for
+// the base v0.7.0, the tag v0.7.0-dev.3-amd64 leaves the suffix dev.3-amd64,
+// and stitching that into the v0.7.0 manifest list would publish a prerelease
+// image under a release tag.
 func archSuffixes(tags []string, baseTag string) []string {
 	prefix := baseTag + "-"
 	arches := []string{}
 	for _, tag := range tags {
-		if suffix := strings.TrimPrefix(tag, prefix); suffix != tag && suffix != "" {
-			arches = append(arches, suffix)
+		suffix := strings.TrimPrefix(tag, prefix)
+		if suffix == tag || !archToken.MatchString(suffix) {
+			continue
 		}
+		arches = append(arches, suffix)
 	}
 	sort.Strings(arches)
 	return arches
@@ -712,7 +752,7 @@ func ParseArches(arch string) []string {
 // an error, since a manifest needs at least one source.
 func imagetoolsArgs(repo, image, tag string, arches []string) (args []string, target string, err error) {
 	if len(arches) == 0 {
-		return nil, "", errors.New("--arches is required")
+		return nil, "", fmt.Errorf("failed to find per-arch tags for %s/%s:%s", repo, image, tag)
 	}
 
 	// build the canonical target tag and the per-arch source tags

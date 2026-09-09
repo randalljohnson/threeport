@@ -1,87 +1,66 @@
 package v0
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
-	v0 "github.com/threeport/threeport/pkg/api/v0"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// testApiServer returns a threeport API stand-in that answers every request
-// with the supplied objects, along with the client and address to reach it at.
-// The address carries no scheme because GetResponse prepends one itself.
-func testApiServer(t *testing.T, data []apiserver_lib.Object) (*http.Client, string) {
-	t.Helper()
-
+// TestGetThreeportControlPlaneKubernetesRuntimeInstance_NoMatch covers the
+// empty-result path. The filter answers 200 with an empty Data rather than
+// 404, so GetResponse returns no error and the caller reaches the index. That
+// used to panic with "index out of range [0] with length 0", which surfaced as
+// a crashed `tptctl down` against a control plane whose runtime instance row
+// was missing — the exact state a caller is trying to tear down.
+func TestGetThreeportControlPlaneKubernetesRuntimeInstance_NoMatch(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(apiserver_lib.Response{Data: data}); err != nil {
-			t.Errorf("failed to encode response: %v", err)
-		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"Meta":{"ObjectCount":0},"Data":[],"Status":{"code":200,"message":"OK"}}`))
 	}))
-	t.Cleanup(server.Close)
+	defer server.Close()
 
-	return &http.Client{}, strings.TrimPrefix(server.URL, "http://")
+	instance, err := GetThreeportControlPlaneKubernetesRuntimeInstance(server.Client(), strings.TrimPrefix(server.URL, "http://"))
+
+	require.Error(t, err, "an empty result must surface as an error, not a panic")
+	assert.Contains(t, err.Error(), "no kubernetes runtime instance found")
+	assert.NotNil(t, instance, "the caller is handed a usable zero value alongside the error")
 }
 
-// TestGetThreeportControlPlaneKubernetesRuntimeInstanceRejectsUnusableResults
-// asserts that a result set the caller cannot use produces an error rather
-// than an index out of range. An empty set is what the API returns after the
-// database is dropped and the bootstrap records have not been restored.
-func TestGetThreeportControlPlaneKubernetesRuntimeInstanceRejectsUnusableResults(t *testing.T) {
-	name := "threeport-dev-0"
-	tests := []struct {
-		name        string
-		data        []apiserver_lib.Object
-		errContains string
-	}{
-		{
-			name:        "no host runtime returns an error",
-			data:        []apiserver_lib.Object{},
-			errContains: "no kubernetes runtime instance hosting the threeport control plane found",
-		},
-		{
-			name: "multiple host runtimes return an error",
-			data: []apiserver_lib.Object{
-				v0.KubernetesRuntimeInstance{Instance: v0.Instance{Name: &name}},
-				v0.KubernetesRuntimeInstance{Instance: v0.Instance{Name: &name}},
-			},
-			errContains: "multiple kubernetes runtime instances marked as threeport control plane host",
-		},
-	}
+// TestGetThreeportControlPlaneKubernetesRuntimeInstance_MultipleMatches covers
+// the other ambiguous case: more than one runtime instance flagged as the
+// control plane host means the caller cannot pick one safely.
+func TestGetThreeportControlPlaneKubernetesRuntimeInstance_MultipleMatches(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"Meta":{"ObjectCount":2},"Data":[{"Name":"a"},{"Name":"b"}],"Status":{"code":200,"message":"OK"}}`))
+	}))
+	defer server.Close()
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			apiClient, apiAddr := testApiServer(t, test.data)
+	_, err := GetThreeportControlPlaneKubernetesRuntimeInstance(server.Client(), strings.TrimPrefix(server.URL, "http://"))
 
-			_, err := GetThreeportControlPlaneKubernetesRuntimeInstance(apiClient, apiAddr)
-			if err == nil {
-				t.Fatal("expected an error, got none")
-			}
-			if !strings.Contains(err.Error(), test.errContains) {
-				t.Errorf("expected error containing %q, got %q", test.errContains, err.Error())
-			}
-		})
-	}
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "multiple kubernetes runtime instances")
 }
 
-// TestGetThreeportControlPlaneKubernetesRuntimeInstanceReturnsSingleResult
-// asserts the guards leave the ordinary single-result case alone.
-func TestGetThreeportControlPlaneKubernetesRuntimeInstanceReturnsSingleResult(t *testing.T) {
-	name := "threeport-dev-0"
-	apiClient, apiAddr := testApiServer(t, []apiserver_lib.Object{
-		v0.KubernetesRuntimeInstance{Instance: v0.Instance{Name: &name}},
-	})
+// TestGetThreeportControlPlaneKubernetesRuntimeInstance_SingleMatch is the
+// happy path, so the guards above cannot pass by rejecting everything.
+func TestGetThreeportControlPlaneKubernetesRuntimeInstance_SingleMatch(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"Meta":{"ObjectCount":1},"Data":[{"Name":"threeport-dev-0"}],"Status":{"code":200,"message":"OK"}}`))
+	}))
+	defer server.Close()
 
-	kubernetesRuntimeInstance, err := GetThreeportControlPlaneKubernetesRuntimeInstance(apiClient, apiAddr)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if kubernetesRuntimeInstance.Name == nil || *kubernetesRuntimeInstance.Name != name {
-		t.Errorf("expected kubernetes runtime instance %q, got %v", name, kubernetesRuntimeInstance.Name)
-	}
+	instance, err := GetThreeportControlPlaneKubernetesRuntimeInstance(server.Client(), strings.TrimPrefix(server.URL, "http://"))
+
+	require.NoError(t, err)
+	require.NotNil(t, instance.Name)
+	assert.Equal(t, "threeport-dev-0", *instance.Name)
 }

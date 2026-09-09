@@ -277,6 +277,22 @@ func TestBuildxArgs_EnvRevisionUsedWhenCallerSilent(t *testing.T) {
 	}
 }
 
+// TestBuildxArgs_LeavesTheCallerMapAlone asserts the resolved label defaults do
+// not land in the caller's map. A caller that reuses one map across components
+// would otherwise carry the first component's GIT_TAG and BUILD_CREATED into
+// every later build, since a caller-supplied value wins over the fallback.
+func TestBuildxArgs_LeavesTheCallerMapAlone(t *testing.T) {
+	t.Setenv("GIT_REVISION", "env-value")
+	tp, df, tgt, plats, bin, bd, _, repo, name, _, push := buildxArgsFixture()
+	// a caller map holding one extra and none of the labels
+	ex := map[string]string{"TERRAFORM_VERSION": "1.9.0"}
+	buildxBuildArgs(tp, df, tgt, plats, bin, bd, ex, repo, name, "v0.7.0", push)
+	// assert the map still holds only what the caller put in it
+	if len(ex) != 1 || ex["TERRAFORM_VERSION"] != "1.9.0" {
+		t.Errorf("caller map = %v, want only TERRAFORM_VERSION=1.9.0", ex)
+	}
+}
+
 func TestBuildxArgs_ImageRefAndShortName(t *testing.T) {
 	tp, df, tgt, plats, bin, bd, ex, _, _, _, push := buildxArgsFixture()
 	args, image, shortName := buildxBuildArgs(tp, df, tgt, plats, bin, bd, ex, "ghcr.io/threeport", "threeport-rest-api", "v0.7.0", push)
@@ -360,7 +376,7 @@ func TestParseMemAvailableRejectsMissingAndMalformed(t *testing.T) {
 
 // TestParseCgroupV2MaxReadsBytesAndRejectsMax covers parseCgroupV2Max
 // returning the byte count for a numeric memory.max and reporting false for
-// the "max" sentinel that cgroup v2 uses for "no limit", plus the usual
+// the "max" value that cgroup v2 uses for "no limit", plus the usual
 // malformed-input cases.
 func TestParseCgroupV2MaxReadsBytesAndRejectsMax(t *testing.T) {
 	// each case pairs a memory.max snippet with its expected (value, ok)
@@ -374,8 +390,8 @@ func TestParseCgroupV2MaxReadsBytesAndRejectsMax(t *testing.T) {
 		{"numeric limit", "8589934592\n", 8589934592, true},
 		// surrounding whitespace and a missing trailing newline are tolerated
 		{"trimmed whitespace", "  8589934592  ", 8589934592, true},
-		// the "max" sentinel means unlimited and reports false
-		{"max sentinel", "max\n", 0, false},
+		// the "max" value means unlimited and reports false
+		{"max means unlimited", "max\n", 0, false},
 		// non-numeric content reports false
 		{"non-numeric", "eight gigs\n", 0, false},
 		// a non-positive value is treated as no limit
@@ -393,11 +409,11 @@ func TestParseCgroupV2MaxReadsBytesAndRejectsMax(t *testing.T) {
 	}
 }
 
-// TestParseCgroupV1LimitReadsBytesAndRejectsSentinel covers parseCgroupV1Limit
+// TestParseCgroupV1LimitReadsBytesAndRejectsUnlimited covers parseCgroupV1Limit
 // returning the byte count for a real limit and reporting false for the
-// near-int64-max sentinel that cgroup v1 uses for "no limit", plus the usual
+// near-int64-max value that cgroup v1 uses for "no limit", plus the usual
 // malformed-input cases.
-func TestParseCgroupV1LimitReadsBytesAndRejectsSentinel(t *testing.T) {
+func TestParseCgroupV1LimitReadsBytesAndRejectsUnlimited(t *testing.T) {
 	// each case pairs a memory.limit_in_bytes snippet with its expected
 	// (value, ok)
 	cases := []struct {
@@ -410,8 +426,8 @@ func TestParseCgroupV1LimitReadsBytesAndRejectsSentinel(t *testing.T) {
 		{"numeric limit", "8589934592\n", 8589934592, true},
 		// surrounding whitespace is tolerated
 		{"trimmed whitespace", "  8589934592  ", 8589934592, true},
-		// the cgroup-v1 "no limit" sentinel (close to int64 max) reports false
-		{"sentinel near int64 max", "9223372036854771712\n", 0, false},
+		// the cgroup-v1 "no limit" value (close to int64 max) reports false
+		{"near int64 max means unlimited", "9223372036854771712\n", 0, false},
 		// any value at or above 1<<62 is treated as unlimited
 		{"at one-shifted-62 rejected", "4611686018427387904\n", 0, false},
 		// non-numeric content reports false
@@ -532,11 +548,35 @@ func TestArchSuffixesDoesNotCrossContaminatePrefixBases(t *testing.T) {
 	if want := []string{"arm64"}; !slices.Equal(got, want) {
 		t.Errorf("archSuffixes(v0.7.0-dev) = %v, want %v", got, want)
 	}
-	// and extracting for the shorter base picks up its own arch tag plus the
-	// dev tag's full suffix, never the dev arch alone
+	// and extracting for the shorter base sees only its own arch tag, since the
+	// dev tag's suffix is not a bare arch token
 	got = archSuffixes(tags, "v0.7.0")
-	if want := []string{"amd64", "dev-arm64"}; !slices.Equal(got, want) {
+	if want := []string{"amd64"}; !slices.Equal(got, want) {
 		t.Errorf("archSuffixes(v0.7.0) = %v, want %v", got, want)
+	}
+}
+
+// TestArchSuffixesDropsPrereleaseTagsFromAReleaseBase covers the manifest stitch
+// for a GA base ignoring the per-arch tags of prereleases built from it, which
+// would otherwise publish a prerelease image under the release tag.
+func TestArchSuffixesDropsPrereleaseTagsFromAReleaseBase(t *testing.T) {
+	// the registry holds the GA per-arch tags beside several prerelease ones
+	tags := []string{
+		"v0.7.0-amd64",
+		"v0.7.0-arm64",
+		"v0.7.0-dev.3-amd64",
+		"v0.7.0-dev.3-arm64",
+		"v0.7.0-rc.1-amd64",
+	}
+	// extracting suffixes for the GA base sees only the GA arch tags
+	got := archSuffixes(tags, "v0.7.0")
+	if want := []string{"amd64", "arm64"}; !slices.Equal(got, want) {
+		t.Errorf("archSuffixes(v0.7.0) = %v, want %v", got, want)
+	}
+	// and the prerelease base still resolves its own arch tags
+	got = archSuffixes(tags, "v0.7.0-dev.3")
+	if want := []string{"amd64", "arm64"}; !slices.Equal(got, want) {
+		t.Errorf("archSuffixes(v0.7.0-dev.3) = %v, want %v", got, want)
 	}
 }
 
@@ -615,8 +655,8 @@ func TestImagetoolsArgsRejectsEmptyArches(t *testing.T) {
 	// an empty arch slice cannot stitch a manifest
 	args, target, err := imagetoolsArgs("ghcr.io/threeport", "threeport-rest-api", "v0.7.0", nil)
 	// the action under test surfaces the required-arches error
-	if err == nil || !strings.Contains(err.Error(), "--arches is required") {
-		t.Fatalf("expected --arches is required, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "failed to find per-arch tags") {
+		t.Fatalf("expected failed to find per-arch tags, got %v", err)
 	}
 	// and returns no argv or target on the error path
 	if args != nil || target != "" {

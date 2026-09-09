@@ -1,6 +1,8 @@
 package v0
 
 import (
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -51,7 +53,7 @@ func TestResolveImageTagPrefersExplicitOverride(t *testing.T) {
 	t.Setenv("GITHUB_ACTIONS", "true")
 	t.Setenv("ARCH", "")
 	// the override wins
-	got, err := ResolveImageTag("v0.1.0-dev")
+	got, err := ResolveImageTag("", "v0.1.0-dev")
 	if err != nil {
 		t.Fatalf("ResolveImageTag returned error: %v", err)
 	}
@@ -70,7 +72,7 @@ func TestResolveImageTagEchoesRefNameOnTagBuild(t *testing.T) {
 	t.Setenv("GITHUB_REF_NAME", "v0.1.0-dev.3")
 	t.Setenv("ARCH", "")
 	// the tag build echoes the ref name verbatim
-	got, err := ResolveImageTag("v0.1.0-dev")
+	got, err := ResolveImageTag("", "v0.1.0-dev")
 	if err != nil {
 		t.Fatalf("ResolveImageTag returned error: %v", err)
 	}
@@ -79,18 +81,30 @@ func TestResolveImageTagEchoesRefNameOnTagBuild(t *testing.T) {
 	}
 }
 
+// gitRedirectVars name the environment variables that point git at a repository
+// of their own, overriding both the working directory and an explicit -C path.
+// git exports them to hook processes, so a suite invoked from a pre-push hook
+// resolves the outer repository unless they are cleared.
+var gitRedirectVars = []string{"GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE"}
+
+// clearGitRedirects unsets the redirect variables for the duration of the test.
+// Unsetting rather than emptying matters: git rejects an empty GIT_DIR as an
+// invalid path, which fails even a command handed a valid repository elsewhere.
+func clearGitRedirects(t *testing.T) {
+	t.Helper()
+	for _, name := range gitRedirectVars {
+		// t.Setenv records the original value and restores it at cleanup; the
+		// unset that follows is what the command actually sees
+		t.Setenv(name, "")
+		os.Unsetenv(name)
+	}
+}
+
 // isolateFromGit puts the resolver somewhere no repository can be found, so the
-// sha read fails and the fallback path runs. Changing directory alone is not
-// enough: git exports GIT_DIR and GIT_WORK_TREE to hook processes, so a suite
-// invoked from a pre-push hook still resolves the repository from the
-// environment whatever the working directory is, and the fallback assertions
-// then see a real sha. Emptying those makes the failure deterministic wherever
-// the suite runs.
+// sha read fails and the fallback path runs.
 func isolateFromGit(t *testing.T) {
 	t.Helper()
-	t.Setenv("GIT_DIR", "")
-	t.Setenv("GIT_WORK_TREE", "")
-	t.Setenv("GIT_COMMON_DIR", "")
+	clearGitRedirects(t)
 	t.Chdir(t.TempDir())
 }
 
@@ -105,7 +119,7 @@ func TestResolveImageTagFallsBackToVersionOutsideCheckout(t *testing.T) {
 	t.Setenv("ARCH", "")
 	isolateFromGit(t)
 	// the bare version default passes through when no sha is available
-	got, err := ResolveImageTag("v0.1.0-dev")
+	got, err := ResolveImageTag("", "v0.1.0-dev")
 	if err != nil {
 		t.Fatalf("ResolveImageTag returned error: %v", err)
 	}
@@ -123,7 +137,7 @@ func TestResolveImageTagSuffixesShaInCheckout(t *testing.T) {
 	t.Setenv("GITHUB_ACTIONS", "")
 	t.Setenv("ARCH", "")
 	// the resolved tag is <version>.<sha> with a seven-character sha
-	got, err := ResolveImageTag("v0.1.0-dev")
+	got, err := ResolveImageTag("", "v0.1.0-dev")
 	if err != nil {
 		t.Fatalf("ResolveImageTag returned error: %v", err)
 	}
@@ -136,27 +150,46 @@ func TestResolveImageTagSuffixesShaInCheckout(t *testing.T) {
 	}
 }
 
-// TestResolveImageTagDecoratesSingleArch covers ResolveImageTag decorating the
-// resolved tag with -<arch> when ARCH names a single arch.
-func TestResolveImageTagDecoratesSingleArch(t *testing.T) {
+// TestResolveImageTagIgnoresArch covers ResolveImageTag leaving the canonical
+// tag undecorated whatever ARCH holds. tptctl up and the module install command
+// resolve the tag they pull through here, so an ARCH exported in the caller's
+// shell must not point an install at a single-arch image.
+func TestResolveImageTagIgnoresArch(t *testing.T) {
+	// an explicit override plus a single-arch ARCH that a build would decorate with
+	t.Setenv("IMAGE_TAG", "v9.9.9")
+	t.Setenv("GITHUB_ACTIONS", "true")
+	t.Setenv("ARCH", "arm64")
+	// the canonical tag passes through undecorated
+	got, err := ResolveImageTag("", "v0.1.0-dev")
+	if err != nil {
+		t.Fatalf("ResolveImageTag returned error: %v", err)
+	}
+	if got != "v9.9.9" {
+		t.Errorf("ResolveImageTag = %q, want the undecorated v9.9.9", got)
+	}
+}
+
+// TestBuildImageTagDecoratesSingleArch covers buildImageTag decorating the
+// canonical tag with -<arch> when ARCH names a single arch.
+func TestBuildImageTagDecoratesSingleArch(t *testing.T) {
 	// an explicit override plus a single-arch ARCH
 	t.Setenv("IMAGE_TAG", "v9.9.9")
 	t.Setenv("GITHUB_ACTIONS", "true")
 	t.Setenv("ARCH", "arm64")
 	// the arch decorates the resolved tag
-	got, err := ResolveImageTag("v0.1.0-dev")
+	got, err := buildImageTag("", "v0.1.0-dev")
 	if err != nil {
-		t.Fatalf("ResolveImageTag returned error: %v", err)
+		t.Fatalf("buildImageTag returned error: %v", err)
 	}
 	if got != "v9.9.9-arm64" {
-		t.Errorf("ResolveImageTag = %q, want v9.9.9-arm64", got)
+		t.Errorf("buildImageTag = %q, want v9.9.9-arm64", got)
 	}
 }
 
-// TestResolveImageTagSingleArchDecoratesFallbackVersion covers the -<arch>
+// TestBuildImageTagSingleArchDecoratesFallbackVersion covers the -<arch>
 // decoration landing on the bare version default when the resolver falls back
 // outside CI and outside a git checkout.
-func TestResolveImageTagSingleArchDecoratesFallbackVersion(t *testing.T) {
+func TestBuildImageTagSingleArchDecoratesFallbackVersion(t *testing.T) {
 	// not in CI, single-arch ARCH set, and run from outside any git checkout so
 	// the resolver falls back to the bare version default before decorating
 	t.Setenv("IMAGE_TAG", "")
@@ -164,29 +197,77 @@ func TestResolveImageTagSingleArchDecoratesFallbackVersion(t *testing.T) {
 	t.Setenv("ARCH", "amd64")
 	isolateFromGit(t)
 	// the arch decorates the bare fallback version
-	got, err := ResolveImageTag("v0.1.0-dev")
+	got, err := buildImageTag("", "v0.1.0-dev")
 	if err != nil {
-		t.Fatalf("ResolveImageTag returned error: %v", err)
+		t.Fatalf("buildImageTag returned error: %v", err)
 	}
 	if got != "v0.1.0-dev-amd64" {
-		t.Errorf("ResolveImageTag = %q, want v0.1.0-dev-amd64", got)
+		t.Errorf("buildImageTag = %q, want v0.1.0-dev-amd64", got)
 	}
 }
 
-// TestResolveImageTagCommaListArchIsBare covers a comma-list ARCH leaving the
+// TestBuildImageTagCommaListArchIsBare covers a comma-list ARCH leaving the
 // resolved tag undecorated, the bare-tag path the manifest job consumes.
-func TestResolveImageTagCommaListArchIsBare(t *testing.T) {
+func TestBuildImageTagCommaListArchIsBare(t *testing.T) {
 	// an override with a comma-list ARCH, as the manifest stitch sets
 	t.Setenv("IMAGE_TAG", "v9.9.9")
 	t.Setenv("GITHUB_ACTIONS", "true")
 	t.Setenv("ARCH", "amd64,arm64")
 	// the bare tag passes through undecorated
-	got, err := ResolveImageTag("v0.1.0-dev")
+	got, err := buildImageTag("", "v0.1.0-dev")
+	if err != nil {
+		t.Fatalf("buildImageTag returned error: %v", err)
+	}
+	if got != "v9.9.9" {
+		t.Errorf("buildImageTag = %q, want v9.9.9", got)
+	}
+}
+
+// initRepo creates a git repository holding one empty commit and returns its
+// path alongside the seven-character sha of that commit. The redirect variables
+// must already be cleared, which clearGitRedirects does.
+func initRepo(t *testing.T) (dir, sha string) {
+	t.Helper()
+	dir = t.TempDir()
+	commands := [][]string{
+		{"init", "--initial-branch=main"},
+		{"config", "user.email", "test@example.com"},
+		{"config", "user.name", "test"},
+		{"commit", "--allow-empty", "-m", "seed"},
+	}
+	for _, args := range commands {
+		out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v in fixture repo: %s: %v", args, out, err)
+		}
+	}
+	out, err := exec.Command("git", "-C", dir, "rev-parse", "--short=7", "HEAD").Output()
+	if err != nil {
+		t.Fatalf("failed to read fixture repo sha: %v", err)
+	}
+	return dir, strings.TrimSpace(string(out))
+}
+
+// TestResolveImageTagReadsShaFromRepoDir covers ResolveImageTag reading the
+// commit sha from the repository it is handed rather than from the directory the
+// process runs in, so a caller holding a repository path tags the code it is
+// actually building.
+func TestResolveImageTagReadsShaFromRepoDir(t *testing.T) {
+	// not in CI, and run from a directory holding no repository so a
+	// working-directory read cannot pass
+	t.Setenv("IMAGE_TAG", "")
+	t.Setenv("GITHUB_ACTIONS", "")
+	t.Setenv("ARCH", "")
+	isolateFromGit(t)
+	// a fixture repository stands in for the caller's tree
+	repoDir, want := initRepo(t)
+	// the tag carries the fixture repository's sha
+	got, err := ResolveImageTag(repoDir, "v0.1.0-dev")
 	if err != nil {
 		t.Fatalf("ResolveImageTag returned error: %v", err)
 	}
-	if got != "v9.9.9" {
-		t.Errorf("ResolveImageTag = %q, want v9.9.9", got)
+	if got != "v0.1.0-dev."+want {
+		t.Errorf("ResolveImageTag = %q, want v0.1.0-dev.%s", got, want)
 	}
 }
 

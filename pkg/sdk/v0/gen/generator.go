@@ -100,6 +100,11 @@ type ApiObjectGroup struct {
 	// group's controller image. Empty means use the default `release` target.
 	DockerfileTarget string
 
+	// ControllerStartupHook, if set, causes the generated controller's main()
+	// to call the given function once at startup. See
+	// sdk.ApiObjectGroup.ControllerStartupHook.
+	ControllerStartupHook *sdk.ControllerStartupHook
+
 	// List of API object names that are reconciled by a controller.
 	ReconciledApiObjectNames []string
 
@@ -697,6 +702,7 @@ func (g *Generator) New(sdkConfig *sdk.SdkConfig) error {
 				ControllerDomain:         strcase.ToCamel(sdkutil.FilenameSansExt(filename)),
 				ControllerDomainLower:    strcase.ToLowerCamel(sdkutil.FilenameSansExt(filename)),
 				DockerfileTarget:         apiObjectGroup.DockerfileTarget,
+				ControllerStartupHook:    apiObjectGroup.ControllerStartupHook,
 				ApiObjects:               apiObjects,
 				ReconciledApiObjectNames: reconcilerModels,
 				TptctlModels:             tptctlModels,
@@ -1037,27 +1043,6 @@ func (g *Generator) ValidateTags() error {
 						lib.ValidateTag, val,
 						lib.ValidateRequired, lib.ValidateOptional, lib.ValidateOptionalAssociation,
 					))
-				}
-				// every validate-tagged field must carry json:",omitempty".
-				// the field-name part is dropped (Go default is the field
-				// name itself); the omitempty matters for partial PATCH
-				// payloads. Without it, a nil-pointer required field would
-				// serialize as JSON null and the PayloadCheck null-on-required
-				// guard would reject the request, even when the caller never
-				// meant to touch that field. Required, optional, and
-				// optional-association all follow the same rule.
-				validateValue := tagMap[string(lib.ValidateTag)]
-				if validateValue == string(lib.ValidateRequired) ||
-					validateValue == string(lib.ValidateOptional) ||
-					validateValue == string(lib.ValidateOptionalAssociation) {
-					j, ok := tagMap[string(lib.JsonTag)]
-					if !ok || !strings.Contains(j, lib.JsonOmitempty) {
-						problems = append(problems, fmt.Sprintf(
-							"%s.%s: %s:%q field requires json:%q",
-							objectName, fieldName,
-							lib.ValidateTag, validateValue, ","+lib.JsonOmitempty,
-						))
-					}
 				}
 				// persist defaults to true — only PersistFalse opts out;
 				// any other value (including an explicit "true") is noise

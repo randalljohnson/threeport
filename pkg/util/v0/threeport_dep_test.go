@@ -100,8 +100,8 @@ require github.com/spf13/cobra v1.8.0
 }
 
 // TestParseThreeportDependencyRejectsLocalPathReplace asserts a replace to a
-// local filesystem path reports found=false, since a local path carries no
-// release version to download from, and does not panic.
+// local filesystem path returns an error, since that checkout has no release
+// to download.
 func TestParseThreeportDependencyRejectsLocalPathReplace(t *testing.T) {
 	// a module replacing threeport with a relative local checkout
 	gomod := `module github.com/example/consumer
@@ -112,12 +112,11 @@ require github.com/threeport/threeport v0.0.0-00010101000000-000000000000
 
 replace github.com/threeport/threeport => ../threeport
 `
-	// parse rejects the local replace and finds no downloadable release
+	// parse rejects the local replace rather than treating it as no dependency
 	repo, version, found, err := ParseThreeportDependency(gomod)
-	if err != nil {
-		t.Fatalf("ParseThreeportDependency error: %v", err)
+	if err == nil {
+		t.Fatalf("ParseThreeportDependency repo=%q version=%q found=%v, want error", repo, version, found)
 	}
-	// assert the local replace is treated as no release source
 	if found || repo != "" || version != "" {
 		t.Fatalf("repo=%q version=%q found=%v, want empty found=false", repo, version, found)
 	}
@@ -141,6 +140,80 @@ replace github.com/threeport/threeport => github.com/acme/threeport v0.7.0-dev.3
 	// assert the replace target and its version win
 	if !found || repo != "acme/threeport" || version != "v0.7.0-dev.3" {
 		t.Fatalf("repo=%q version=%q found=%v, want acme/threeport v0.7.0-dev.3 true", repo, version, found)
+	}
+}
+
+// TestParseThreeportDependencyAcceptsGroupedForkReplace asserts a versioned fork
+// replace is found inside a grouped replace block, the form go mod edit writes
+// once a go.mod carries more than one replace.
+func TestParseThreeportDependencyAcceptsGroupedForkReplace(t *testing.T) {
+	// a module whose replaces are grouped, with an unrelated entry ahead of the
+	// threeport one
+	gomod := `module github.com/example/consumer
+
+require github.com/threeport/threeport v0.7.0-dev.9
+
+replace (
+	github.com/other/dep => github.com/acme/dep v1.2.3
+	github.com/threeport/threeport => github.com/acme/threeport v0.7.0-dev.3
+)
+`
+	// parse reads the grouped entry
+	repo, version, found, err := ParseThreeportDependency(gomod)
+	if err != nil {
+		t.Fatalf("ParseThreeportDependency error: %v", err)
+	}
+	// assert the grouped replace target and its version win over the require
+	if !found || repo != "acme/threeport" || version != "v0.7.0-dev.3" {
+		t.Fatalf("repo=%q version=%q found=%v, want acme/threeport v0.7.0-dev.3 true", repo, version, found)
+	}
+}
+
+// TestParseThreeportDependencyRejectsGroupedLocalPathReplace asserts a local-path
+// replace inside a grouped block returns an error. Missing it would let the
+// require version through, defeating local-path pairing silently.
+func TestParseThreeportDependencyRejectsGroupedLocalPathReplace(t *testing.T) {
+	// a module pairing against a local threeport checkout from a grouped block
+	gomod := `module github.com/example/consumer
+
+require github.com/threeport/threeport v0.7.0-dev.9
+
+replace (
+	github.com/other/dep => github.com/acme/dep v1.2.3
+	github.com/threeport/threeport => ../threeport
+)
+`
+	// parse rejects the local replace rather than treating it as no dependency
+	repo, version, found, err := ParseThreeportDependency(gomod)
+	if err == nil {
+		t.Fatalf("ParseThreeportDependency repo=%q version=%q found=%v, want error", repo, version, found)
+	}
+	// assert the require version does not leak through
+	if found || repo != "" || version != "" {
+		t.Fatalf("repo=%q version=%q found=%v, want empty found=false", repo, version, found)
+	}
+}
+
+// TestParseThreeportDependencyIgnoresRequireBlockEntries asserts a grouped
+// require block is not read as a replace, so an entry there cannot be mistaken
+// for a replacement target.
+func TestParseThreeportDependencyIgnoresRequireBlockEntries(t *testing.T) {
+	// a module whose only threeport reference is a grouped require entry
+	gomod := `module github.com/example/consumer
+
+require (
+	github.com/other/dep v1.2.3
+	github.com/threeport/threeport v0.7.0-dev.9
+)
+`
+	// parse falls through to the require and names the upstream repository
+	repo, version, found, err := ParseThreeportDependency(gomod)
+	if err != nil {
+		t.Fatalf("ParseThreeportDependency error: %v", err)
+	}
+	// assert the upstream repository and the required version are reported
+	if !found || repo != "threeport/threeport" || version != "v0.7.0-dev.9" {
+		t.Fatalf("repo=%q version=%q found=%v, want threeport/threeport v0.7.0-dev.9 true", repo, version, found)
 	}
 }
 

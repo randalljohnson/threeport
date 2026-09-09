@@ -96,6 +96,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	// download targets shared by every repo that runs the generator, fetching
 	// the threeport binaries from a github release and installing them where
 	// the install targets place locally-built binaries.
+	emitInstallDirFunc(f)
 	emitDownloadHelper(f)
 	emitDownloadFunc(f, "Sdk", "threeport-sdk")
 	emitDownloadFunc(f, "Tptctl", "tptctl")
@@ -232,6 +233,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		emitPrebuildBlock(g, allComponents)
 
 		g.List(Id("imageRepo"), Id("imageTag"), Id("err")).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageCoordinates").Call(
+			Id("workingDir"),
 			Qual(installerPkg, "DevImageNamespace"),
 			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
 		)
@@ -290,12 +292,15 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	f.Comment("arch and combined into <repo>/<image>:<tag> via")
 	f.Comment("`docker buildx imagetools create`.")
 	f.Func().Params(Id("Package")).Id("Manifest").Params(Id("imageName").String()).Error().Block(
-		List(Id("imageRepo"), Id("imageTag"), Err()).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageCoordinates").Call(
+		Id("imageRepo").Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageRepo").Call(
 			Qual(installerPkg, "DevImageNamespace"),
+		),
+		List(Id("imageTag"), Err()).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageTag").Call(
+			Lit("."),
 			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
 		),
 		If(Err().Op("!=").Nil()).Block(
-			Return(Qual("fmt", "Errorf").Call(Lit("failed to resolve image coordinates: %w"), Err())),
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to resolve image tag: %w"), Err())),
 		),
 		Line(),
 
@@ -329,12 +334,15 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	f.Comment("control worker concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage")
 	f.Comment("package:allManifests`).")
 	f.Func().Params(Id("Package")).Id("AllManifests").Params().Error().BlockFunc(func(g *Group) {
-		g.List(Id("imageRepo"), Id("imageTag"), Id("err")).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageCoordinates").Call(
+		g.Id("imageRepo").Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageRepo").Call(
 			Qual(installerPkg, "DevImageNamespace"),
+		)
+		g.List(Id("imageTag"), Id("err")).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageTag").Call(
+			Lit("."),
 			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
 		)
 		g.If(Id("err").Op("!=").Nil()).Block(
-			Return(Qual("fmt", "Errorf").Call(Lit("failed to resolve image coordinates: %w"), Id("err"))),
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to resolve image tag: %w"), Id("err"))),
 		)
 		g.Line()
 		// gather every component image. For threeport-core, source from
@@ -485,6 +493,19 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		}
 		g.Line()
 
+		g.Comment("tag the loaded image the way an install resolves its tag, so a")
+		g.Comment("later tptctl up with no --tag references the image just loaded")
+		g.Comment("rather than the bare version, which names no image in the cluster.")
+		g.List(Id("imageTag"), Id("err")).Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/util/v0", "ResolveImageTag",
+		).Call(Id("workingDir"), Qual(
+			fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion",
+		).Call())
+		g.If(Id("err").Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to resolve image tag: %w"), Id("err"))),
+		)
+		g.Line()
+
 		g.If(Err().Op(":=").Qual(
 			"github.com/threeport/threeport/pkg/util/v0",
 			"BuildImage",
@@ -501,10 +522,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				"DevImageNamespace",
 			),
 			Line().Id("imageName"),
-			Line().Qual(
-				fmt.Sprintf("%s/internal/version", gen.ModulePath),
-				"GetVersion",
-			).Call(),
+			Line().Id("imageTag"),
 			Line().False(),
 			Line().True(),
 			Line().Id("kindClusterName"),
@@ -770,10 +788,14 @@ func emitBinFunc(f *File, funcName, displayName, binaryName, packageDir string) 
 
 // emitTestUnitFunc writes a no-arg `func (Test) Unit() error` that runs the
 // unit tests across the threeport packages via util.RunCommandStreamOutput.
-// -p is sized at runtime from util.BuildParallelism() — the cgo-enabled
-// go-sqlite3 build pulls per-package memory above the default GOMAXPROCS
-// concurrency on small CI runners, so honoring the same memory-aware worker
-// count the build targets use keeps `go test` from OOM-killing the pod.
+// -race is always on, because the packages under test start goroutines the
+// tests then assert against, and a data race there is invisible without the
+// detector. -p is sized at runtime from util.BuildParallelism(), because the
+// cgo-enabled go-sqlite3 build pulls per-package memory above the default
+// GOMAXPROCS concurrency on small CI runners, so honoring the same
+// memory-aware worker count the build targets use keeps `go test` from
+// OOM-killing the pod. That sizing matters more with the detector on, which
+// multiplies each test binary's memory several times over.
 func emitTestUnitFunc(f *File) {
 	f.Comment("Unit runs the unit tests across the threeport packages.")
 	f.Func().Params(Id("Test")).Id("Unit").Params().Error().Block(
@@ -781,6 +803,7 @@ func emitTestUnitFunc(f *File) {
 		Id("args").Op(":=").Index().String().Values(
 			Line().Lit("test"),
 			Line().Lit("-count=1"),
+			Line().Lit("-race"),
 			Line().Qual("fmt", "Sprintf").Call(
 				Lit("-p=%d"),
 				Qual("github.com/threeport/threeport/pkg/util/v0", "BuildParallelism").Call(),
@@ -849,6 +872,29 @@ func emitDownloadFunc(f *File, funcName, binary string) {
 	f.Comment("it where the install targets place locally-built binaries.")
 	f.Func().Params(Id("Download")).Id(funcName).Params().Error().Block(
 		Return(Id("downloadThreeportBinary").Call(Lit(binary))),
+	)
+	f.Line()
+}
+
+// emitInstallDirFunc writes the helper that resolves where go install places
+// binaries. Both the install targets and the download targets write there, and
+// emitting it keeps a repo that has no hand-written magefile from generating a
+// call to a function nothing defines.
+func emitInstallDirFunc(f *File) {
+	f.Comment("installDir returns the directory `go install` writes binaries to:")
+	f.Comment("$GOBIN if set, otherwise $GOPATH/bin. build.Default.GOPATH falls back")
+	f.Comment("to ~/go when $GOPATH is unset, so the result is always non-empty.")
+	f.Func().Id("installDir").Params().String().Block(
+		If(
+			Id("gobin").Op(":=").Qual("os", "Getenv").Call(Lit("GOBIN")),
+			Id("gobin").Op("!=").Lit(""),
+		).Block(
+			Return(Id("gobin")),
+		),
+		Return(Qual("path/filepath", "Join").Call(
+			Qual("go/build", "Default").Dot("GOPATH"),
+			Lit("bin"),
+		)),
 	)
 	f.Line()
 }
@@ -1072,6 +1118,7 @@ func emitImageFunc(f *File, funcName, displayName, binaryName, packageDir, packa
 		Line(),
 
 		List(Id("imageRepo"), Id("imageTag"), Err()).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageCoordinates").Call(
+			Id("workingDir"),
 			Qual(installerPkg, "DevImageNamespace"),
 			Qual(fmt.Sprintf("%s/internal/version", modulePath), "GetVersion").Call(),
 		),
@@ -1210,7 +1257,7 @@ func emitCiEnvFunc(f *File, modulePath string) {
 	f.Comment("Env prints KEY=value lines for the workflow to append to GITHUB_ENV. It emits")
 	f.Comment("only the values that non-mage steps consume: the pinned threeport repo,")
 	f.Comment("version, and ghcr namespace the gh release download and tptctl up steps read;")
-	f.Comment("the module's own image tag the tptctl router install step reads; GOFLAGS, the")
+	f.Comment("the module's own image tag the module install step reads; GOFLAGS, the")
 	f.Comment("memory-derived go-build worker count the non-mage steps inherit; and")
 	f.Comment("GORELEASER_PARALLELISM, a quarter of that worker count, the number of")
 	f.Comment("whole-tree targets goreleaser builds at once since each links the full tree.")
@@ -1225,7 +1272,7 @@ func emitCiEnvFunc(f *File, modulePath string) {
 
 		List(Id("moduleTag"), Err()).Op(":=").Qual(
 			"github.com/threeport/threeport/pkg/util/v0", "ResolveImageTag",
-		).Call(Qual(fmt.Sprintf("%s/internal/version", modulePath), "GetVersion").Call()),
+		).Call(Lit("."), Qual(fmt.Sprintf("%s/internal/version", modulePath), "GetVersion").Call()),
 		If(Err().Op("!=").Nil()).Block(
 			Return(Qual("fmt", "Errorf").Call(Lit("failed to resolve module image tag: %w"), Err())),
 		),
@@ -1280,7 +1327,7 @@ func emitCiTeardownFunc(f *File) {
 		),
 		Comment("remove the local image registry"),
 		If(Err().Op(":=").Parens(Id("Dev").Values()).Dot("LocalRegistryDown").Call().Op(";").Err().Op("!=").Nil()).Block(
-			Qual("fmt", "Printf").Call(Lit("ci:teardown: remove local registry: %v\n"), Err()),
+			Qual("fmt", "Fprintf").Call(Qual("os", "Stderr"), Lit("ci:teardown: remove local registry: %v\n"), Err()),
 		),
 		Comment("remove leftover buildkit builders so prune can drop their volumes"),
 		Id("teardownStep").Call(Lit("sh"), Lit("-c"),
@@ -1309,7 +1356,8 @@ func emitTeardownStepFunc(f *File) {
 				Id("name"), Id("args").Op("..."),
 			).Dot("CombinedOutput").Call().Op(";").Err().Op("!=").Nil(),
 		).Block(
-			Qual("fmt", "Printf").Call(
+			Qual("fmt", "Fprintf").Call(
+				Qual("os", "Stderr"),
 				Lit("ci:teardown: %s %v failed: %v (%s)\n"),
 				Id("name"),
 				Id("args"),

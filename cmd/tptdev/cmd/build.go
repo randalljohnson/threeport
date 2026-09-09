@@ -90,7 +90,7 @@ var buildCmd = &cobra.Command{
 		// so build and a later install agree on the exact commit; falls back to
 		// the base version outside a git checkout.
 		if cliArgs.ControlPlaneImageTag == "" {
-			tag, err := util.ResolveImageTag(version.GetVersion())
+			tag, err := util.ResolveImageTag(cliArgs.ThreeportPath, version.GetVersion())
 			if err != nil {
 				cli.Error(fmt.Sprintf("failed to resolve default image tag: %s\nspecify a tag explicitly with --tag/-t", err), nil)
 				os.Exit(1)

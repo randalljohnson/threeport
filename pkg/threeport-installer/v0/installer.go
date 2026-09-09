@@ -149,6 +149,12 @@ type Options struct {
 	// control plane is installed with. Stamped as a label on the
 	// control plane namespace at install time.
 	Tier ControlPlaneTier
+
+	// PaginationMode sets the REST API server's pagination strategy through
+	// the `-pagination-mode` flag. Accepted values are `as-of-system-time`
+	// and `materialized-view`. A nil or empty value omits the flag, so the
+	// API server applies its own default.
+	PaginationMode *string
 }
 
 type ControlPlaneInstaller struct {

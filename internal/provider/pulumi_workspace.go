@@ -24,8 +24,7 @@ import (
 )
 
 // transientPulumiErrorMarkers are substrings of Pulumi and provider error
-// text that classify a failure as transient. A matching create failure
-// does not set creation-failed.
+// text that classify a failure as transient.
 var transientPulumiErrorMarkers = []string{
 	// match a Pulumi DIY backend lock held by another process
 	"stack is currently locked",
@@ -33,7 +32,7 @@ var transientPulumiErrorMarkers = []string{
 	// match context.DeadlineExceeded
 	"context deadline exceeded",
 
-	// match gRPC status wrapping the same deadline
+	// match a gRPC DeadlineExceeded status
 	"DeadlineExceeded",
 
 	// match Google JSON API error reasons
@@ -51,7 +50,7 @@ var transientPulumiErrorMarkers = []string{
 // isTransientPulumiError reports whether err's text contains a configured
 // transient marker. A nil error is not transient.
 func isTransientPulumiError(err error) bool {
-	// a nil error is not transient
+	// reject a nil error
 	if err == nil {
 		return false
 	}

@@ -39,7 +39,7 @@ func newGkeLifecycleProvider(
 }
 
 // StackKey returns the runtime instance name used to serialize operations on one stack.
-// That name also identifies the Pulumi stack on disk.
+// Threeport also uses that name for the Pulumi stack and the file-backend directory.
 func (g *gkeLifecycle) StackKey() string {
 	if g.instance == nil || g.instance.Name == nil {
 		return ""

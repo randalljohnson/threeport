@@ -197,8 +197,8 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						).Op(",").Op("*").Id("notifPayload")),
 					))
 
-					// update notifications: publish when the object is still unreconciled and a
-					// reconciliation-relevant field changed so an idempotent patch does not retrigger
+					// update notifications
+					// skip the publish when already reconciled or the snapshot is unchanged
 					notifyControllersUpdateHandler = Comment("notify controller if reconciliation is required and reconciliation state changed")
 					notifyControllersUpdateHandler.Line()
 					notifyControllersUpdateHandler.If(Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciled").Op("!=").Nil().Op("&&").Op("!*").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciled").Op("&&").Qual(

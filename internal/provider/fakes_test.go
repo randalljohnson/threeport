@@ -525,13 +525,12 @@ type fakeLifecycle struct {
 	createOutputState *datatypes.JSON
 }
 
-// fakeLifecycleCounter assigns a unique default stack key to each fake so
-// concurrent tests do not serialize on a shared key.
+// fakeLifecycleCounter is incremented to give each fake a unique default
+// stack key so two fakes do not contend on the per-stack lock.
 var fakeLifecycleCounter int64
 
-// newFakeLifecycle returns a lifecycle fake that walks snaps in order,
-// repeating the last, or an empty snapshot when snaps is empty, and
-// assigns a unique stack key.
+// newFakeLifecycle returns a lifecycle fake that serves snaps and assigns
+// a unique stack key.
 func newFakeLifecycle(snaps ...*ReconciliationSnapshot) *fakeLifecycle {
 	id := atomic.AddInt64(&fakeLifecycleCounter, 1)
 	return &fakeLifecycle{
@@ -559,17 +558,16 @@ func (f *fakeLifecycle) StackKey() string {
 	return f.stackKey
 }
 
-// setStackKey programs the stack identity so tests can share a key or
-// give two fakes distinct keys.
+// setStackKey sets the stack key so tests can share one key across fakes.
 func (f *fakeLifecycle) setStackKey(key string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.stackKey = key
 }
 
-// GetReconciliation counts the call and returns the next snapshot in the
-// programmed sequence. An injected error is returned without advancing
-// the sequence. Callers must not mutate returned snapshots.
+// GetReconciliation records the call and returns queued snapshots in order,
+// holding on the last. An injected error does not advance. The snapshot is
+// not copied.
 func (f *fakeLifecycle) GetReconciliation() (*ReconciliationSnapshot, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -669,12 +667,12 @@ func (f *fakeLifecycle) RefreshDeletionAck() error {
 	return f.recordSimple("RefreshDeletionAck")
 }
 
-// SetDeletionFailed counts the call and returns its injected error.
+// SetDeletionFailed records the call and returns any configured error.
 func (f *fakeLifecycle) SetDeletionFailed() error {
 	return f.recordSimple("SetDeletionFailed")
 }
 
-// ConfirmDeletion counts the call and returns its injected error.
+// ConfirmDeletion records the call and returns any configured error.
 func (f *fakeLifecycle) ConfirmDeletion() error {
 	return f.recordSimple("ConfirmDeletion")
 }

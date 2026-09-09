@@ -407,13 +407,13 @@ func TestExecuteInfraDelete_InvalidExistingStateJSON_SkipsRestore(t *testing.T) 
 	require.Equal(t, 1, fl.callCount("PublishDeleteNotification"))
 }
 
-// TestSemaphoreSerializesPerStack covers the per-stack lock: a second
-// create for an in-flight stack requeues non-blockingly at 30 without launching.
+// TestSemaphoreSerializesPerStack covers a second create for an in-flight
+// stack requeueing 30 without launching.
 func TestSemaphoreSerializesPerStack(t *testing.T) {
 	configureSemaphoreTest(t, 5)
 	log := newTestLogger()
 
-	// both instances share one stack key so the per-stack lock serializes them
+	// share one stack key so the per-stack lock serializes both creates
 	const sharedKey = "shared-stack"
 
 	fi1 := newFakeInfra()
@@ -446,13 +446,13 @@ func TestSemaphoreSerializesPerStack(t *testing.T) {
 	}
 	require.Equal(t, 1, fi1.deployCallCount())
 
-	// a second create for the same stack must requeue immediately without launching
+	// launch second create for the same in-flight stack
 	requeue2, err := HandleInfraCreate(fl2, log)
 	require.NoError(t, err)
 	require.Equal(t, int64(30), requeue2, "second call for in-flight stack must non-blockingly requeue at 30")
 	require.Equal(t, 0, fi2.deployCallCount(), "second stack-mate must not deploy while first still holds per-stack lock")
 
-	// release the first deploy so the per-stack lock frees for a later create
+	// release the first deploy so the per-stack lock frees
 	fi1.releaseDeploy()
 	waitForSemaphoreDrain(t)
 
@@ -465,12 +465,12 @@ func TestSemaphoreSerializesPerStack(t *testing.T) {
 }
 
 // TestSemaphoreAllowsDifferentStacks covers concurrent creates on distinct
-// stacks: both acquire a slot and both deploys run.
+// stacks both acquiring a slot.
 func TestSemaphoreAllowsDifferentStacks(t *testing.T) {
 	configureSemaphoreTest(t, 5)
 	log := newTestLogger()
 
-	// two instances on distinct stack keys with blocking deploys
+	// block deploys on two distinct stack keys
 	fi1 := newFakeInfra()
 	fi1.setDeploy(infraBlock, nil)
 	fl1 := newFakeLifecycle()
@@ -488,7 +488,7 @@ func TestSemaphoreAllowsDifferentStacks(t *testing.T) {
 		fi2.releaseDeploy()
 	})
 
-	// both creates launch promptly because the per-stack lock is per key
+	// launch both creates
 	requeue1, err := HandleInfraCreate(fl1, log)
 	require.NoError(t, err)
 	require.Equal(t, int64(120), requeue1)
@@ -514,8 +514,8 @@ func TestSemaphoreAllowsDifferentStacks(t *testing.T) {
 	waitForSemaphoreDrain(t)
 }
 
-// TestExecuteInfraDelete_DestroyError_CapturesStateAndPersistsFailure
-// covers a failed destroy: remaining stack state is saved and deletion is marked failed.
+// TestExecuteInfraDelete_DestroyError_CapturesStateAndPersistsFailure covers a
+// failed destroy saving stack state and marking deletion failed.
 func TestExecuteInfraDelete_DestroyError_CapturesStateAndPersistsFailure(t *testing.T) {
 	configureSemaphoreTest(t, 1)
 	log := newTestLogger()
@@ -537,28 +537,28 @@ func TestExecuteInfraDelete_DestroyError_CapturesStateAndPersistsFailure(t *test
 	// wait for delete to finish
 	waitForSemaphoreDrain(t)
 
-	// check remaining stack state was captured once
+	// check stack state was captured once
 	require.Equal(t, 1, fi.destroyCallCount())
 	require.Equal(t, 1, fi.getStackStateCallCount())
 	saved := fl.savedStateHistory()
 	require.Len(t, saved, 1)
 	require.JSONEq(t, string(*validStackState()), string(*saved[0]))
 
-	// deletion failure persisted so the retry does not wait for a stale ack
+	// check deletion was marked failed
 	require.Equal(t, 1, fl.callCount("SetDeletionFailed"))
 
-	// success callbacks skipped
+	// check success callbacks were skipped
 	require.Equal(t, 0, fl.callCount("ClearInventory"))
 	require.Equal(t, 0, fl.callCount("PublishDeleteNotification"))
 }
 
 // TestDeployInfra_TransientLockError_DoesNotSetCreationFailed rejects
-// marking creation failed when deploy returns a Pulumi stack-lock error.
+// marking creation failed on a Pulumi stack-lock deploy error.
 func TestDeployInfra_TransientLockError_DoesNotSetCreationFailed(t *testing.T) {
 	configureSemaphoreTest(t, 1)
 	log := newTestLogger()
 
-	// lock error text contains the "stack is currently locked" marker
+	// fail deploy with an error containing the stack-lock marker
 	errLocked := errors.New("stack is currently locked by 1 lock(s)")
 	fi := newFakeInfra()
 	fi.setDeploy(infraError, errLocked)
@@ -571,7 +571,7 @@ func TestDeployInfra_TransientLockError_DoesNotSetCreationFailed(t *testing.T) {
 
 	waitForSemaphoreDrain(t)
 
-	// deploy ran once; the transient lock error must not persist a failure
+	// check deploy ran and the lock error did not persist a failure
 	require.Equal(t, 1, fi.deployCallCount())
 	require.Equal(t, 0, fl.callCount("SetCreationFailed"), "transient error incorrectly flipped CreationFailed=true")
 	require.Equal(t, 0, fl.callCount("SaveCreateOutputs"))
@@ -579,12 +579,12 @@ func TestDeployInfra_TransientLockError_DoesNotSetCreationFailed(t *testing.T) {
 }
 
 // TestDeployInfra_PermanentError_SetsCreationFailed covers a non-transient
-// deploy error: creation is marked failed.
+// deploy error marking creation failed.
 func TestDeployInfra_PermanentError_SetsCreationFailed(t *testing.T) {
 	configureSemaphoreTest(t, 1)
 	log := newTestLogger()
 
-	// a provider rejection contains no transient marker
+	// fail deploy with a provider rejection that has no transient marker
 	errPermanent := errors.New("gcp compute api rejected instance: invalid machine type")
 	fi := newFakeInfra()
 	fi.setDeploy(infraError, errPermanent)
@@ -597,7 +597,7 @@ func TestDeployInfra_PermanentError_SetsCreationFailed(t *testing.T) {
 
 	waitForSemaphoreDrain(t)
 
-	// deploy ran once; failure persisted so the retry does not wait for a stale ack
+	// check deploy ran and creation was marked failed
 	require.Equal(t, 1, fi.deployCallCount())
 	require.Equal(t, 1, fl.callCount("SetCreationFailed"))
 	require.Equal(t, 0, fl.callCount("SaveCreateOutputs"))
@@ -605,12 +605,12 @@ func TestDeployInfra_PermanentError_SetsCreationFailed(t *testing.T) {
 }
 
 // TestDeployInfra_TransientErrorAfterCreationConfirmed_LeavesCreationFailedFalse
-// covers a transient lock error on a create that restores existing inventory: creation stays not failed.
+// covers a transient lock error leaving creation not failed.
 func TestDeployInfra_TransientErrorAfterCreationConfirmed_LeavesCreationFailedFalse(t *testing.T) {
 	configureSemaphoreTest(t, 1)
 	log := newTestLogger()
 
-	// inventory on the second snapshot is restored before deploy
+	// set inventory on the second snapshot for restore before deploy
 	confirmedAt := time.Now().UTC().Add(-time.Hour)
 	acknowledgedAt := confirmedAt.Add(-time.Minute)
 	snap := &ReconciliationSnapshot{
@@ -619,12 +619,12 @@ func TestDeployInfra_TransientErrorAfterCreationConfirmed_LeavesCreationFailedFa
 		ResourceInventory:    validStackState(),
 	}
 
-	// wrapped lock error still matches the "stack is currently locked" marker
+	// fail deploy with a wrapped error that still contains the stack-lock marker
 	errTransient := errors.New("failed to update stack: refreshing stack: stack is currently locked by 1 lock(s)")
 	fi := newFakeInfra()
 	fi.setDeploy(infraError, errTransient)
 
-	// first snapshot is unconfirmed so the handler launches
+	// serve an unconfirmed snapshot first so the handler launches
 	updateSnap := &ReconciliationSnapshot{
 		CreationAcknowledged: nil,
 		CreationConfirmed:    nil,
@@ -639,7 +639,7 @@ func TestDeployInfra_TransientErrorAfterCreationConfirmed_LeavesCreationFailedFa
 
 	waitForSemaphoreDrain(t)
 
-	// deploy ran once; the transient error must not persist a failure
+	// check deploy ran and the transient error did not persist a failure
 	require.Equal(t, 1, fi.deployCallCount())
 	require.Equal(t, 0, fl.callCount("SetCreationFailed"), "transient error on post-confirmation update incorrectly flipped CreationFailed=true")
 	require.Equal(t, 0, fl.callCount("SaveCreateOutputs"))
@@ -649,7 +649,7 @@ func TestDeployInfra_TransientErrorAfterCreationConfirmed_LeavesCreationFailedFa
 // TestIsTransientPulumiError_MarkerMatch accepts error strings that contain
 // a configured transient marker.
 func TestIsTransientPulumiError_MarkerMatch(t *testing.T) {
-	// one message per marker family: lock, deadline, quota, connection reset
+	// accept one message per marker family: lock, deadline, quota, reset
 	transient := []string{
 		"stack is currently locked by 1 lock(s)",
 		"rpc error: code = DeadlineExceeded desc = context deadline exceeded",
@@ -673,7 +673,7 @@ func TestIsTransientPulumiError_PermanentRejected(t *testing.T) {
 		require.False(t, isTransientPulumiError(errors.New(msg)), "permanent error %q should not classify as transient", msg)
 	}
 
-	// a nil error is not transient
+	// reject a nil error as transient
 	require.False(t, isTransientPulumiError(nil))
 }
 

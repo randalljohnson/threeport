@@ -21,11 +21,10 @@ type Reconciliation struct {
 	// Indicates if object is considered to be reconciled by the object's controller.
 	Reconciled *bool `validate:"optional" gorm:"default:false"`
 
-	// Used by controllers to acknowledge creation and indicate that creation
-	// reconciliation has begun.
+	// The last time creation was acknowledged as begun
 	CreationAcknowledged *time.Time `validate:"optional"`
 
-	// Used by controllers to confirm creation of an object.
+	// The time creation of the object was confirmed
 	CreationConfirmed *time.Time `validate:"optional"`
 
 	// Gets set to true if creation process fails.
@@ -42,7 +41,7 @@ type Reconciliation struct {
 	// Used by controllers to confirm deletion of an object.
 	DeletionConfirmed *time.Time `validate:"optional"`
 
-	// Gets set to true if deletion process fails.
+	// A flag set to true if deletion of the object fails
 	DeletionFailed *bool `validate:"optional" gorm:"default:false"`
 
 	// InterruptReconciliation is used by the controller to indicated that future
@@ -52,11 +51,8 @@ type Reconciliation struct {
 	InterruptReconciliation *bool `validate:"optional" gorm:"default:false"`
 }
 
-// ReconciliationStateChanged reports whether reconciliation fields that should
-// re-notify a controller have changed. Reconciled, CreationFailed, and
-// DeletionFailed compare by value. One-shot timestamps compare by instant.
-// CreationAcknowledged and DeletionAcknowledged compare only nil versus set so
-// a liveness re-stamp is not a change.
+// ReconciliationStateChanged reports whether a and b differ on any
+// reconciliation field except InterruptReconciliation.
 func ReconciliationStateChanged(a, b Reconciliation) bool {
 	return !boolPtrEqual(a.Reconciled, b.Reconciled) ||
 		!timePtrSet(a.CreationAcknowledged, b.CreationAcknowledged) ||
@@ -68,7 +64,7 @@ func ReconciliationStateChanged(a, b Reconciliation) bool {
 		!boolPtrEqual(a.DeletionFailed, b.DeletionFailed)
 }
 
-// boolPtrEqual reports whether two bool pointers are both nil or hold the same value.
+// boolPtrEqual returns whether two bool pointers are both nil or hold the same value.
 func boolPtrEqual(a, b *bool) bool {
 	if a == nil || b == nil {
 		return a == b
@@ -76,8 +72,8 @@ func boolPtrEqual(a, b *bool) bool {
 	return *a == *b
 }
 
-// timePtrEqual reports whether two time pointers are both nil or name the
-// same instant. time.Equal ignores location.
+// timePtrEqual returns whether two time pointers are both nil or name the
+// same instant. Location and monotonic readings are ignored.
 func timePtrEqual(a, b *time.Time) bool {
 	if a == nil || b == nil {
 		return a == b
@@ -85,8 +81,7 @@ func timePtrEqual(a, b *time.Time) bool {
 	return a.Equal(*b)
 }
 
-// timePtrSet reports whether two time pointers are both nil or both set.
-// A liveness re-stamp is not a state change.
+// timePtrSet returns whether two time pointers are both nil or both non-nil.
 func timePtrSet(a, b *time.Time) bool {
 	return (a == nil) == (b == nil)
 }

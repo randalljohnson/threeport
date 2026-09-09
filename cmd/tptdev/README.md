@@ -32,9 +32,9 @@ Enable/disable debug mode for Threeport control plane components.
 ## tptdev reinstall
 
 Sweep and reapply the stateless side of a running dev control plane
-(controller and API server pods, configmaps, RBAC). CockroachDB data,
-NATS data, certificates, and the rest-api service IP stay in place.
+(controller and API server pods, configmaps, RBAC).  CockroachDB data,
+NATS data, certificates and the rest-api service IP stay in place.
 
-Pass `--drop-database` to empty the schema and NATS streams as well.
-That requires `--confirm` with the control plane name, and the cluster
-must be recorded as a development installation.
+Pass `--drop-database` to empty the schema and NATS streams as well.  That
+requires `--confirm` with the control plane name, and the cluster must be
+recorded as a development installation.

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	v0 "github.com/threeport/threeport/pkg/api/v0"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // testControllers returns controllers covering the group-to-controller name mapping.
@@ -40,6 +41,12 @@ func TestSelectControllersByGroup(t *testing.T) {
 				"kubernetes-runtime-controller",
 				"aws-controller",
 			},
+		},
+		{
+			name:        "none selects zero controllers",
+			groupNames:  []string{"none"},
+			controllers: allControllers,
+			wantNames:   []string{},
 		},
 		{
 			name:        "single group selects matching controller",
@@ -125,4 +132,74 @@ func TestSelectControllersByGroupErrorListsValidNames(t *testing.T) {
 			t.Errorf("error %q missing expected group %q", err.Error(), expected)
 		}
 	}
+}
+
+// TestSelectControllersForReinstallFallsBackWhenNoneLabeled covers a
+// cluster with no installer-managed deployments keeping the full
+// controller set, and a labeled cluster with only the API server
+// keeping zero optional controllers.
+func TestSelectControllersForReinstallFallsBackWhenNoneLabeled(t *testing.T) {
+	allControllers := testControllers()
+	namespace := "threeport-control-plane"
+
+	t.Run("no labeled deployments keeps the full controller set", func(t *testing.T) {
+		kubeClient := testKubeClient()
+
+		selected, names, autoDetected, err := SelectControllersForReinstall(
+			kubeClient, namespace, nil, allControllers,
+		)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !autoDetected {
+			t.Error("expected auto-detected to be true")
+		}
+		if len(selected) != len(allControllers) {
+			t.Fatalf("got %d controllers, want %d", len(selected), len(allControllers))
+		}
+		if len(names) != len(allControllers) {
+			t.Fatalf("got %d names, want %d", len(names), len(allControllers))
+		}
+	})
+
+	t.Run("labeled api server only keeps zero optional controllers", func(t *testing.T) {
+		kubeClient := testKubeClient(testManagedDeployment(ThreeportAPIServiceResourceName, namespace))
+
+		selected, names, autoDetected, err := SelectControllersForReinstall(
+			kubeClient, namespace, nil, allControllers,
+		)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !autoDetected {
+			t.Error("expected auto-detected to be true")
+		}
+		if len(selected) != 0 {
+			t.Fatalf("got %d controllers, want 0", len(selected))
+		}
+		if len(names) != 0 {
+			t.Fatalf("got %d names, want 0", len(names))
+		}
+	})
+
+	t.Run("labeled controller is selected", func(t *testing.T) {
+		objects := []runtime.Object{
+			testManagedDeployment(ThreeportAPIServiceResourceName, namespace),
+			testManagedDeployment("threeport-gateway-controller", namespace),
+		}
+		kubeClient := testKubeClient(objects...)
+
+		selected, names, autoDetected, err := SelectControllersForReinstall(
+			kubeClient, namespace, nil, allControllers,
+		)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !autoDetected {
+			t.Error("expected auto-detected to be true")
+		}
+		if len(selected) != 1 || selected[0].Name != "gateway-controller" {
+			t.Fatalf("got %#v, want gateway-controller", names)
+		}
+	})
 }

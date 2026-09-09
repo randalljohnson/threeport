@@ -41,6 +41,9 @@ func SelectControllersByGroup(
 	if len(groupNames) == 0 {
 		return allControllers, nil
 	}
+	if len(groupNames) == 1 && groupNames[0] == "none" {
+		return []*v0.ControlPlaneComponent{}, nil
+	}
 
 	// index controllers by name
 	byName := make(map[string]*v0.ControlPlaneComponent, len(allControllers))
@@ -67,11 +70,13 @@ func SelectControllersByGroup(
 }
 
 // DetectInstalledControllerNames returns the names of installer-managed
-// deployments in namespace, omitting the API server and agent.
+// controller deployments in namespace, omitting the API server and agent.
+// labeledCount is the number of installer-managed deployments including
+// those two, so a cluster with only the API server still counts as labeled.
 func DetectInstalledControllerNames(
 	kubeClient dynamic.Interface,
 	namespace string,
-) ([]string, error) {
+) (names []string, labeledCount int, err error) {
 	selector := fmt.Sprintf("%s=%s", LabelManagedBy, LabelManagedByValue)
 
 	// list installer-managed deployments
@@ -80,13 +85,13 @@ func DetectInstalledControllerNames(
 		metav1.ListOptions{LabelSelector: selector},
 	)
 	if err != nil {
-		return nil, fmt.Errorf(
+		return nil, 0, fmt.Errorf(
 			"failed to list installer-managed deployments in namespace %q: %w",
 			namespace, err,
 		)
 	}
 
-	names := make([]string, 0, len(list.Items))
+	names = make([]string, 0, len(list.Items))
 	for _, item := range list.Items {
 		deployName := item.GetName()
 		// skip the API server and agent, which are not group-scoped controllers
@@ -100,7 +105,7 @@ func DetectInstalledControllerNames(
 
 	// sort the names
 	sort.Strings(names)
-	return names, nil
+	return names, len(list.Items), nil
 }
 
 // SelectControllersForReinstall returns the controllers to reinstall.
@@ -117,18 +122,21 @@ func SelectControllersForReinstall(
 		if err != nil {
 			return nil, nil, false, err
 		}
-		// collect selected controller names
-		names := make([]string, 0, len(selected))
-		for _, controller := range selected {
-			names = append(names, controller.Name)
-		}
-		return selected, names, false, nil
+		return selected, controllerNames(selected), false, nil
 	}
 
 	// detect installed controller names from the cluster
-	detectedNames, err := DetectInstalledControllerNames(kubeClient, namespace)
+	detectedNames, labeledCount, err := DetectInstalledControllerNames(kubeClient, namespace)
 	if err != nil {
 		return nil, nil, true, fmt.Errorf("failed to detect installed controllers: %w", err)
+	}
+
+	// no installer-managed deployments means a cluster installed before
+	// the managed-by label existed; keep the full controller set so the
+	// reinstall updates them. a labeled cluster with zero controllers is
+	// an install that skipped optional controllers, so keep that empty set.
+	if labeledCount == 0 {
+		return allControllers, controllerNames(allControllers), true, nil
 	}
 
 	// index detected names
@@ -148,6 +156,15 @@ func SelectControllersForReinstall(
 	}
 
 	return selected, selectedNames, true, nil
+}
+
+// controllerNames returns each controller's name in the same order.
+func controllerNames(controllers []*v0.ControlPlaneComponent) []string {
+	names := make([]string, 0, len(controllers))
+	for _, controller := range controllers {
+		names = append(names, controller.Name)
+	}
+	return names
 }
 
 // controllerNameForGroup maps an API object group name onto a controller name.

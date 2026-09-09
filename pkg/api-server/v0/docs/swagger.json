@@ -17930,13 +17930,15 @@
                     "type": "string"
                 },
                 "ObjectID": {
+                    "description": "The id of the object this event is about",
                     "type": "integer"
                 },
                 "ObjectName": {
+                    "description": "The name of the object this event is about, resolved on read",
                     "type": "string"
                 },
                 "ObjectType": {
-                    "description": "The event's subject: the object the event is about.\n\nObjectType and ObjectID are columns on the event row. Together with\nReason, Note, Type, and ReportingController they form the unique\nindex idx_events_dedup, so a repeated event updates Count on the\nexisting row instead of inserting another one. An index cannot span\ntables, which is why the subject sits on this row.\n\nObjectName has no column. Read paths resolve it from ObjectID\nthrough the type's name resolver.\n\nFor an event describing a script failure on a\nMachineRuntimeInstance named \"some-host\" (id 42), these hold:\n  ObjectType = \"threeport.io/v0.MachineRuntimeInstance\"\n  ObjectID   = 42\n  ObjectName = \"some-host\"   (read only - ignored on create)\nA consumer like `tptctl get events` uses them to render\n\"threeport.io/machine-runtime-instance/some-host\" in the OBJECT\ncolumn.",
+                    "description": "The fully qualified type of the object this event is about",
                     "type": "string"
                 },
                 "Reason": {

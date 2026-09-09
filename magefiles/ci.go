@@ -10,16 +10,11 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// Ci provides a type for methods that emit values for CI workflow steps.
+// Ci provides a type for methods that emit CI env and tear down leftovers.
 type Ci mg.Namespace
 
-// Env prints KEY=value lines for the workflow to append to GITHUB_ENV. It emits
-// only the values that non-mage steps consume: GOFLAGS, the memory-derived
-// go-build worker count inherited by the non-mage go test step and by
-// goreleaser's per-target compiles, and GORELEASER_PARALLELISM, a quarter of
-// that worker count, the number of whole-tree targets goreleaser builds at once
-// since each links the full tree. mage's own build targets self-derive their
-// parallelism, so no build-worker count is emitted for them.
+// Env prints GOFLAGS and GORELEASER_PARALLELISM as KEY=value lines for
+// non-mage steps. Mage targets self-derive their own parallelism.
 func (Ci) Env() error {
 	fmt.Printf("GOFLAGS=-p=%d\n", util.BuildParallelism())
 	fmt.Printf("GORELEASER_PARALLELISM=%d\n", util.ReleaseParallelism())
@@ -34,66 +29,53 @@ func (Ci) Env() error {
 // dind starts, so they are removed by hand. It does not run docker system
 // prune -a, which would wipe the image layers the hostPath exists to preserve.
 func (Ci) Teardown() error {
+	// skip unless CI so prune and kind --all cannot hit a local environment
 	if os.Getenv("CI") != "true" {
 		fmt.Println("ci:teardown: not running in CI, skipping")
 		return nil
 	}
 
-	// take the control plane down gracefully, best effort. the binary is the
-	// one build:tptctl produces, and the name is the one test:up creates
+	// take down the test control plane
 	teardownStep("./bin/tptctl", "down", "-n", testControlPlaneName)
 
-	// force-delete every kind cluster the shared dind knows about, since the
-	// cluster name has changed across releases
+	// delete every kind cluster; --all covers every name the tests use
 	teardownStep("kind", "delete", "clusters", "--all")
 
-	// remove by hand any container labelled a kind-cluster node or named
-	// threeport-*, which survives when kind is killed mid-flight, when dind
-	// loses track of it, or when a restart policy beats kind to the process.
-	// sh -c gets the pipe and xargs, whose -r no-ops on empty input
+	// force-remove leftover kind and threeport containers
 	teardownStep("sh", "-c",
 		`docker ps -aq --filter "label=io.x-k8s.kind.cluster" | xargs -r docker rm -f`)
 	teardownStep("sh", "-c",
 		`docker ps -aq --filter "name=threeport-" | xargs -r docker rm -f`)
 
-	// remove the buildkit builder this run created. The setup action names its
-	// builder after a fresh uuid on every run, so the cache in its state volume
-	// is written once and never read again, and the volume outlives the job
-	// because a running container's volume is not prunable. Leaving them costs
-	// several gigabytes per run and buys no cache hit.
+	// remove leftover buildkit containers
 	teardownStep("sh", "-c",
 		`docker ps -aq --filter "name=buildx_buildkit_" | xargs -r docker rm -f`)
 
-	// reap unused networks and stopped containers. leftover networks outlive
-	// the containers that owned them. prune volumes after remaining container
-	// removals below
+	// prune unused networks and stopped containers, not the image cache.
+	// leftover networks outlive the containers that owned them
 	teardownStep("docker", "network", "prune", "-f")
 	teardownStep("docker", "container", "prune", "-f")
 
-	// remove any leftover tptctl config, since a failed run leaves tptctl
-	// unable to clear its own control-plane entry and the next bring-up on
-	// this pod fails with an already-exists error
+	// remove leftover client config that would block the next bring-up
 	if home, err := os.UserHomeDir(); err == nil {
 		teardownStep("rm", "-f", filepath.Join(home, ".threeport", "config.yaml"))
 	}
 
-	// take the local registry down through the dev target so its container,
-	// port, and network are all handled in one place
+	// remove the local image registry
 	if err := (Dev{}).LocalRegistryDown(); err != nil {
 		fmt.Fprintf(os.Stderr, "ci:teardown: remove local registry: %v\n", err)
 	}
 
-	// prune volumes last, including the named volumes buildx leaves. prune
-	// without --all leaves those. prune also skips a volume any container
-	// still holds, so run it after the container removals above or leftover
-	// registry storage accumulates run after run
+	// prune volumes last, including named volumes buildx leaves.
+	// prune without --all leaves those. run after container removals
+	// so leftover registry storage does not accumulate
 	teardownStep("docker", "volume", "prune", "-af")
 
 	return nil
 }
 
-// teardownStep runs a cleanup command best-effort, logging on failure so one
-// failed command doesn't abort the rest of teardown.
+// teardownStep runs a cleanup command, logging a failure instead of
+// returning it so later steps still run.
 func teardownStep(cmd string, args ...string) {
 	if out, err := exec.Command(cmd, args...).CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "ci:teardown: %s %v failed: %v (%s)\n",

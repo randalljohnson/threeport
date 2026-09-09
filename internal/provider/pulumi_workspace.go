@@ -23,43 +23,35 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// transientPulumiErrorMarkers lists substrings that identify errors the
-// pulumi automation surface is expected to recover from on its own next
-// pass. A transient error must not flip CreationFailed=true because that
-// widens the reconciler's retry into a permanent-failure path; instead
-// the natural requeue re-fires and the operation converges.
+// transientPulumiErrorMarkers are substrings of Pulumi and provider error
+// text that classify a failure as transient. executeInfraCreate skips
+// SetCreationFailed on a match.
 var transientPulumiErrorMarkers = []string{
-	// pulumi's cross-process stack lock: another goroutine or another
-	// controller replica is holding the local state lock. The next pass
-	// will find it released.
+	// match a Pulumi DIY backend lock held by another process
 	"stack is currently locked",
 
-	// upstream cloud API call hit its own deadline: the next reconcile
-	// pass gets a fresh deadline
+	// match context.DeadlineExceeded
 	"context deadline exceeded",
 
-	// grpc timeout wrapping the same class of error
+	// match gRPC status wrapping the same deadline
 	"DeadlineExceeded",
 
-	// google cloud rate-limit and internal transient responses; a fresh
-	// pulumi up retries against a settled backend
+	// match Google JSON API error reasons
 	"quotaExceeded",
 	"rateLimitExceeded",
 	"backendError",
 	"internalError",
 
-	// transport-level retryable
+	// match a dropped or stalled transport
 	"connection reset by peer",
 	"i/o timeout",
 	"TLS handshake timeout",
 }
 
-// isTransientPulumiError reports whether the error looks like one the
-// next reconcile pass will resolve without operator intervention. A true
-// result tells the lifecycle handler to leave CreationFailed unset so the
-// next requeue reruns the create without flipping into a permanent-failure
-// path that widens retries and confuses downstream consumers.
+// isTransientPulumiError reports whether err's text contains a configured
+// transient marker. A nil error is not transient.
 func isTransientPulumiError(err error) bool {
+	// a nil error is not transient
 	if err == nil {
 		return false
 	}

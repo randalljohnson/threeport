@@ -21,9 +21,8 @@ type Reconciliation struct {
 	// Indicates if object is considered to be reconciled by the object's controller.
 	Reconciled *bool `validate:"optional" gorm:"default:false"`
 
-	// Used by controllers to acknowledge deletion and indicate that deletion
-	// reconciliation has begun so that subsequent reconciliation attempts can
-	// act accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.
+	// Used by controllers to acknowledge creation and indicate that creation
+	// reconciliation has begun. Change detection compares only nil versus set.
 	CreationAcknowledged *time.Time `validate:"optional"`
 
 	// Used by controllers to confirm deletion of an object.
@@ -37,8 +36,7 @@ type Reconciliation struct {
 	DeletionScheduled *time.Time `validate:"optional"`
 
 	// Used by controllers to acknowledge deletion and indicate that deletion
-	// reconciliation has begun so that subsequent reconciliation attempts can
-	// act accordingly. Re-stamped liveness marker; change-detection uses nil-vs-set only.
+	// reconciliation has begun. Change detection compares only nil versus set.
 	DeletionAcknowledged *time.Time `validate:"optional"`
 
 	// Used by controllers to confirm deletion of an object.
@@ -54,19 +52,11 @@ type Reconciliation struct {
 	InterruptReconciliation *bool `validate:"optional" gorm:"default:false"`
 }
 
-// ReconciliationStateChanged reports whether any reconciliation state
-// marker on the two values differs semantically. Reconciled and
-// CreationFailed compare by value. CreationConfirmed, DeletionScheduled,
-// and DeletionConfirmed are one-shot markers and compare by instant so
-// monotonic clock reading, location pointer, and precision drift on the
-// same instant are treated as equal. CreationAcknowledged and
-// DeletionAcknowledged are refreshed on every reconcile pass and compare
-// on nil-vs-set: only the transition from unset to set counts as a change,
-// so re-stamping the same semantic state does not publish an update
-// notification. A bump to InterruptReconciliation or a sibling
-// ResourceInventory field never publishes an update notification on its
-// own; callers that want to notify on inventory changes must also flip
-// one of the state markers.
+// ReconciliationStateChanged reports whether reconciliation fields that should
+// re-notify a controller have changed. Reconciled and CreationFailed compare
+// by value. One-shot timestamps compare by instant. CreationAcknowledged and
+// DeletionAcknowledged compare only nil versus set so a liveness re-stamp is
+// not a change.
 func ReconciliationStateChanged(a, b Reconciliation) bool {
 	return !boolPtrEqual(a.Reconciled, b.Reconciled) ||
 		!timePtrSet(a.CreationAcknowledged, b.CreationAcknowledged) ||
@@ -77,9 +67,7 @@ func ReconciliationStateChanged(a, b Reconciliation) bool {
 		!timePtrEqual(a.DeletionConfirmed, b.DeletionConfirmed)
 }
 
-// boolPtrEqual reports whether two nil-safe bool pointers refer to the
-// same value. Two nil pointers are equal; a nil and a non-nil pointer
-// are not.
+// boolPtrEqual reports whether two bool pointers are both nil or hold the same value.
 func boolPtrEqual(a, b *bool) bool {
 	if a == nil || b == nil {
 		return a == b
@@ -87,11 +75,8 @@ func boolPtrEqual(a, b *bool) bool {
 	return *a == *b
 }
 
-// timePtrEqual reports whether two nil-safe time pointers refer to the
-// same instant. Two nil pointers are equal; a nil and a non-nil pointer
-// are not. Uses time.Time.Equal so monotonic clock reading, location
-// pointer, and precision differences on the same instant are treated
-// as equal.
+// timePtrEqual reports whether two time pointers are both nil or name the
+// same instant. time.Equal ignores location.
 func timePtrEqual(a, b *time.Time) bool {
 	if a == nil || b == nil {
 		return a == b
@@ -99,10 +84,8 @@ func timePtrEqual(a, b *time.Time) bool {
 	return a.Equal(*b)
 }
 
-// timePtrSet reports whether two nil-safe time pointers agree on being
-// set vs unset. Used for liveness ack timestamps that legitimately
-// re-stamp to time.Now() on every reconcile pass; treating them as
-// "changed" on every re-stamp would produce a notification storm.
+// timePtrSet reports whether two time pointers are both nil or both set.
+// A liveness re-stamp is not a state change.
 func timePtrSet(a, b *time.Time) bool {
 	return (a == nil) == (b == nil)
 }

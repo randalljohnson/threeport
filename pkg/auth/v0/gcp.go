@@ -43,36 +43,19 @@ type adcCredentials struct {
 	Type         string `json:"type"`
 }
 
-// EnsureGCPAuth confirms usable GCP credentials are available before any cloud
-// call is attempted, initiating the browser OAuth flow when nothing else is.
-// This allows users to authenticate without manually running
-// `gcloud auth application-default login`.
-//
-// This function handles three authentication scenarios:
-//  1. Controller outside GCP: Uses the service account credentials JSON
-//  2. Controller in GKE: Uses Workload Identity (automatic via metadata server)
-//  3. CLI usage (tptctl): Uses browser-based OAuth flow for user authentication
-//
-// The serviceAccountCredentials parameter should contain the JSON contents of a
-// GCP service account key file. When set it is only checked for validity, never
-// stored: callers pass the same JSON to each GCP client per call, which is what
-// keeps two concurrent operations for different service accounts from
-// authenticating as each other. When empty, the function accepts ambient
-// Application Default Credentials and falls back to browser-based auth.
+// EnsureGCPAuth ensures GCP credentials are usable for subsequent API calls.
+// Non-empty service account JSON is validated in memory and is not stored as
+// process state. Callers pass that JSON per GCP client call so two operations
+// with different service accounts do not pick up each other's credentials.
 func EnsureGCPAuth(serviceAccountCredentials string) error {
 	ctx := context.Background()
 
-	// FIRST: If service account credentials are provided, they win. Confirm
-	// they parse and return; the caller threads the same JSON into each GCP
-	// client per call, so nothing is stored here.
+	// FIRST: Prefer service account credentials
 	if serviceAccountCredentials != "" {
 		return validateServiceAccountCredentials(ctx, serviceAccountCredentials)
 	}
 
-	// SECOND: Check whether valid ambient credentials already exist.
-	// This covers (in order of preference):
-	// - Workload Identity in GKE (scenario 2), most secure, uses short-lived tokens
-	// - User credentials from gcloud auth (scenario 1)
+	// SECOND: Use ambient credentials
 	if hasValidGCPCredentials(ctx) {
 		return nil
 	}
@@ -89,19 +72,8 @@ func EnsureGCPAuth(serviceAccountCredentials string) error {
 	return nil
 }
 
-// validateServiceAccountCredentials confirms the service account JSON parses
-// into GCP credentials, so malformed JSON or an unsupported credential type
-// fails here with a clear error rather than deep inside the first cloud call.
-// It is the same parse the per-call client options perform, so anything it
-// accepts the clients accept. Note that it does not reach the private key:
-// a well-formed document holding a corrupt key still fails later, at the
-// first token request.
-//
-// It deliberately stores nothing. Credentials reach the Google SDK as a
-// per-call option built from this same JSON, so two concurrent operations for
-// different service accounts stay independent. Writing the key to a temp file
-// and exporting GOOGLE_APPLICATION_CREDENTIALS would reintroduce exactly the
-// process-global both operations raced on.
+// validateServiceAccountCredentials parses service account JSON. A well-formed
+// document with a corrupt key still fails later, at the first token request.
 func validateServiceAccountCredentials(ctx context.Context, credentialsJSON string) error {
 	if _, err := google.CredentialsFromJSON(ctx, []byte(credentialsJSON), GcpOAuthScopes...); err != nil {
 		return fmt.Errorf("failed to parse service account credentials: %w", err)
@@ -287,10 +259,9 @@ func saveADCCredentials(token *oauth2.Token) error {
 	return nil
 }
 
-// getADCPath returns the standard well-known path for Application Default
-// Credentials. It intentionally ignores GOOGLE_APPLICATION_CREDENTIALS: that
-// env var points at a key file the operator chose, and overwriting it with
-// OAuth user credentials would silently destroy that key.
+// getADCPath returns the well-known gcloud Application Default Credentials
+// file path. It ignores GOOGLE_APPLICATION_CREDENTIALS. Following that env
+// var would write authorized_user JSON over an operator-chosen key file.
 func getADCPath() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {

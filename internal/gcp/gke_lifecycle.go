@@ -38,8 +38,8 @@ func newGkeLifecycleProvider(
 	}
 }
 
-// StackKey returns the runtime instance name so per-stack serialization
-// keys off the same identifier that names the pulumi stack on disk.
+// StackKey returns the runtime instance name used to serialize operations on one stack.
+// That name also identifies the Pulumi stack on disk.
 func (g *gkeLifecycle) StackKey() string {
 	if g.instance == nil || g.instance.Name == nil {
 		return ""

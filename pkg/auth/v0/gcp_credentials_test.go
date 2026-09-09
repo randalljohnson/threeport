@@ -17,23 +17,23 @@ import (
 
 // Service account credentials must never become process state.
 //
-// Two concurrent operations for different service accounts have to
-// authenticate against their own credentials. Exporting a key file path
-// through GOOGLE_APPLICATION_CREDENTIALS makes the last writer decide which
-// account every other in-flight operation uses, so callers thread the JSON
-// into each GCP client per call instead and this package stores nothing.
+// Two concurrent operations for different service accounts have to use
+// their own credentials. Setting GOOGLE_APPLICATION_CREDENTIALS to a key
+// file path makes the last writer choose the account every other in-flight
+// operation uses. Callers pass the JSON into each GCP client per call;
+// the service-account path stores nothing.
 
-// serviceAccountJSON builds a well-formed GCP service_account credentials JSON
-// with a throwaway RSA key and the given client email, so the tests exercise a
-// payload the Google SDK accepts rather than a stand-in the credential parser
-// would reject for the wrong reason.
+// serviceAccountJSON returns well-formed service-account JSON with a
+// generated PKCS8 private key.
 func serviceAccountJSON(t *testing.T, clientEmail string) string {
 	t.Helper()
+	// generate an RSA key and PKCS8 PEM
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 	der, err := x509.MarshalPKCS8PrivateKey(key)
 	require.NoError(t, err)
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
+	// marshal a service-account credential document
 	creds := map[string]string{
 		"type":                        "service_account",
 		"project_id":                  "test-project",
@@ -50,12 +50,11 @@ func serviceAccountJSON(t *testing.T, clientEmail string) string {
 	return string(b)
 }
 
-// TestEnsureGCPAuthWithServiceAccountDoesNotSetProcessGlobal asserts the
-// service account path leaves GOOGLE_APPLICATION_CREDENTIALS exactly as it
-// found it. That process-global is the shared state two concurrent creates
-// raced; credentials now reach each GCP client per call instead.
+// TestEnsureGCPAuthWithServiceAccountDoesNotSetProcessGlobal covers the
+// service-account path leaving GOOGLE_APPLICATION_CREDENTIALS unset.
 func TestEnsureGCPAuthWithServiceAccountDoesNotSetProcessGlobal(t *testing.T) {
 	const envKey = "GOOGLE_APPLICATION_CREDENTIALS"
+	// capture and restore the env var
 	before, had := os.LookupEnv(envKey)
 	t.Cleanup(func() {
 		if had {
@@ -66,31 +65,32 @@ func TestEnsureGCPAuthWithServiceAccountDoesNotSetProcessGlobal(t *testing.T) {
 	})
 	os.Unsetenv(envKey)
 
+	// call EnsureGCPAuth with service-account JSON
 	require.NoError(t, EnsureGCPAuth(serviceAccountJSON(t, "sa@test-project.iam.gserviceaccount.com")))
 
+	// assert the env var remains unset
 	_, set := os.LookupEnv(envKey)
 	assert.False(t, set, "the service account path must not set the process-global credentials env var")
 }
 
-// TestEnsureGCPAuthWithServiceAccountWritesNoKeyFile asserts no service account
-// key material is left on disk. The temp key file existed only to back the
-// process-global env var, so removing one without the other would leave a
-// private key in the temp directory that nothing reads.
+// TestEnsureGCPAuthWithServiceAccountWritesNoKeyFile covers the
+// service-account path writing no key material to disk.
 func TestEnsureGCPAuthWithServiceAccountWritesNoKeyFile(t *testing.T) {
+	// point TMPDIR at an empty temp dir
 	tempDir := t.TempDir()
 	t.Setenv("TMPDIR", tempDir)
 
+	// call EnsureGCPAuth with service-account JSON
 	require.NoError(t, EnsureGCPAuth(serviceAccountJSON(t, "sa@test-project.iam.gserviceaccount.com")))
 
+	// assert the temp dir is still empty
 	entries, err := filepath.Glob(filepath.Join(tempDir, "*"))
 	require.NoError(t, err)
 	assert.Empty(t, entries, "the service account path must not write key material to disk")
 }
 
-// TestValidateServiceAccountCredentialsRejectsUnusableJSON asserts an
-// unparseable credentials document fails at the auth check with a descriptive
-// error rather than surfacing much later as an opaque failure inside the first
-// cloud call.
+// TestValidateServiceAccountCredentialsRejectsUnusableJSON rejects truncated
+// JSON, an empty document, and an unsupported credential type at parse time.
 func TestValidateServiceAccountCredentialsRejectsUnusableJSON(t *testing.T) {
 	for name, payload := range map[string]string{
 		"truncated json":              `{"type":"service_`,
@@ -98,18 +98,20 @@ func TestValidateServiceAccountCredentialsRejectsUnusableJSON(t *testing.T) {
 		"unsupported credential type": `{"type":"banana"}`,
 	} {
 		t.Run(name, func(t *testing.T) {
+			// parse an unusable payload
 			err := validateServiceAccountCredentials(context.Background(), payload)
 
+			// assert the parse error
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "failed to parse service account credentials")
 		})
 	}
 }
 
-// TestValidateServiceAccountCredentialsAcceptsWellFormedKey asserts a valid
-// service account JSON passes, so the rejection above is testing the payload
-// rather than the check itself.
+// TestValidateServiceAccountCredentialsAcceptsWellFormedKey accepts a
+// well-formed service-account JSON document.
 func TestValidateServiceAccountCredentialsAcceptsWellFormedKey(t *testing.T) {
+	// parse a generated well-formed key
 	err := validateServiceAccountCredentials(
 		context.Background(),
 		serviceAccountJSON(t, "sa@test-project.iam.gserviceaccount.com"),

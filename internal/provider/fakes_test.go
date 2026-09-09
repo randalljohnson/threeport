@@ -499,18 +499,13 @@ type fakeLifecycle struct {
 	createOutputState *datatypes.JSON
 }
 
-// fakeLifecycleCounter mints a unique default stack key per fakeLifecycle
-// so tests that spin up multiple independent instances don't accidentally
-// serialize on the same key.
+// fakeLifecycleCounter assigns a unique default stack key to each fake so
+// concurrent tests do not serialize on a shared key.
 var fakeLifecycleCounter int64
 
-// newFakeLifecycle returns a lifecycle fake that walks the given
-// reconciliation snapshots in order: each call consumes the next
-// snapshot, and once exhausted the last snapshot repeats. With no
-// snapshots, an empty snapshot (a brand new create request) repeats.
-// The built infra defaults to a fresh fakeInfra. Each instance gets a
-// unique default stack key so multiple fakes stay concurrency-independent
-// unless a test opts them into a shared key via setStackKey.
+// newFakeLifecycle returns a lifecycle fake that walks snaps in order,
+// repeating the last, or an empty snapshot when snaps is empty, and
+// assigns a unique stack key.
 func newFakeLifecycle(snaps ...*ReconciliationSnapshot) *fakeLifecycle {
 	id := atomic.AddInt64(&fakeLifecycleCounter, 1)
 	return &fakeLifecycle{
@@ -530,18 +525,15 @@ func (f *fakeLifecycle) recordSimple(method string) error {
 	return f.errs[method]
 }
 
-// StackKey returns the programmed stack key. Every fake starts with a
-// unique default so multiple instances stay concurrency-independent; a
-// test can call setStackKey to point two fakes at the same key when it
-// wants to assert same-stack serialization.
+// StackKey returns the programmed stack identity.
 func (f *fakeLifecycle) StackKey() string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.stackKey
 }
 
-// setStackKey programs the stack key returned by StackKey so tests can
-// assert both same-key serialization and cross-key concurrency.
+// setStackKey programs the stack identity so tests can share a key or
+// give two fakes distinct keys.
 func (f *fakeLifecycle) setStackKey(key string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

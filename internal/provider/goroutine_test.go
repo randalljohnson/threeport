@@ -26,10 +26,8 @@ func fastRefreshConfig() LifecycleConfig {
 	}
 }
 
-// TestRefreshAck_QuitClean covers the quit-channel branch of refreshAck:
-// the loop ticks on the configured refresh interval, returns promptly
-// once quit is signalled, and stops invoking the refresh function after
-// it returns.
+// TestRefreshAck_QuitClean covers a clean quit: the loop ticks, then
+// returns on the quit signal and makes no further refresh calls.
 func TestRefreshAck_QuitClean(t *testing.T) {
 	restore := setLifecycleConfig(fastRefreshConfig())
 	t.Cleanup(restore)
@@ -67,9 +65,8 @@ func TestRefreshAck_QuitClean(t *testing.T) {
 	}, 100*time.Millisecond, 5*time.Millisecond, "refresh calls must stop after refreshAck returns")
 }
 
-// TestRefreshAck_RefreshErrorDoesNotBlock covers the error branch of the
-// tick case: refresh failures are logged and swallowed, the loop keeps
-// ticking through them, and quit still exits the loop promptly.
+// TestRefreshAck_RefreshErrorDoesNotBlock covers a refresh error: the
+// loop keeps ticking through failures rather than exiting.
 func TestRefreshAck_RefreshErrorDoesNotBlock(t *testing.T) {
 	restore := setLifecycleConfig(fastRefreshConfig())
 	t.Cleanup(restore)
@@ -214,10 +211,9 @@ func (h *streamHarness) waitDone(deadline time.Duration) {
 	}
 }
 
-// TestStreamState_ValidJSON_SavesImmediately covers the happy streaming
-// path: streamState creates the state directory itself, watches it, and
-// on a real fsnotify write event reads the state file and pushes the
-// exact bytes through the save callback.
+// TestStreamState_ValidJSON_SavesImmediately covers a complete JSON
+// write: the watcher creates the state directory, then saves the bytes
+// as soon as the event lands.
 func TestStreamState_ValidJSON_SavesImmediately(t *testing.T) {
 	h := newStreamHarness(t)
 	want := validStackState()
@@ -249,9 +245,8 @@ func TestStreamState_ValidJSON_SavesImmediately(t *testing.T) {
 	h.waitDone(5 * time.Second)
 }
 
-// TestStreamState_PartialJSON_Skipped covers the invalid-JSON guard: a
-// state file read returning partial JSON is skipped without saving and
-// without ending the loop, and a later valid read still saves.
+// TestStreamState_PartialJSON_Skipped covers a truncated JSON write:
+// the watcher reads it, skips the save, and still saves a later valid write.
 func TestStreamState_PartialJSON_Skipped(t *testing.T) {
 	h := newStreamHarness(t)
 	partial := jsonPtr(`{"deployment":{"resources":[`)
@@ -312,10 +307,9 @@ func TestStreamState_QuitOrdering_NoLateWrite(t *testing.T) {
 	}, 500*time.Millisecond, 25*time.Millisecond, "no save may occur after quit was honored")
 }
 
-// TestStreamState_NonStateFileEvent_Ignored covers the filename filter:
-// events for other files in the watched directory trigger neither a
-// state file read nor a save, while the loop stays live for real state
-// file events.
+// TestStreamState_NonStateFileEvent_Ignored covers sibling-file events:
+// the watcher triggers neither a read nor a save, and still saves a
+// later write of the state file.
 func TestStreamState_NonStateFileEvent_Ignored(t *testing.T) {
 	h := newStreamHarness(t)
 	want := validStackState()

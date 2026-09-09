@@ -218,6 +218,11 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			fmt.Errorf("invalid objectnameprefix %q: expected DNS-like name token", targetNamePrefix),
 			objectType)
 	}
+	if targetName != "" && !objectNamePattern.MatchString(targetName) {
+		return apiserver_lib.ResponseStatus400(c, pageParams,
+			fmt.Errorf("invalid objectname %q: expected DNS-like name token", targetName),
+			objectType)
+	}
 
 	var ids []uint
 	var fullyQualifiedTypes []string
@@ -755,12 +760,6 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 			if err != nil {
 				h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
-			}
-			// a queryid that names no live view means the snapshot is
-			// gone. An empty name would otherwise build SQL with no table
-			// and fail as a syntax error.
-			if resolvedViewName == "" {
-				return apiserver_lib.ResponseStatus400(c, pageParams, apiserver_lib.ErrPaginationSessionExpired, objectType)
 			}
 			viewName = resolvedViewName
 

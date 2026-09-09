@@ -296,8 +296,12 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									Id("c"),
 									Nil(),
 									Qual("errors", "New").Call(Qual("fmt", "Sprintf").Call(
-										Line().Lit("object with ID %d already being deleted"),
+										Line().Lit("object with ID %d %s"),
 										Line().Op("*").Id(strcase.ToLowerCamel(apiObject.TypeName)).Dot("ID"),
+										Line().Qual(
+											"github.com/threeport/threeport/pkg/api/v0",
+											"ErrMsgAlreadyBeingDeleted",
+										),
 										Line(),
 									)),
 									Id("fullyQualifiedType"),

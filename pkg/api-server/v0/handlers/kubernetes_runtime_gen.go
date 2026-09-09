@@ -559,8 +559,9 @@ func (h Handler) DeleteKubernetesRuntimeDefinition(c echo.Context) error {
 			// if deletion scheduled but not reconciled, return 409 - deletion
 			// already underway
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
-				"object with ID %d already being deleted",
+				"object with ID %d %s",
 				*kubernetesRuntimeDefinition.ID,
+				api_v0.ErrMsgAlreadyBeingDeleted,
 			)), fullyQualifiedType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
@@ -1131,8 +1132,9 @@ func (h Handler) DeleteKubernetesRuntimeInstance(c echo.Context) error {
 			// if deletion scheduled but not reconciled, return 409 - deletion
 			// already underway
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
-				"object with ID %d already being deleted",
+				"object with ID %d %s",
 				*kubernetesRuntimeInstance.ID,
+				api_v0.ErrMsgAlreadyBeingDeleted,
 			)), fullyQualifiedType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted

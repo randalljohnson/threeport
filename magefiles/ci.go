@@ -39,7 +39,7 @@ func (Ci) Env() error {
 // docker stop and docker's restart policy resurrects them when the next dind
 // starts against the shared /opt/dind-storage hostPath. That was the observed
 // "cluster already exists" failure on repeated self-hosted runs. Then networks,
-// anonymous volumes, and stopped containers are reaped. Not `docker system
+// unused named volumes, and stopped containers are reaped. Not `docker system
 // prune -a`, which wipes the roughly 13 GB image layer cache the shared
 // hostPath exists to preserve.
 func (Ci) Teardown() error {
@@ -65,11 +65,7 @@ func (Ci) Teardown() error {
 	teardownStep("sh", "-c",
 		`docker ps -aq --filter "name=threeport-" | xargs -r docker rm -f`)
 
-	// remove the buildkit builder this run created. The setup action names its
-	// builder after a fresh uuid on every run, so the cache in its state volume
-	// is written once and never read again, and the volume outlives the job
-	// because a running container's volume is not prunable. Leaving them costs
-	// several gigabytes per run and buys no cache hit.
+	// remove leftover buildkit builders so prune can drop their volumes
 	teardownStep("sh", "-c",
 		`docker ps -aq --filter "name=buildx_buildkit_" | xargs -r docker rm -f`)
 
@@ -93,10 +89,10 @@ func (Ci) Teardown() error {
 		fmt.Printf("ci:teardown: remove local registry: %v\n", err)
 	}
 
-	// prune volumes last. A prune skips any volume a container still holds, so
-	// running it before the containers above are gone leaves each run's
-	// registry storage on the node, and the next run adds its own.
-	teardownStep("docker", "volume", "prune", "-f")
+	// prune volumes last, including the named volumes buildx leaves.
+	// prune without --all leaves those. if you prune before removing the
+	// containers above, prune skips any volume a container still holds.
+	teardownStep("docker", "volume", "prune", "-af")
 
 	return nil
 }

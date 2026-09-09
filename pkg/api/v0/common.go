@@ -53,10 +53,10 @@ type Reconciliation struct {
 }
 
 // ReconciliationStateChanged reports whether reconciliation fields that should
-// re-notify a controller have changed. Reconciled and CreationFailed compare
-// by value. One-shot timestamps compare by instant. CreationAcknowledged and
-// DeletionAcknowledged compare only nil versus set so a liveness re-stamp is
-// not a change.
+// re-notify a controller have changed. Reconciled, CreationFailed, and
+// DeletionFailed compare by value. One-shot timestamps compare by instant.
+// CreationAcknowledged and DeletionAcknowledged compare only nil versus set so
+// a liveness re-stamp is not a change.
 func ReconciliationStateChanged(a, b Reconciliation) bool {
 	return !boolPtrEqual(a.Reconciled, b.Reconciled) ||
 		!timePtrSet(a.CreationAcknowledged, b.CreationAcknowledged) ||
@@ -64,7 +64,8 @@ func ReconciliationStateChanged(a, b Reconciliation) bool {
 		!boolPtrEqual(a.CreationFailed, b.CreationFailed) ||
 		!timePtrEqual(a.DeletionScheduled, b.DeletionScheduled) ||
 		!timePtrSet(a.DeletionAcknowledged, b.DeletionAcknowledged) ||
-		!timePtrEqual(a.DeletionConfirmed, b.DeletionConfirmed)
+		!timePtrEqual(a.DeletionConfirmed, b.DeletionConfirmed) ||
+		!boolPtrEqual(a.DeletionFailed, b.DeletionFailed)
 }
 
 // boolPtrEqual reports whether two bool pointers are both nil or hold the same value.

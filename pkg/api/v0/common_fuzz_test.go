@@ -128,6 +128,14 @@ func TestChangeDetectionFuzz(t *testing.T) {
 	if got := ReconciliationStateChanged(unreconciled, reconciled); !got {
 		t.Errorf("ReconciliationStateChanged(Reconciled flip) = false, want true")
 	}
+
+	// setup a DeletionFailed false-to-true flip
+	deleteOk := Reconciliation{DeletionFailed: ptrBool(false)}
+	deleteFailed := Reconciliation{DeletionFailed: ptrBool(true)}
+	// assert ReconciliationStateChanged accepts the flip
+	if got := ReconciliationStateChanged(deleteOk, deleteFailed); !got {
+		t.Errorf("ReconciliationStateChanged(DeletionFailed flip) = false, want true")
+	}
 }
 
 // makeReconciliation returns a Reconciliation with every pointer field

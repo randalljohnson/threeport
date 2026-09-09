@@ -275,11 +275,26 @@ func ReconcilerTestInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of reconciler test instance encountered for delete operation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+					if errors.Is(operationErr, tpclient_lib.ErrDeleteInProgress) || errors.Is(operationErr, tpclient_lib.ErrDeleteBlocked) {
 						log.Info(
 							"conflict reconciling deleted reconciler test instance object, requeueing",
 							"cause", operationErr.Error(),
 						)
+						deleteNote := "deleting"
+						if owner, ok := reconcilerTestInstance.(tpapi_v0.RelationshipTaggedForeignKeyProvider); ok {
+							deleteNote = event.DeleteNote(owner)
+						}
+						if recordErr := r.EventsRecorder.RecordEvent(
+							&tpapi_v0.Event{
+								Note:   util.Ptr(deleteNote),
+								Reason: util.Ptr(event.ReasonDeleteInProgress),
+								Type:   util.Ptr(event.TypeNormal),
+							},
+							reconcilerTestInstance.GetId(),
+							reconcilerTestInstance.GetFullyQualifiedType(),
+						); recordErr != nil {
+							log.Error(recordErr, "failed to record DeleteInProgress event")
+						}
 						r.UnlockAndRequeue(
 							reconcilerTestInstance,
 							int64(30),
@@ -344,11 +359,26 @@ func ReconcilerTestInstanceReconciler(r *controller.Reconciler) {
 					reconcilerTestInstance.GetId(),
 				)
 				if err != nil {
-					if errors.Is(err, tpclient_lib.ErrConflict) {
+					if errors.Is(err, tpclient_lib.ErrDeleteInProgress) || errors.Is(err, tpclient_lib.ErrDeleteBlocked) {
 						log.Info(
 							"conflict deleting reconciler test instance, requeueing",
 							"cause", err.Error(),
 						)
+						deleteNote := "deleting"
+						if owner, ok := reconcilerTestInstance.(tpapi_v0.RelationshipTaggedForeignKeyProvider); ok {
+							deleteNote = event.DeleteNote(owner)
+						}
+						if recordErr := r.EventsRecorder.RecordEvent(
+							&tpapi_v0.Event{
+								Note:   util.Ptr(deleteNote),
+								Reason: util.Ptr(event.ReasonDeleteInProgress),
+								Type:   util.Ptr(event.TypeNormal),
+							},
+							reconcilerTestInstance.GetId(),
+							reconcilerTestInstance.GetFullyQualifiedType(),
+						); recordErr != nil {
+							log.Error(recordErr, "failed to record DeleteInProgress event")
+						}
 						r.UnlockAndRequeue(
 							reconcilerTestInstance,
 							int64(30),

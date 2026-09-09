@@ -145,7 +145,6 @@ func (h Handler) fetchModuleObjectPage(
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/module-objects-with-module-api-routes [GET]
 func (h Handler) GetModuleObjectsWithModuleApiRoutes(c echo.Context) error {
-	objectType := api_v0.ObjectTypeModuleObject
 	fullyQualifiedType := new(api_v0.ModuleObject).GetFullyQualifiedType()
 
 	// get pagination parameters

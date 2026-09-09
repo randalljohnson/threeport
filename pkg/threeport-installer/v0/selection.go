@@ -41,6 +41,7 @@ func SelectControllersByGroup(
 	if len(groupNames) == 0 {
 		return allControllers, nil
 	}
+	// select no controllers for group none
 	if len(groupNames) == 1 && groupNames[0] == "none" {
 		return []*v0.ControlPlaneComponent{}, nil
 	}
@@ -70,9 +71,8 @@ func SelectControllersByGroup(
 }
 
 // DetectInstalledControllerNames returns the names of installer-managed
-// controller deployments in namespace, omitting the API server and agent.
-// labeledCount is the number of installer-managed deployments including
-// those two, so a cluster with only the API server still counts as labeled.
+// controllers in the namespace. labeledCount includes the API server and
+// agent that names omits, so an API-only cluster still counts as labeled.
 func DetectInstalledControllerNames(
 	kubeClient dynamic.Interface,
 	namespace string,
@@ -131,10 +131,7 @@ func SelectControllersForReinstall(
 		return nil, nil, true, fmt.Errorf("failed to detect installed controllers: %w", err)
 	}
 
-	// no installer-managed deployments means a cluster installed before
-	// the managed-by label existed; keep the full controller set so the
-	// reinstall updates them. a labeled cluster with zero controllers is
-	// an install that skipped optional controllers, so keep that empty set.
+	// keep the full controller set when nothing is labeled
 	if labeledCount == 0 {
 		return allControllers, controllerNames(allControllers), true, nil
 	}

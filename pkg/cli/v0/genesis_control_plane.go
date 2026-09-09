@@ -1537,8 +1537,8 @@ func EnsureBootstrapObjects(cpi *threeport.ControlPlaneInstaller) error {
 }
 
 // bootstrapKubernetesRuntimeInstance rebuilds the kubernetes runtime instance
-// from the threeport config. EKS is refused; it has no per-request token minting
-// and the config does not store the expiration a refresh needs.
+// from a control plane config. It refuses EKS and OKE, and uses a complete
+// certificate pair or else the stored token with no expiration.
 func bootstrapKubernetesRuntimeInstance(controlPlaneConfig *ControlPlane) (*v0.KubernetesRuntimeInstance, error) {
 	if controlPlaneConfig.Provider == v0.KubernetesRuntimeInfraProviderEKS {
 		return nil, fmt.Errorf(

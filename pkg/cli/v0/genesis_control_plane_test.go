@@ -193,15 +193,18 @@ func TestBootstrapKubernetesRuntimeInstanceRefusesEks(t *testing.T) {
 }
 
 // TestBootstrapKubernetesRuntimeInstanceRefusesOke covers refusing an
-// OKE rebuild whose token minting depends on provider rows a drop removes.
+// OKE rebuild.
 func TestBootstrapKubernetesRuntimeInstanceRefusesOke(t *testing.T) {
+	// build an OKE config with a token and no certificate pair
 	controlPlaneConfig := testCloudControlPlaneConfig("dev-0", v0.KubernetesRuntimeInfraProviderOKE)
 
+	// refuse to build the kubernetes runtime instance
 	_, err := bootstrapKubernetesRuntimeInstance(controlPlaneConfig)
 	if err == nil {
 		t.Fatal("expected an error, got none")
 	}
 
+	// check the error names the OKE provider
 	if !strings.Contains(err.Error(), v0.KubernetesRuntimeInfraProviderOKE) {
 		t.Errorf("expected error to name the provider %q, got %q", v0.KubernetesRuntimeInfraProviderOKE, err.Error())
 	}

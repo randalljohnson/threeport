@@ -92,9 +92,7 @@ func v0MachineWorkloadInstanceCreated(
 		return 0, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
 	}
 
-	// requeue in 30s on failure so the script is retried; propagate the
-	// ErrWithEvent so the wrapper substitutes the specific reason for
-	// the generic FailedCreate event
+	// requeue the script failure after the status is persisted
 	if scriptErr != nil {
 		return 30, scriptErr
 	}
@@ -159,9 +157,7 @@ func v0MachineWorkloadInstanceUpdated(
 		return 0, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
 	}
 
-	// requeue in 30s on failure so the script is retried; propagate the
-	// ErrWithEvent so the wrapper substitutes the specific reason for
-	// the generic FailedUpdate event
+	// requeue the script failure after the status is persisted
 	if scriptErr != nil {
 		return 30, scriptErr
 	}
@@ -267,7 +263,6 @@ func v0MachineWorkloadInstanceDeleted(
 	// host is reachable, so run the delete script; delete does not persist a
 	// status back to the instance since the row is about to be removed
 	_, scriptErr := runScript(r, machineWorkloadInstance, mri, mwd, *mwd.DeleteScript, "delete", log)
-
 	if scriptErr != nil {
 		// once the failures persist past the grace period, confirm the deletion
 		// anyway so a delete script that can never succeed does not strand the
@@ -308,6 +303,7 @@ func v0MachineWorkloadInstanceDeleted(
 	return 0, nil
 }
 
+<<<<<<< HEAD
 // deletionScheduledExceeds reports whether the time since deletion was
 // scheduled is greater than grace. A nil timestamp means deletion has not been
 // recorded as scheduled yet, so the grace period has not been exceeded.
@@ -324,6 +320,10 @@ func deletionScheduledExceeds(deletionScheduled *time.Time, grace time.Duration)
 // Normal event in place; failure paths defer emission to the wrapper's
 // HandleEventOverride so the specific reason replaces the generic FailedCreate
 // / FailedUpdate / FailedDelete event.
+=======
+// runScript connects to the runtime, runs the named script, and returns
+// the resulting workload status. A non-nil error carries the failure event.
+>>>>>>> feat-events-pipeline
 func runScript(
 	r *controller.Reconciler,
 	mwi *v0.MachineWorkloadInstance,
@@ -336,8 +336,7 @@ func runScript(
 	// establish ssh connection to the runtime
 	sshClient, _, err := machine.GetClient(mri, r.EncryptionKey)
 	if err != nil {
-		// return an ErrWithEvent so the wrapper substitutes the specific
-		// reason for the generic FailedCreate / FailedUpdate / FailedDelete
+		// surface the connect failure as an event
 		note := fmt.Sprintf("failed to connect to machine runtime instance: %s", err)
 		return status.WorkloadInstanceStatusError, &tp_errors.ErrWithEvent{
 			Message: note,
@@ -382,7 +381,7 @@ func runScript(
 		mwd.Timeout,
 	)
 
-	// derive status and event content from the execution result
+	// derive status and event content from the result
 	var wlStatus status.WorkloadInstanceStatus
 	var reason, eventType, message string
 	switch {
@@ -405,9 +404,7 @@ func runScript(
 		message = fmt.Sprintf("%s script failed with exit code %d (stderr: %s)", scriptName, exitCode, truncateMessage(sanitizeScriptOutput(stderr)))
 	}
 
-	// success path logs completion; failure paths defer to the wrapper via
-	// ErrWithEvent so the specific reason replaces the generic FailedCreate
-	// / FailedUpdate / FailedDelete event
+	// log a successful run; stdout is diagnostic detail, not an event
 	if wlStatus == status.WorkloadInstanceStatusHealthy {
 		log.Info(
 			"machine workload script completed successfully",

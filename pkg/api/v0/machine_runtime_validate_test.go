@@ -12,8 +12,8 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// newValidMRI returns a MachineRuntimeInstance with the minimum valid
-// fields: a name, hostname, ssh user, and an ssh password credential.
+// newValidMRI returns a MachineRuntimeInstance that passes beforeCreate:
+// a name and an SSHPassword.
 func newValidMRI(name string) *MachineRuntimeInstance {
 	return &MachineRuntimeInstance{
 		Instance:    Instance{Name: util.Ptr(name)},
@@ -23,9 +23,8 @@ func newValidMRI(name string) *MachineRuntimeInstance {
 	}
 }
 
-// createProvisionedMRI seeds an MRI with every provisioning location field
-// set and returns the row reloaded from DB, mirroring the PATCH handler's
-// load-then-update flow.
+// createProvisionedMRI seeds an MRI with Location, Region, NetworkID, and
+// SubnetID set and returns the row reloaded from DB.
 func createProvisionedMRI(t *testing.T, db *gorm.DB, name string) MachineRuntimeInstance {
 	t.Helper()
 	mri := newValidMRI(name)
@@ -41,8 +40,7 @@ func createProvisionedMRI(t *testing.T, db *gorm.DB, name string) MachineRuntime
 }
 
 // TestMachineRuntimeInstance_BeforeCreate_RequiresCredential rejects an MRI
-// with neither SSHKey nor SSHPassword; the reconciler needs a credential to
-// authenticate with the machine.
+// with neither SSHKey nor SSHPassword.
 func TestMachineRuntimeInstance_BeforeCreate_RequiresCredential(t *testing.T) {
 	db := setupMachineWorkloadValidateDB(t)
 
@@ -55,8 +53,7 @@ func TestMachineRuntimeInstance_BeforeCreate_RequiresCredential(t *testing.T) {
 }
 
 // TestMachineRuntimeInstance_BeforeCreate_ImportedMachinePasses accepts an
-// MRI with a credential and no provisioning location fields, proving an
-// imported machine is valid on its own.
+// MRI with a credential and no provisioning location fields.
 func TestMachineRuntimeInstance_BeforeCreate_ImportedMachinePasses(t *testing.T) {
 	db := setupMachineWorkloadValidateDB(t)
 
@@ -64,10 +61,8 @@ func TestMachineRuntimeInstance_BeforeCreate_ImportedMachinePasses(t *testing.T)
 	require.NoError(t, db.Create(mri).Error)
 }
 
-// TestMachineRuntimeInstance_BeforeUpdate_LocationFieldsImmutable seeds a
-// provisioned MRI and asserts every provisioning location field is rejected
-// on update through a live update tx. The provider, machine type, and image
-// live on the definition and are guarded by its own immutability test.
+// TestMachineRuntimeInstance_BeforeUpdate_LocationFieldsImmutable rejects an
+// update that changes any provisioning location field on a live row.
 func TestMachineRuntimeInstance_BeforeUpdate_LocationFieldsImmutable(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -90,10 +85,9 @@ func TestMachineRuntimeInstance_BeforeUpdate_LocationFieldsImmutable(t *testing.
 	}
 }
 
-// TestMachineRuntimeDefinition_BeforeUpdate_TemplateFieldsImmutable seeds a
-// definition with every provisioning template field set, then asserts each
-// is rejected on update. These fields shape the machines derived from the
-// definition, so changing them post-create would diverge running machines.
+// TestMachineRuntimeDefinition_BeforeUpdate_TemplateFieldsImmutable rejects an
+// update that changes InfraProvider, MachineType, or ImageID on a persisted
+// definition.
 func TestMachineRuntimeDefinition_BeforeUpdate_TemplateFieldsImmutable(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -124,9 +118,9 @@ func TestMachineRuntimeDefinition_BeforeUpdate_TemplateFieldsImmutable(t *testin
 	}
 }
 
-// TestMachineRuntimeInstance_BeforeCreate_RejectsProviderWithoutRegion asserts
-// that creating an instance whose referenced definition has an infra provider
-// is rejected when the instance does not supply a region.
+// TestMachineRuntimeInstance_BeforeCreate_RejectsProviderWithoutRegion rejects
+// creating an instance whose definition has an infra provider and neither a
+// location nor a region.
 func TestMachineRuntimeInstance_BeforeCreate_RejectsProviderWithoutRegion(t *testing.T) {
 	db := setupMachineWorkloadValidateDB(t)
 
@@ -138,7 +132,7 @@ func TestMachineRuntimeInstance_BeforeCreate_RejectsProviderWithoutRegion(t *tes
 
 	mri := newValidMRI("mri-no-region")
 	mri.MachineRuntimeDefinitionID = mrd.ID
-	// Region intentionally left nil.
+	// leave region nil
 
 	err := db.Create(mri).Error
 	require.Error(t, err)
@@ -146,8 +140,7 @@ func TestMachineRuntimeInstance_BeforeCreate_RejectsProviderWithoutRegion(t *tes
 }
 
 // TestMachineRuntimeInstance_BeforeCreate_AcceptsProviderWithRegion accepts an
-// instance whose referenced definition has an infra provider when the instance
-// also supplies a region.
+// instance whose definition has an infra provider when the instance has a region.
 func TestMachineRuntimeInstance_BeforeCreate_AcceptsProviderWithRegion(t *testing.T) {
 	db := setupMachineWorkloadValidateDB(t)
 
@@ -165,21 +158,18 @@ func TestMachineRuntimeInstance_BeforeCreate_AcceptsProviderWithRegion(t *testin
 }
 
 // TestMachineRuntimeInstance_BeforeCreate_AcceptsNilDefinitionFK accepts an
-// instance with no machine runtime definition foreign key set: an imported
-// machine does not need to reference a definition at all.
+// instance with no machine runtime definition foreign key.
 func TestMachineRuntimeInstance_BeforeCreate_AcceptsNilDefinitionFK(t *testing.T) {
 	db := setupMachineWorkloadValidateDB(t)
 
 	mri := newValidMRI("mri-no-def-fk")
-	// MachineRuntimeDefinitionID intentionally left nil.
+	// leave MachineRuntimeDefinitionID nil
 
 	require.NoError(t, db.Create(mri).Error)
 }
 
-// TestMachineRuntimeInstance_ResourceInventory_RoundTrips guards the JSON
-// column under the in-memory sqlite harness: a sqlite/datatypes
-// incompatibility would otherwise silently break every test that migrates
-// this table.
+// TestMachineRuntimeInstance_ResourceInventory_RoundTrips covers JSON round-trip
+// of ResourceInventory through the in-memory sqlite harness.
 func TestMachineRuntimeInstance_ResourceInventory_RoundTrips(t *testing.T) {
 	db := setupMachineWorkloadValidateDB(t)
 

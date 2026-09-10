@@ -5,9 +5,8 @@ import (
 	"time"
 )
 
-// TestSetRequeueDelayNeverExceedsTheMaximum asserts that the delay grows with
-// the notification's age but is never returned above the maximum, including
-// for the ages whose doubling lands above it.
+// TestSetRequeueDelayNeverExceedsTheMaximum asserts the table ages return
+// the expected delay and none of those values is above the maximum.
 func TestSetRequeueDelayNeverExceedsTheMaximum(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -49,7 +48,7 @@ func TestSetRequeueDelayNeverExceedsTheMaximum(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			// place the notification's creation the requested age in the past
+			// backdate creation by this case's elapsed seconds
 			creationTime := time.Now().Unix() - test.elapsed
 
 			delay := SetRequeueDelay(&creationTime)
@@ -61,8 +60,7 @@ func TestSetRequeueDelayNeverExceedsTheMaximum(t *testing.T) {
 				)
 			}
 
-			// the maximum is a ceiling on every input, not only on the ones
-			// this table names
+			// reject a delay above the maximum on this case
 			if delay > DefaultMaxRequeueDelay {
 				t.Errorf("expected the delay never to exceed %d, got %d", DefaultMaxRequeueDelay, delay)
 			}
@@ -70,18 +68,21 @@ func TestSetRequeueDelayNeverExceedsTheMaximum(t *testing.T) {
 	}
 }
 
-// TestSetRequeueDelayHoldsTheCeilingAcrossEveryAge asserts the ceiling over a
-// contiguous range of ages, so a future change to how the delay is derived
-// cannot reintroduce a value above the maximum for some age in the middle.
+// TestSetRequeueDelayHoldsTheCeilingAcrossEveryAge asserts that for each
+// age from 0s through 120s the delay is at least the initial delay and at
+// most the maximum.
 func TestSetRequeueDelayHoldsTheCeilingAcrossEveryAge(t *testing.T) {
 	for elapsed := int64(0); elapsed <= 120; elapsed++ {
+		// backdate creation by this loop's elapsed seconds
 		creationTime := time.Now().Unix() - elapsed
 
 		delay := SetRequeueDelay(&creationTime)
 
+		// reject a delay below the initial delay
 		if delay < DefaultInitialRequeueDelay {
 			t.Fatalf("expected a delay of at least %d for an age of %ds, got %d", DefaultInitialRequeueDelay, elapsed, delay)
 		}
+		// reject a delay above the maximum
 		if delay > DefaultMaxRequeueDelay {
 			t.Fatalf("expected a delay of at most %d for an age of %ds, got %d", DefaultMaxRequeueDelay, elapsed, delay)
 		}

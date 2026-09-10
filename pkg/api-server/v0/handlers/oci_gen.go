@@ -8,7 +8,6 @@ import (
 	echo "github.com/labstack/echo/v4"
 	notif "github.com/threeport/threeport/internal/oci/notif"
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
-	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util_v0 "github.com/threeport/threeport/pkg/util/v0"
@@ -450,15 +449,8 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(ociOkeKubernetesRuntimeDefinition.OciOkeKubernetesRuntimeInstances) != 0 {
-		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(ociOkeKubernetesRuntimeDefinition.OciOkeKubernetesRuntimeInstances))
-		for i := range ociOkeKubernetesRuntimeDefinition.OciOkeKubernetesRuntimeInstances {
-			blockingChildren = append(blockingChildren, ociOkeKubernetesRuntimeDefinition.OciOkeKubernetesRuntimeInstances[i])
-		}
-		return RespondBlockedDelete(
-			c,
-			h.RequestDB(c),
-			api_v0.NewBlockedDeleteErrorFromChildren(&ociOkeKubernetesRuntimeDefinition, blockingChildren),
-		)
+		err := errors.New("oci oke kubernetes runtime definition has related oci oke kubernetes runtime instances - cannot be deleted")
+		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
 	// delete object
@@ -790,10 +782,6 @@ func (h Handler) UpdateOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
-
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
-	prevReconciliation := existingOciOkeKubernetesRuntimeInstance.Reconciliation
 
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {

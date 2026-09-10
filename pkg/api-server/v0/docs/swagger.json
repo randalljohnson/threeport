@@ -17619,7 +17619,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -17719,7 +17719,7 @@
                     "type": "boolean"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "IsSelf": {
@@ -17808,7 +17808,7 @@
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -17875,7 +17875,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18008,7 +18008,7 @@
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesWorkloadDefinitionID": {
@@ -18119,7 +18119,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18258,7 +18258,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "MachineRuntimeInstanceID": {
@@ -18406,7 +18406,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18535,7 +18535,7 @@
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -18612,7 +18612,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18719,7 +18719,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstances": {
@@ -18839,7 +18839,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeDefinitionID": {
@@ -18919,7 +18919,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesWorkloadInstances": {
@@ -18995,7 +18995,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -19206,7 +19206,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "LoggingInstances": {
@@ -19295,7 +19295,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -19383,7 +19383,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "MachineProfile": {
@@ -19477,7 +19477,7 @@
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Location": {
@@ -19657,7 +19657,7 @@
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "MachineRuntimeInstanceID": {
@@ -19735,7 +19735,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmChartVersion": {
@@ -19812,7 +19812,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmValuesDocument": {
@@ -20021,7 +20021,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -20094,7 +20094,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -20162,7 +20162,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmChartVersion": {
@@ -20267,7 +20267,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmValuesDocument": {
@@ -20408,7 +20408,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -20633,7 +20633,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -20702,7 +20702,7 @@
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -20791,7 +20791,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -20860,7 +20860,7 @@
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {

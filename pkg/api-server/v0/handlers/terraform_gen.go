@@ -8,7 +8,6 @@ import (
 	echo "github.com/labstack/echo/v4"
 	notif "github.com/threeport/threeport/internal/terraform/notif"
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
-	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util_v0 "github.com/threeport/threeport/pkg/util/v0"
@@ -311,10 +310,6 @@ func (h Handler) UpdateTerraformDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
-	prevReconciliation := existingTerraformDefinition.Reconciliation
-
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingTerraformDefinition).Updates(&updatedTerraformDefinition)
@@ -502,15 +497,8 @@ func (h Handler) DeleteTerraformDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(terraformDefinition.TerraformInstances) != 0 {
-		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(terraformDefinition.TerraformInstances))
-		for i := range terraformDefinition.TerraformInstances {
-			blockingChildren = append(blockingChildren, terraformDefinition.TerraformInstances[i])
-		}
-		return RespondBlockedDelete(
-			c,
-			h.RequestDB(c),
-			api_v0.NewBlockedDeleteErrorFromChildren(&terraformDefinition, blockingChildren),
-		)
+		err := errors.New("terraform definition has related terraform instances - cannot be deleted")
+		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -896,10 +884,6 @@ func (h Handler) UpdateTerraformInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
-
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
-	prevReconciliation := existingTerraformInstance.Reconciliation
 
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {

@@ -8,7 +8,6 @@ import (
 	echo "github.com/labstack/echo/v4"
 	notif "github.com/threeport/threeport/internal/machine-runtime/notif"
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
-	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util_v0 "github.com/threeport/threeport/pkg/util/v0"
@@ -311,10 +310,6 @@ func (h Handler) UpdateMachineRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
-	prevReconciliation := existingMachineRuntimeDefinition.Reconciliation
-
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingMachineRuntimeDefinition).Updates(&updatedMachineRuntimeDefinition)
@@ -502,15 +497,8 @@ func (h Handler) DeleteMachineRuntimeDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(machineRuntimeDefinition.MachineRuntimeInstances) != 0 {
-		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(machineRuntimeDefinition.MachineRuntimeInstances))
-		for i := range machineRuntimeDefinition.MachineRuntimeInstances {
-			blockingChildren = append(blockingChildren, machineRuntimeDefinition.MachineRuntimeInstances[i])
-		}
-		return RespondBlockedDelete(
-			c,
-			h.RequestDB(c),
-			api_v0.NewBlockedDeleteErrorFromChildren(&machineRuntimeDefinition, blockingChildren),
-		)
+		err := errors.New("machine runtime definition has related machine runtime instances - cannot be deleted")
+		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -896,10 +884,6 @@ func (h Handler) UpdateMachineRuntimeInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
-
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
-	prevReconciliation := existingMachineRuntimeInstance.Reconciliation
 
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {

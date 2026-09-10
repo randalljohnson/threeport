@@ -8,7 +8,6 @@ import (
 	echo "github.com/labstack/echo/v4"
 	notif "github.com/threeport/threeport/internal/gcp/notif"
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
-	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util_v0 "github.com/threeport/threeport/pkg/util/v0"
@@ -63,22 +62,6 @@ func (h Handler) AddGcpGceMachineRuntimeDefinition(c echo.Context) error {
 	if id, err := apiserver_lib.ValidateBoundData(c, gcpGceMachineRuntimeDefinition, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
-	}
-
-	// check for duplicate names
-	var existingGcpGceMachineRuntimeDefinition api_v0.GcpGceMachineRuntimeDefinition
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", gcpGceMachineRuntimeDefinition.Name).First(&existingGcpGceMachineRuntimeDefinition)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
 	}
 
 	// persist to DB
@@ -466,15 +449,8 @@ func (h Handler) DeleteGcpGceMachineRuntimeDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(gcpGceMachineRuntimeDefinition.GcpGceMachineRuntimeInstances) != 0 {
-		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(gcpGceMachineRuntimeDefinition.GcpGceMachineRuntimeInstances))
-		for i := range gcpGceMachineRuntimeDefinition.GcpGceMachineRuntimeInstances {
-			blockingChildren = append(blockingChildren, gcpGceMachineRuntimeDefinition.GcpGceMachineRuntimeInstances[i])
-		}
-		return RespondBlockedDelete(
-			c,
-			h.RequestDB(c),
-			api_v0.NewBlockedDeleteErrorFromChildren(&gcpGceMachineRuntimeDefinition, blockingChildren),
-		)
+		err := errors.New("gcp gce machine runtime definition has related gcp gce machine runtime instances - cannot be deleted")
+		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
 	// delete object
@@ -559,22 +535,6 @@ func (h Handler) AddGcpGceMachineRuntimeInstance(c echo.Context) error {
 	if id, err := apiserver_lib.ValidateBoundData(c, gcpGceMachineRuntimeInstance, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
 		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
-	}
-
-	// check for duplicate names
-	var existingGcpGceMachineRuntimeInstance api_v0.GcpGceMachineRuntimeInstance
-	nameUsed := true
-	result := h.RequestDB(c).Where("name = ?", gcpGceMachineRuntimeInstance.Name).First(&existingGcpGceMachineRuntimeInstance)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			nameUsed = false
-		} else {
-			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-		}
-	}
-	if nameUsed {
-		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
 	}
 
 	// persist to DB
@@ -822,10 +782,6 @@ func (h Handler) UpdateGcpGceMachineRuntimeInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
-
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
-	prevReconciliation := existingGcpGceMachineRuntimeInstance.Reconciliation
 
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
@@ -1535,15 +1491,8 @@ func (h Handler) DeleteGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(gcpGkeKubernetesRuntimeDefinition.GcpGkeKubernetesRuntimeInstances) != 0 {
-		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(gcpGkeKubernetesRuntimeDefinition.GcpGkeKubernetesRuntimeInstances))
-		for i := range gcpGkeKubernetesRuntimeDefinition.GcpGkeKubernetesRuntimeInstances {
-			blockingChildren = append(blockingChildren, gcpGkeKubernetesRuntimeDefinition.GcpGkeKubernetesRuntimeInstances[i])
-		}
-		return RespondBlockedDelete(
-			c,
-			h.RequestDB(c),
-			api_v0.NewBlockedDeleteErrorFromChildren(&gcpGkeKubernetesRuntimeDefinition, blockingChildren),
-		)
+		err := errors.New("gcp gke kubernetes runtime definition has related gcp gke kubernetes runtime instances - cannot be deleted")
+		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
 	// delete object
@@ -1875,10 +1824,6 @@ func (h Handler) UpdateGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
-
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
-	prevReconciliation := existingGcpGkeKubernetesRuntimeInstance.Reconciliation
 
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {

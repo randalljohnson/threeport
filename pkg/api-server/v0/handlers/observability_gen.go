@@ -8,7 +8,6 @@ import (
 	echo "github.com/labstack/echo/v4"
 	notif "github.com/threeport/threeport/internal/observability/notif"
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
-	api_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util_v0 "github.com/threeport/threeport/pkg/util/v0"
@@ -311,10 +310,6 @@ func (h Handler) UpdateLoggingDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
-	prevReconciliation := existingLoggingDefinition.Reconciliation
-
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingLoggingDefinition).Updates(&updatedLoggingDefinition)
@@ -502,15 +497,8 @@ func (h Handler) DeleteLoggingDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(loggingDefinition.LoggingInstances) != 0 {
-		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(loggingDefinition.LoggingInstances))
-		for i := range loggingDefinition.LoggingInstances {
-			blockingChildren = append(blockingChildren, loggingDefinition.LoggingInstances[i])
-		}
-		return RespondBlockedDelete(
-			c,
-			h.RequestDB(c),
-			api_v0.NewBlockedDeleteErrorFromChildren(&loggingDefinition, blockingChildren),
-		)
+		err := errors.New("logging definition has related logging instances - cannot be deleted")
+		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -896,10 +884,6 @@ func (h Handler) UpdateLoggingInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
-
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
-	prevReconciliation := existingLoggingInstance.Reconciliation
 
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
@@ -1470,10 +1454,6 @@ func (h Handler) UpdateMetricsDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
-	prevReconciliation := existingMetricsDefinition.Reconciliation
-
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingMetricsDefinition).Updates(&updatedMetricsDefinition)
@@ -1661,15 +1641,8 @@ func (h Handler) DeleteMetricsDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(metricsDefinition.MetricsInstances) != 0 {
-		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(metricsDefinition.MetricsInstances))
-		for i := range metricsDefinition.MetricsInstances {
-			blockingChildren = append(blockingChildren, metricsDefinition.MetricsInstances[i])
-		}
-		return RespondBlockedDelete(
-			c,
-			h.RequestDB(c),
-			api_v0.NewBlockedDeleteErrorFromChildren(&metricsDefinition, blockingChildren),
-		)
+		err := errors.New("metrics definition has related metrics instances - cannot be deleted")
+		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -2055,10 +2028,6 @@ func (h Handler) UpdateMetricsInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
-
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
-	prevReconciliation := existingMetricsInstance.Reconciliation
 
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
@@ -2629,10 +2598,6 @@ func (h Handler) UpdateObservabilityDashboardDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
-	prevReconciliation := existingObservabilityDashboardDefinition.Reconciliation
-
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingObservabilityDashboardDefinition).Updates(&updatedObservabilityDashboardDefinition)
@@ -2820,15 +2785,8 @@ func (h Handler) DeleteObservabilityDashboardDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(observabilityDashboardDefinition.ObservabilityDashboardInstances) != 0 {
-		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(observabilityDashboardDefinition.ObservabilityDashboardInstances))
-		for i := range observabilityDashboardDefinition.ObservabilityDashboardInstances {
-			blockingChildren = append(blockingChildren, observabilityDashboardDefinition.ObservabilityDashboardInstances[i])
-		}
-		return RespondBlockedDelete(
-			c,
-			h.RequestDB(c),
-			api_v0.NewBlockedDeleteErrorFromChildren(&observabilityDashboardDefinition, blockingChildren),
-		)
+		err := errors.New("observability dashboard definition has related observability dashboard instances - cannot be deleted")
+		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -3214,10 +3172,6 @@ func (h Handler) UpdateObservabilityDashboardInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
-
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
-	prevReconciliation := existingObservabilityDashboardInstance.Reconciliation
 
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
@@ -3788,10 +3742,6 @@ func (h Handler) UpdateObservabilityStackDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
-	prevReconciliation := existingObservabilityStackDefinition.Reconciliation
-
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingObservabilityStackDefinition).Updates(&updatedObservabilityStackDefinition)
@@ -3979,15 +3929,8 @@ func (h Handler) DeleteObservabilityStackDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(observabilityStackDefinition.ObservabilityStackInstances) != 0 {
-		blockingChildren := make([]api_lib.FullyQualifiedTypeProvider, 0, len(observabilityStackDefinition.ObservabilityStackInstances))
-		for i := range observabilityStackDefinition.ObservabilityStackInstances {
-			blockingChildren = append(blockingChildren, observabilityStackDefinition.ObservabilityStackInstances[i])
-		}
-		return RespondBlockedDelete(
-			c,
-			h.RequestDB(c),
-			api_v0.NewBlockedDeleteErrorFromChildren(&observabilityStackDefinition, blockingChildren),
-		)
+		err := errors.New("observability stack definition has related observability stack instances - cannot be deleted")
+		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -4373,10 +4316,6 @@ func (h Handler) UpdateObservabilityStackInstance(c echo.Context) error {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
-
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
-	prevReconciliation := existingObservabilityStackInstance.Reconciliation
 
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {

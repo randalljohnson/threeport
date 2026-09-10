@@ -207,9 +207,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       Name:
@@ -299,9 +299,9 @@ definitions:
         type: boolean
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       IsSelf:
@@ -383,9 +383,9 @@ definitions:
         type: array
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       Name:
@@ -446,9 +446,9 @@ definitions:
         type: integer
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubernetesRuntimeInstanceID:
@@ -564,9 +564,9 @@ definitions:
         type: array
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubernetesWorkloadDefinitionID:
@@ -658,9 +658,9 @@ definitions:
         type: integer
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubernetesRuntimeInstanceID:
@@ -778,9 +778,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       MachineRuntimeInstanceID:
@@ -904,9 +904,9 @@ definitions:
         type: integer
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubernetesRuntimeInstanceID:
@@ -1017,9 +1017,9 @@ definitions:
         type: array
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       Name:
@@ -1096,9 +1096,9 @@ definitions:
         type: integer
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubernetesRuntimeInstanceID:
@@ -1204,9 +1204,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubernetesRuntimeInstances:
@@ -1319,9 +1319,9 @@ definitions:
         type: integer
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubernetesRuntimeDefinitionID:
@@ -1400,9 +1400,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubernetesWorkloadInstances:
@@ -1470,9 +1470,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubernetesRuntimeInstanceID:
@@ -1647,9 +1647,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       LoggingInstances:
@@ -1731,9 +1731,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubernetesRuntimeInstanceID:
@@ -1816,9 +1816,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       MachineProfile:
@@ -1921,9 +1921,9 @@ definitions:
         type: array
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       Location:
@@ -2082,9 +2082,9 @@ definitions:
         type: array
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       MachineRuntimeInstanceID:
@@ -2151,9 +2151,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubePrometheusStackHelmChartVersion:
@@ -2224,9 +2224,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubePrometheusStackHelmValuesDocument:
@@ -2407,9 +2407,9 @@ definitions:
         type: integer
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       Name:
@@ -2475,9 +2475,9 @@ definitions:
         type: integer
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubernetesRuntimeInstanceID:
@@ -2541,9 +2541,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubePrometheusStackHelmChartVersion:
@@ -2648,9 +2648,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubePrometheusStackHelmValuesDocument:
@@ -2780,9 +2780,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubernetesRuntimeInstanceID:
@@ -2965,9 +2965,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       Name:
@@ -3028,9 +3028,9 @@ definitions:
         type: integer
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       KubernetesRuntimeInstanceID:
@@ -3110,9 +3110,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       Name:
@@ -3174,9 +3174,9 @@ definitions:
         type: string
       InterruptReconciliation:
         description: |-
-          InterruptReconciliation is used by the controller to indicated that future
-          reconcilation should be interrupted.  Useful in cases where there is a
-          situation where future reconciliation could be descructive such as
+          InterruptReconciliation is used by the controller to indicate that future
+          reconciliation should be interrupted. Useful in cases where there is a
+          situation where future reconciliation could be destructive such as
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       Name:

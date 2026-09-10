@@ -34,11 +34,11 @@ const (
 var threeportServiceAccountRoles = []string{
 	// GKE cluster management
 	"roles/container.admin",
-	// Compute Engine networking: VPC, subnets, routes
+	// VPC, subnets, and routes
 	"roles/compute.networkAdmin",
-	// Compute Engine instances (least privilege for machine provider)
+	// GCE VMs for the machine provider
 	"roles/compute.instanceAdmin.v1",
-	// Compute Engine firewall rules, which networkAdmin does not grant
+	// firewall rules; networkAdmin does not grant them
 	"roles/compute.securityAdmin",
 	// IAM management for creating service accounts for workloads
 	"roles/iam.serviceAccountAdmin",
@@ -482,17 +482,14 @@ func CreateGCPServiceAccountWithKey(projectID, accountName string) (*GCPServiceA
 		return nil, fmt.Errorf("failed to grant IAM roles: %w", err)
 	}
 
-	// when reusing an existing service account, prune stale user-managed keys
-	// before minting a new one; GCP caps a service account at ten user-managed
-	// keys, and rerunning tptctl against a long-lived account would otherwise
-	// exhaust the quota
 	if existed {
+		// prune user-managed keys so a new key stays under the 10-key limit
 		if err := pruneUserManagedServiceAccountKeys(iamService, projectID, account.Email); err != nil {
 			return nil, fmt.Errorf("failed to prune stale service account keys: %w", err)
 		}
 	}
 
-	// create and export a key for the service account
+	// create JSON key for controllers running outside GCP
 	keyRequest := &iam.CreateServiceAccountKeyRequest{
 		PrivateKeyType: "TYPE_GOOGLE_CREDENTIALS_FILE",
 	}
@@ -564,11 +561,8 @@ func DeleteGCPServiceAccountWithKey(projectID, accountName string) error {
 	return nil
 }
 
-// createServiceAccountForProject creates a GCP service account in the specified
-// project, or returns the existing one when it is already present. The returned
-// bool reports whether the service account already existed (true) versus was
-// created by this call (false), so the caller can decide whether to prune stale
-// user-managed keys before issuing a fresh key.
+// createServiceAccountForProject returns the named service account, creating it
+// when Get reports not found. The bool is true when the account already existed.
 func createServiceAccountForProject(
 	iamService *iam.Service,
 	projectID string,
@@ -579,19 +573,19 @@ func createServiceAccountForProject(
 	serviceAccountEmail := fmt.Sprintf("%s@%s.iam.gserviceaccount.com", serviceAccountID, projectID)
 	serviceAccountResource := fmt.Sprintf("projects/%s/serviceAccounts/%s", projectID, serviceAccountEmail)
 
-	// check if service account already exists
+	// reuse the account when it already exists
 	existingAccount, err := iamService.Projects.ServiceAccounts.Get(serviceAccountResource).Do()
 	if err == nil {
 		fmt.Printf("Using existing GCP service account: %s\n", existingAccount.Email)
 		return existingAccount, true, nil
 	}
 
-	// only "not found" is a signal to create; other errors are fatal
+	// treat only not-found as a create; other Get errors fail the call
 	if !isNotFoundError(err) {
 		return nil, false, fmt.Errorf("failed to check for existing service account: %w", err)
 	}
 
-	// create a new service account
+	// create the service account
 	createRequest := &iam.CreateServiceAccountRequest{
 		AccountId: serviceAccountID,
 		ServiceAccount: &iam.ServiceAccount{
@@ -613,14 +607,12 @@ func createServiceAccountForProject(
 	return account, false, nil
 }
 
-// pruneUserManagedServiceAccountKeys deletes every user-managed key on the given
-// service account so a fresh key can be minted below the ten-key GCP quota.
-// System-managed keys are skipped because Google rotates them and the delete
-// call would fail. The IDs of the pruned keys are logged for audit.
+// pruneUserManagedServiceAccountKeys deletes USER_MANAGED keys on the account.
+// SYSTEM_MANAGED keys stay; Google rotates them and Delete rejects those names.
 func pruneUserManagedServiceAccountKeys(iamService *iam.Service, projectID, serviceAccountEmail string) error {
 	serviceAccountResource := fmt.Sprintf("projects/%s/serviceAccounts/%s", projectID, serviceAccountEmail)
 
-	// list only user-managed keys; system-managed keys stay untouched
+	// list user-managed keys
 	keys, err := iamService.Projects.ServiceAccounts.Keys.List(serviceAccountResource).
 		KeyTypes("USER_MANAGED").
 		Do()
@@ -630,16 +622,15 @@ func pruneUserManagedServiceAccountKeys(iamService *iam.Service, projectID, serv
 
 	prunedIDs := make([]string, 0, len(keys.Keys))
 	for _, key := range keys.Keys {
-		// double-guard the key type in case a filter regression slips a system key through
 		if key.KeyType == "SYSTEM_MANAGED" {
 			continue
 		}
 
+		// delete the user-managed key
 		if _, err := iamService.Projects.ServiceAccounts.Keys.Delete(key.Name).Do(); err != nil {
 			return fmt.Errorf("failed to delete service account key %s: %w", key.Name, err)
 		}
 
-		// the key resource name is projects/.../serviceAccounts/.../keys/<id>; report the id tail for auditing
 		keyID := key.Name
 		if idx := strings.LastIndex(keyID, "/"); idx != -1 {
 			keyID = keyID[idx+1:]

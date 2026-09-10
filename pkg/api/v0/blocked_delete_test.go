@@ -14,11 +14,8 @@ import (
 	auth "github.com/threeport/threeport/pkg/auth/v0"
 )
 
-// TestFormatObjectPath covers the renderer that turns an AOR's raw
-// FQT + id (and optional id->name map) into the
-// "<api-namespace>/<kebab-kind>/<name-or-id>" form rendered into
-// blocked-delete responses, events output, etc. Pure function; the
-// table reads as a flat input -> output mapping.
+// TestFormatObjectPath covers FormatObjectPath turning an AOR FQT plus id
+// (and optional id->name map) into "<api-namespace>/<kebab-kind>/<name-or-id>".
 func TestFormatObjectPath(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -218,18 +215,14 @@ func TestBlockedDeleteError_DefaultError(t *testing.T) {
 	assert.NotContains(t, msg, "my-", "Error() does not get a names map; no resolved name should leak")
 }
 
-// blockedDeleteBaseType and blockedDeleteAttacherType are the object and
-// attacher FQTs the policy tests plant AORs with; only the type strings and
-// ids matter to the blocking-policy functions.
+// FQTs and ids used when planting incoming AORs for the blocking-policy tests.
 const (
 	blockedDeleteBaseType     = "threeport.io/v0.MachineRuntimeInstance"
 	blockedDeleteBaseID       = uint(5)
 	blockedDeleteAttacherType = "threeport.io/v0.GcpGceMachineRuntimeInstance"
 )
 
-// setupBlockedDeleteTestDB returns an in-memory sqlite db with only the
-// AttachedObjectReference table migrated. The blocking-policy functions read
-// that table directly, so no other model needs to be present.
+// setupBlockedDeleteTestDB returns an in-memory sqlite db with the AOR table migrated.
 func setupBlockedDeleteTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
@@ -238,8 +231,7 @@ func setupBlockedDeleteTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-// plantBlockingAOR inserts one incoming AOR of the given relationship pointing
-// at the base object, so the policy functions see it as a potential blocker.
+// plantBlockingAOR inserts one incoming AOR of rel pointing at the base object.
 func plantBlockingAOR(t *testing.T, db *gorm.DB, rel Relationship, attacherID uint) {
 	t.Helper()
 	r := rel
@@ -256,24 +248,19 @@ func plantBlockingAOR(t *testing.T, db *gorm.DB, rel Relationship, attacherID ui
 	}).Error)
 }
 
-// withCallerOU returns a db session whose context carries a CallerIdentity with
-// the given organizational unit, so the policy functions read the intended
-// caller scope off the gorm statement context.
+// withCallerOU returns a db session whose context carries CallerIdentity.OrganizationalUnit.
 func withCallerOU(db *gorm.DB, ou string) *gorm.DB {
 	ctx := lib.WithCaller(context.Background(), lib.CallerIdentity{OrganizationalUnit: ou})
 	return db.WithContext(ctx)
 }
 
-// TestFindBlockingAttachedObjectReferences_ExternalCaller asserts that an
-// external (non control-plane) caller is blocked by an incoming requires, owns,
-// or marries reference. This documents that the blocking policy treats all
-// three relationships as blockers for callers outside the control plane.
+// TestFindBlockingAttachedObjectReferences_ExternalCaller covers blocking of an
+// external caller by requires, owns, and marries.
 func TestFindBlockingAttachedObjectReferences_ExternalCaller(t *testing.T) {
 	cases := []struct {
 		name string
 		rel  Relationship
 	}{
-		// each relationship that blocks an external caller's delete
 		{name: "requires blocks external", rel: RelationshipRequires},
 		{name: "owns blocks external", rel: RelationshipOwns},
 		{name: "marries blocks external", rel: RelationshipMarries},
@@ -281,17 +268,17 @@ func TestFindBlockingAttachedObjectReferences_ExternalCaller(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			// plant one incoming reference of the relationship under test
+			// open in-memory db and plant one incoming AOR
 			db := setupBlockedDeleteTestDB(t)
 			plantBlockingAOR(t, db, tc.rel, 11)
 
-			// query the policy for an external caller
+			// find blocking refs for an external caller
 			blocking, err := findBlockingAttachedObjectReferences(
 				db, blockedDeleteBaseType, uintPtr(blockedDeleteBaseID), "external",
 			)
 			require.NoError(t, err)
 
-			// the reference must be reported as a blocker
+			// require the planted relationship as the blocker
 			require.Len(t, blocking, 1, "external caller should be blocked by %s", tc.rel)
 			require.NotNil(t, blocking[0].Relationship)
 			assert.Equal(t, tc.rel, *blocking[0].Relationship)
@@ -299,37 +286,31 @@ func TestFindBlockingAttachedObjectReferences_ExternalCaller(t *testing.T) {
 	}
 }
 
-// TestFindBlockingAttachedObjectReferences_ControlPlaneCaller asserts the
-// control-plane carve-out: a control-plane caller is still blocked by requires,
-// but under the carve-out is NOT blocked by owns or marries. This documents the
-// current policy that lets control-plane components tear down objects they own
-// or are married to.
+// TestFindBlockingAttachedObjectReferences_ControlPlaneCaller covers the
+// control-plane carve-out for owns and marries.
 func TestFindBlockingAttachedObjectReferences_ControlPlaneCaller(t *testing.T) {
 	cases := []struct {
 		name        string
 		rel         Relationship
 		wantBlocked bool
 	}{
-		// requires blocks the control plane like any other caller
 		{name: "requires blocks control-plane", rel: RelationshipRequires, wantBlocked: true},
-		// owns and marries are carved out for the control plane
 		{name: "owns does not block control-plane", rel: RelationshipOwns, wantBlocked: false},
 		{name: "marries does not block control-plane", rel: RelationshipMarries, wantBlocked: false},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			// plant one incoming reference of the relationship under test
+			// open in-memory db and plant one incoming AOR
 			db := setupBlockedDeleteTestDB(t)
 			plantBlockingAOR(t, db, tc.rel, 11)
 
-			// query the policy for a control-plane caller
+			// find blocking refs for a control-plane caller
 			blocking, err := findBlockingAttachedObjectReferences(
 				db, blockedDeleteBaseType, uintPtr(blockedDeleteBaseID), auth.OUControlPlane,
 			)
 			require.NoError(t, err)
 
-			// requires still blocks; owns and marries are carved out
 			if tc.wantBlocked {
 				require.Len(t, blocking, 1, "control-plane caller should be blocked by %s", tc.rel)
 				require.NotNil(t, blocking[0].Relationship)
@@ -341,9 +322,8 @@ func TestFindBlockingAttachedObjectReferences_ControlPlaneCaller(t *testing.T) {
 	}
 }
 
-// machineRuntimeInstanceProbe is a minimal object whose FQT and id let
-// CheckBlockingAttachedObjectReferences resolve the type string and id it
-// queries the AOR table with.
+// machineRuntimeInstanceProbe is a stub object that reports the planted
+// base FQT and id.
 type machineRuntimeInstanceProbe struct {
 	ID *uint `gorm:"primaryKey"`
 }
@@ -352,16 +332,13 @@ func (p *machineRuntimeInstanceProbe) GetFullyQualifiedType() string {
 	return blockedDeleteBaseType
 }
 
-// TestCheckBlockingAttachedObjectReferences_ExternalCaller asserts that the
-// handler-facing wrapper returns a BlockedDeleteError to an external caller for
-// an incoming requires, owns, or marries reference, reading the caller scope off
-// the gorm statement context.
+// TestCheckBlockingAttachedObjectReferences_ExternalCaller covers a
+// BlockedDeleteError for an external caller on requires, owns, and marries.
 func TestCheckBlockingAttachedObjectReferences_ExternalCaller(t *testing.T) {
 	cases := []struct {
 		name string
 		rel  Relationship
 	}{
-		// each relationship that blocks an external caller's delete
 		{name: "requires blocks external", rel: RelationshipRequires},
 		{name: "owns blocks external", rel: RelationshipOwns},
 		{name: "marries blocks external", rel: RelationshipMarries},
@@ -369,15 +346,14 @@ func TestCheckBlockingAttachedObjectReferences_ExternalCaller(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			// plant one incoming reference and probe the base object by id
+			// plant one incoming AOR and probe the base object by id
 			db := setupBlockedDeleteTestDB(t)
 			plantBlockingAOR(t, db, tc.rel, 11)
 			probe := &machineRuntimeInstanceProbe{ID: uintPtr(blockedDeleteBaseID)}
 
-			// check the policy for an external caller carried on the context
+			// check the policy for an external caller on the context
 			err := CheckBlockingAttachedObjectReferences(withCallerOU(db, "external"), probe)
 
-			// the wrapper must surface a populated BlockedDeleteError
 			require.Error(t, err, "external caller should be blocked by %s", tc.rel)
 			blockedErr, ok := err.(*BlockedDeleteError)
 			require.True(t, ok, "error should be a BlockedDeleteError")
@@ -386,35 +362,31 @@ func TestCheckBlockingAttachedObjectReferences_ExternalCaller(t *testing.T) {
 	}
 }
 
-// TestCheckBlockingAttachedObjectReferences_ControlPlaneCaller asserts the
-// control-plane carve-out through the handler-facing wrapper: requires still
-// yields a BlockedDeleteError, while owns and marries pass with no error.
+// TestCheckBlockingAttachedObjectReferences_ControlPlaneCaller covers the
+// control-plane carve-out through CheckBlockingAttachedObjectReferences.
 func TestCheckBlockingAttachedObjectReferences_ControlPlaneCaller(t *testing.T) {
 	cases := []struct {
 		name        string
 		rel         Relationship
 		wantBlocked bool
 	}{
-		// requires blocks the control plane like any other caller
 		{name: "requires blocks control-plane", rel: RelationshipRequires, wantBlocked: true},
-		// owns and marries are carved out for the control plane
 		{name: "owns does not block control-plane", rel: RelationshipOwns, wantBlocked: false},
 		{name: "marries does not block control-plane", rel: RelationshipMarries, wantBlocked: false},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			// plant one incoming reference and probe the base object by id
+			// plant one incoming AOR and probe the base object by id
 			db := setupBlockedDeleteTestDB(t)
 			plantBlockingAOR(t, db, tc.rel, 11)
 			probe := &machineRuntimeInstanceProbe{ID: uintPtr(blockedDeleteBaseID)}
 
-			// check the policy for a control-plane caller carried on the context
+			// check the policy for a control-plane caller on the context
 			err := CheckBlockingAttachedObjectReferences(
 				withCallerOU(db, auth.OUControlPlane), probe,
 			)
 
-			// requires still blocks; owns and marries pass with no error
 			if tc.wantBlocked {
 				require.Error(t, err, "control-plane caller should be blocked by %s", tc.rel)
 				_, ok := err.(*BlockedDeleteError)

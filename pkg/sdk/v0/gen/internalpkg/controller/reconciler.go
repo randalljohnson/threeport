@@ -248,11 +248,9 @@ func GenReconcilers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							)
 							g.Line()
 
-							// capture pre-pass reconciled state to gate the success-event emit;
-							// getLatestObject flips wasReconciled to true when the object is
-							// already reconciled at fetch time so redelivered notifications
-							// don't emit a duplicate success event
 							g.Comment("capture pre-pass reconciled state to gate the success-event emit")
+							// seed wasReconciled false; getLatestObject sets it true when
+							// the latest object is already reconciled
 							g.Id("wasReconciled").Op(":=").Lit(false)
 							g.Line()
 
@@ -676,9 +674,8 @@ func operationCase(
 		"github.com/threeport/threeport/pkg/notifications/v0",
 		fmt.Sprintf("NotificationOperation%s", upperOpPast),
 	)).BlockFunc(func(i *Group) {
-		// skip create and update when deletion is scheduled
-		// a handler error requeues that notification instead of completing it
 		if op == "create" || op == "update" {
+			// skip create and update when deletion is scheduled
 			h.If(Id(varObjectName).Dot("ScheduledForDeletion").Call().Op("!=").Nil()).Block(
 				Id("log").Dot("Info").Call(
 					Lit(fmt.Sprintf(

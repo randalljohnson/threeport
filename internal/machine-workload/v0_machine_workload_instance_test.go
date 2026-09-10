@@ -24,11 +24,7 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// dialSSH opens an ssh.Client against addr with insecure host key
-// verification (test only) and password auth. Local to the workload test
-// package, since the runtime reconciler tests build their client through
-// machine.GetClient, so this dialer is workload only and lives here
-// rather than in the shared machinetest package.
+// dialSSH opens an ssh.Client with password auth and insecure host keys for the in-process SSH fixture.
 func dialSSH(t *testing.T, addr, user, password string) *ssh.Client {
 	t.Helper()
 	cfg := &ssh.ClientConfig{
@@ -42,9 +38,7 @@ func dialSSH(t *testing.T, addr, user, password string) *ssh.Client {
 	return client
 }
 
-// TestBuildScript covers the script-assembly behavior: set -e prefix, optional
-// cd, export of KEY=VALUE entries with value quoting, and trailing newline
-// when the user script doesn't end with one.
+// TestBuildScript covers set -e, optional cd, env export quoting, and trailing newlines.
 func TestBuildScript(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -131,8 +125,7 @@ func TestShellQuote(t *testing.T) {
 	}
 }
 
-// TestTruncateMessage covers the under/over-threshold behavior and the
-// truncation marker.
+// TestTruncateMessage covers pass-through under the limit and the truncation marker over it.
 func TestTruncateMessage(t *testing.T) {
 	short := strings.Repeat("a", 10)
 	assert.Equal(t, short, truncateMessage(short), "short message should pass through unchanged")
@@ -142,13 +135,12 @@ func TestTruncateMessage(t *testing.T) {
 	assert.Less(t, len(got), len(overLimit), "overlong message should be shorter after truncation")
 	assert.True(t, strings.HasSuffix(got, "...[truncated]"), "truncation marker should be appended")
 
-	// boundary: exactly maxEventMessageChars stays untouched
+	// leave an exactly-at-limit message unchanged
 	exact := strings.Repeat("c", maxEventMessageChars)
 	assert.Equal(t, exact, truncateMessage(exact), "exactly-at-limit message should pass through unchanged")
 }
 
-// TestSanitizeScriptOutput covers ANSI escape stripping and carriage-return
-// progress-redraw collapse.
+// TestSanitizeScriptOutput covers ANSI stripping and carriage-return progress collapse.
 func TestSanitizeScriptOutput(t *testing.T) {
 	assert.Equal(t, "", sanitizeScriptOutput(""))
 
@@ -163,16 +155,14 @@ func TestSanitizeScriptOutput(t *testing.T) {
 	assert.Contains(t, got, "next line")
 }
 
-// TestRunRemoteScript_ConnectionError covers the NewSession-failed branch
-// using a closed SSH client.
+// TestRunRemoteScript_ConnectionError covers NewSession failing on a closed client.
 func TestRunRemoteScript_ConnectionError(t *testing.T) {
-	// stand up a server briefly, dial it, then close the connection to
-	// force NewSession to fail
 	signer := machinetest.NewSigner(t)
 	addr, stop := machinetest.StartSSHServer(t, signer, "u", "p", machinetest.SSHOpts{ExitCode: 0})
 	defer stop()
 
 	client := dialSSH(t, addr, "u", "p")
+	// close the client so NewSession fails
 	require.NoError(t, client.Close(), "manual close to invalidate the client before runRemoteScript")
 
 	stdout, stderr, exitCode, timedOut, err := runRemoteScript(
@@ -190,8 +180,7 @@ func TestRunRemoteScript_ConnectionError(t *testing.T) {
 	assert.Empty(t, stderr)
 }
 
-// TestRunRemoteScript_HappyPath confirms exit 0 returns no error and the
-// expected exit code.
+// TestRunRemoteScript_HappyPath covers a zero-exit script with no transport error.
 func TestRunRemoteScript_HappyPath(t *testing.T) {
 	signer := machinetest.NewSigner(t)
 	addr, stop := machinetest.StartSSHServer(t, signer, "u", "p", machinetest.SSHOpts{ExitCode: 0})
@@ -206,8 +195,7 @@ func TestRunRemoteScript_HappyPath(t *testing.T) {
 	assert.False(t, timedOut)
 }
 
-// TestRunRemoteScript_ScriptFailed confirms a non-zero exit code is returned
-// without a transport error.
+// TestRunRemoteScript_ScriptFailed covers a non-zero exit without a transport error.
 func TestRunRemoteScript_ScriptFailed(t *testing.T) {
 	signer := machinetest.NewSigner(t)
 	addr, stop := machinetest.StartSSHServer(t, signer, "u", "p", machinetest.SSHOpts{ExitCode: 7})
@@ -222,8 +210,7 @@ func TestRunRemoteScript_ScriptFailed(t *testing.T) {
 	assert.False(t, timedOut)
 }
 
-// TestRunRemoteScript_Timeout confirms a long-running script gets killed and
-// timedOut is reported.
+// TestRunRemoteScript_Timeout covers killing a long-running script and setting timedOut.
 func TestRunRemoteScript_Timeout(t *testing.T) {
 	signer := machinetest.NewSigner(t)
 	addr, stop := machinetest.StartSSHServer(t, signer, "u", "p", machinetest.SSHOpts{HoldSession: 2 * time.Second})
@@ -240,17 +227,12 @@ func TestRunRemoteScript_Timeout(t *testing.T) {
 	assert.True(t, timedOut, "expected timedOut=true when session exceeds timeout")
 	assert.Equal(t, -1, exitCode)
 	assert.Less(t, elapsed, 5*time.Second, "runRemoteScript should return shortly after the 1s deadline, not wait the full 30s")
-	// err is allowed to be nil or non-nil depending on whether the server
-	// returned an exit status before being killed; the timedOut flag is the
-	// authoritative signal here
+	// discard err; timedOut is the signal
 	_ = err
 }
 
-// ===== reconciler-level tests =====
-
-// fixture wires up an httptest API stub, in-process SSH server, MWD/MWI
-// fixtures, and a Reconciler. The returned helpers let each test customize
-// per-endpoint behavior and stop the SSH server when done.
+// fixture is the API stub, SSH server, MWD/MWI objects, and Reconciler one test uses.
+// Tests mutate the objects before calling the handler.
 type fixture struct {
 	t         *testing.T
 	api       *machinetest.APIStub
@@ -264,10 +246,7 @@ type fixture struct {
 	stopSSH   func()
 }
 
-// newFixture spins up the SSH server with opts and registers stub handlers
-// for the three endpoints the reconciler hits: GET MWD, GET MRI, and
-// PATCH MWI. Tests can mutate f.mwd/f.mri/f.mwi before invoking the
-// reconciler to drive specific branches.
+// newFixture starts the SSH server and registers GET MWD, GET MRI, and PATCH MWI stubs.
 func newFixture(t *testing.T, opts machinetest.SSHOpts) *fixture {
 	t.Helper()
 	key := machinetest.NewEncryptionKey(t)
@@ -300,7 +279,7 @@ func newFixture(t *testing.T, opts machinetest.SSHOpts) *fixture {
 	}
 	t.Cleanup(stopSSH)
 
-	// GET /v0/machine-workload-definitions/200
+	// register GET MWD
 	f.api.Mux.HandleFunc(
 		fmt.Sprintf("%s/%d", v0.PathMachineWorkloadDefinitions, *mwd.ID),
 		func(w http.ResponseWriter, r *http.Request) {
@@ -309,7 +288,7 @@ func newFixture(t *testing.T, opts machinetest.SSHOpts) *fixture {
 		},
 	)
 
-	// GET /v0/machine-runtime-instances/100
+	// register GET MRI
 	f.api.Mux.HandleFunc(
 		fmt.Sprintf("%s/%d", v0.PathMachineRuntimeInstances, *mri.ID),
 		func(w http.ResponseWriter, r *http.Request) {
@@ -318,7 +297,7 @@ func newFixture(t *testing.T, opts machinetest.SSHOpts) *fixture {
 		},
 	)
 
-	// PATCH /v0/machine-workload-instances/300
+	// register PATCH MWI
 	f.api.Mux.HandleFunc(
 		fmt.Sprintf("%s/%d", v0.PathMachineWorkloadInstances, *mwi.ID),
 		func(w http.ResponseWriter, r *http.Request) {
@@ -343,8 +322,7 @@ func newFixture(t *testing.T, opts machinetest.SSHOpts) *fixture {
 	return f
 }
 
-// patchedStatuses returns the Status value of every PATCH body received, in
-// order. Tests assert the final status the reconciler persisted.
+// patchedStatuses returns each PATCH body's Status in the order received.
 func (f *fixture) patchedStatuses() []string {
 	f.patchesMu.Lock()
 	defer f.patchesMu.Unlock()
@@ -361,9 +339,7 @@ func (f *fixture) patchedStatuses() []string {
 	return out
 }
 
-// patchedReconciled returns the Reconciled pointer sent in every PATCH body
-// received, in order. Tests use it to assert the honesty invariant: a failed
-// script must not flip Reconciled to true.
+// patchedReconciled returns each PATCH body's Reconciled pointer in the order received.
 func (f *fixture) patchedReconciled() []*bool {
 	f.patchesMu.Lock()
 	defer f.patchesMu.Unlock()
@@ -376,41 +352,28 @@ func (f *fixture) patchedReconciled() []*bool {
 	return out
 }
 
-// TestMachineWorkloadInstanceCreated_HappyPath confirms the Created
-// reconciler runs the create script, persists Reconciled=true with a
-// Healthy status, and logs the successful completion. The wrapper's
-// SuccessfulCreate event carries the outcome, so the reconciler emits
-// no Normal event of its own.
+// TestMachineWorkloadInstanceCreated_HappyPath covers a zero-exit create that patches Healthy and Reconciled.
 func TestMachineWorkloadInstanceCreated_HappyPath(t *testing.T) {
 	f := newFixture(t, machinetest.SSHOpts{ExitCode: 0})
 	log := logr.Discard()
 
-	// drive the Created reconciler with a script that exits zero
+	// run Created
 	delay, err := v0MachineWorkloadInstanceCreated(f.r, f.mwi, &log)
 
-	// success path returns (0, nil): no requeue and no error
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), delay)
 
-	// status persists as Healthy so consumers see the current state
 	assert.Equal(t, []string{string(wlstatus.WorkloadInstanceStatusHealthy)}, f.patchedStatuses())
 
-	// Reconciled flips to true only on the success path, keeping the
-	// owner-wait chain honest
 	reconciled := f.patchedReconciled()
 	require.Len(t, reconciled, 1)
 	require.NotNil(t, reconciled[0])
 	assert.True(t, *reconciled[0], "successful create should mark Reconciled=true")
 
-	// successful script emits no event; the wrapper's SuccessfulCreate
-	// event carries the outcome and the log line covers the diagnostic
-	// detail
 	assert.Empty(t, f.recorder.GetReasons(), "successful script emits no event; the wrapper's SuccessfulCreate event carries the outcome and the log line covers the diagnostic detail")
 }
 
-// TestMachineWorkloadInstanceCreated_RuntimeNotReconciled covers the early
-// requeue path when the MRI hasn't finished its own Created reconcile yet.
-// No script runs, no PATCH happens.
+// TestMachineWorkloadInstanceCreated_RuntimeNotReconciled covers a 30s requeue when the MRI is unreconciled.
 func TestMachineWorkloadInstanceCreated_RuntimeNotReconciled(t *testing.T) {
 	f := newFixture(t, machinetest.SSHOpts{ExitCode: 0})
 	f.mri.Reconciled = util.Ptr(false)
@@ -423,56 +386,42 @@ func TestMachineWorkloadInstanceCreated_RuntimeNotReconciled(t *testing.T) {
 	assert.Empty(t, f.recorder.GetReasons(), "should not have recorded any events")
 }
 
-// TestMachineWorkloadInstanceCreated_ScriptFails covers the non-zero exit
-// path: status persisted as Unhealthy, the reconciler returns an
-// ErrWithEvent whose Reason is ScriptFailed so the wrapper substitutes it
-// for the generic FailedCreate row, and the delay pins a 30s requeue.
+// TestMachineWorkloadInstanceCreated_ScriptFails covers a non-zero create that patches Unhealthy and returns ErrWithEvent.
 func TestMachineWorkloadInstanceCreated_ScriptFails(t *testing.T) {
 	f := newFixture(t, machinetest.SSHOpts{ExitCode: 1})
 	log := logr.Discard()
 
-	// drive the Created reconciler with a script that exits non-zero
+	// run Created
 	delay, err := v0MachineWorkloadInstanceCreated(f.r, f.mwi, &log)
 
-	// reconciler surfaces the failure with a 30s requeue for retry
 	require.Error(t, err)
 	assert.Equal(t, int64(30), delay)
 
-	// status persists as Unhealthy so consumers see the last-known state
 	assert.Equal(t, []string{string(wlstatus.WorkloadInstanceStatusUnhealthy)}, f.patchedStatuses())
 
-	// Reconciled stays unset so upstream owner-wait chains do not treat a
-	// failed create as complete
 	reconciled := f.patchedReconciled()
 	require.Len(t, reconciled, 1)
 	assert.Nil(t, reconciled[0], "failed create must leave Reconciled unset in the patch")
 
-	// error carries the specific-reason event the wrapper will substitute
-	// for the generic FailedCreate row
 	var errWithEvent *tp_errors.ErrWithEvent
 	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")
 	require.NotNil(t, errWithEvent.Event.Reason)
 	assert.Equal(t, "ScriptFailed", *errWithEvent.Event.Reason)
 
-	// failure path defers emission to the wrapper, so the reconciler itself
-	// records no events
 	assert.Empty(t, f.recorder.GetReasons(), "failure path should not call RecordEvent directly; the wrapper substitutes the event")
 }
 
-// TestMachineWorkloadInstanceCreated_GetDefinitionFails covers the
-// pre-script-failure branch where the MWD lookup itself fails: no SSH, no
-// PATCH, no events.
+// TestMachineWorkloadInstanceCreated_GetDefinitionFails covers an MWD lookup failure with no SSH, PATCH, or events.
 func TestMachineWorkloadInstanceCreated_GetDefinitionFails(t *testing.T) {
 	f := newFixture(t, machinetest.SSHOpts{ExitCode: 0})
-	// override the MWD handler to return 500
+	// return 500 for every MWD GET
 	f.api.Mux.HandleFunc(
 		fmt.Sprintf("%s/", v0.PathMachineWorkloadDefinitions),
 		func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "boom", http.StatusInternalServerError)
 		},
 	)
-	// point the MWI at an ID we haven't registered a handler for so the
-	// catch-all 500 handler picks it up
+	// point the MWI at an unregistered MWD id
 	f.mwi.MachineWorkloadDefinitionID = util.Ptr(uint(999))
 	log := logr.Discard()
 
@@ -483,78 +432,53 @@ func TestMachineWorkloadInstanceCreated_GetDefinitionFails(t *testing.T) {
 	assert.Empty(t, f.recorder.GetReasons())
 }
 
-// TestMachineWorkloadInstanceUpdated_HappyPath confirms Updated runs the
-// update script with healthy result, persists Reconciled=true with a
-// Healthy status, and logs the successful completion. The wrapper's
-// SuccessfulUpdate event carries the outcome, so the reconciler emits
-// no Normal event of its own.
+// TestMachineWorkloadInstanceUpdated_HappyPath covers a zero-exit update that patches Healthy and Reconciled.
 func TestMachineWorkloadInstanceUpdated_HappyPath(t *testing.T) {
 	f := newFixture(t, machinetest.SSHOpts{ExitCode: 0})
 	log := logr.Discard()
 
-	// drive the Updated reconciler with a script that exits zero
+	// run Updated
 	delay, err := v0MachineWorkloadInstanceUpdated(f.r, f.mwi, &log)
 
-	// success path returns (0, nil): no requeue and no error
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), delay)
 
-	// status persists as Healthy so consumers see the current state
 	assert.Equal(t, []string{string(wlstatus.WorkloadInstanceStatusHealthy)}, f.patchedStatuses())
 
-	// Reconciled flips to true only on the success path, keeping the
-	// owner-wait chain honest
 	reconciled := f.patchedReconciled()
 	require.Len(t, reconciled, 1)
 	require.NotNil(t, reconciled[0])
 	assert.True(t, *reconciled[0], "successful update should mark Reconciled=true")
 
-	// successful script emits no event; the wrapper's SuccessfulUpdate
-	// event carries the outcome and the log line covers the diagnostic
-	// detail
 	assert.Empty(t, f.recorder.GetReasons(), "successful script emits no event; the wrapper's SuccessfulUpdate event carries the outcome and the log line covers the diagnostic detail")
 }
 
-// TestMachineWorkloadInstanceUpdated_ScriptFails covers the non-zero exit
-// path for update: status persisted as Unhealthy, Reconciled left unset so
-// the owner-wait chain holds Provisioning, the reconciler returns an
-// ErrWithEvent whose Reason is ScriptFailed so the wrapper substitutes it
-// for the generic FailedUpdate row, and the delay pins a 30s requeue.
+// TestMachineWorkloadInstanceUpdated_ScriptFails covers a non-zero update that patches Unhealthy and returns ErrWithEvent.
 func TestMachineWorkloadInstanceUpdated_ScriptFails(t *testing.T) {
 	f := newFixture(t, machinetest.SSHOpts{ExitCode: 1})
 	log := logr.Discard()
 
-	// drive the Updated reconciler with a script that exits non-zero
+	// run Updated
 	delay, err := v0MachineWorkloadInstanceUpdated(f.r, f.mwi, &log)
 
-	// reconciler surfaces the failure with a 30s requeue for retry
 	require.Error(t, err)
 	assert.Equal(t, int64(30), delay)
 
-	// status persists as Unhealthy so consumers see the last-known state
 	assert.Equal(t, []string{string(wlstatus.WorkloadInstanceStatusUnhealthy)}, f.patchedStatuses())
 
-	// Reconciled stays unset so upstream owner-wait chains do not treat a
-	// failed update as complete
 	reconciled := f.patchedReconciled()
 	require.Len(t, reconciled, 1)
 	assert.Nil(t, reconciled[0], "failed update must leave Reconciled unset in the patch")
 
-	// error carries the specific-reason event the wrapper will substitute
-	// for the generic FailedUpdate row
 	var errWithEvent *tp_errors.ErrWithEvent
 	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")
 	require.NotNil(t, errWithEvent.Event.Reason)
 	assert.Equal(t, "ScriptFailed", *errWithEvent.Event.Reason)
 
-	// failure path defers emission to the wrapper, so the reconciler itself
-	// records no events
 	assert.Empty(t, f.recorder.GetReasons(), "failure path should not call RecordEvent directly; the wrapper substitutes the event")
 }
 
-// TestMachineWorkloadInstanceUpdated_NoUpdateScript covers the early-return
-// path when the definition has no UpdateScript: returns (0, nil), no SSH,
-// no PATCH, no events.
+// TestMachineWorkloadInstanceUpdated_NoUpdateScript covers a nil UpdateScript returning (0, nil) with no SSH or PATCH.
 func TestMachineWorkloadInstanceUpdated_NoUpdateScript(t *testing.T) {
 	f := newFixture(t, machinetest.SSHOpts{ExitCode: 0})
 	f.mwd.UpdateScript = nil
@@ -567,76 +491,50 @@ func TestMachineWorkloadInstanceUpdated_NoUpdateScript(t *testing.T) {
 	assert.Empty(t, f.recorder.GetReasons())
 }
 
-// TestMachineWorkloadInstanceDeleted_HappyPath confirms Deleted runs the
-// delete script and returns (0, nil), logging the successful completion.
-// Deleted does not PATCH the MWI (the generated reconciler removes the
-// row); the wrapper's SuccessfulDelete event carries the outcome, so the
-// reconciler emits no Normal event of its own.
+// TestMachineWorkloadInstanceDeleted_HappyPath covers a zero-exit delete that returns (0, nil) without PATCHing the MWI.
 func TestMachineWorkloadInstanceDeleted_HappyPath(t *testing.T) {
 	f := newFixture(t, machinetest.SSHOpts{ExitCode: 0})
 	log := logr.Discard()
 
-	// drive the Deleted reconciler with a script that exits zero
+	// run Deleted
 	delay, err := v0MachineWorkloadInstanceDeleted(f.r, f.mwi, &log)
 
-	// success path returns (0, nil): no requeue and no error
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), delay)
 
-	// Deleted does not PATCH the MWI; the generated reconciler removes
-	// the row
 	assert.Empty(t, f.patchedStatuses(), "Deleted should not PATCH the MWI; the generated reconciler handles removal")
 
-	// successful script emits no event; the wrapper's SuccessfulDelete
-	// event carries the outcome and the log line covers the diagnostic
-	// detail
 	assert.Empty(t, f.recorder.GetReasons(), "successful script emits no event; the wrapper's SuccessfulDelete event carries the outcome and the log line covers the diagnostic detail")
 }
 
-// TestMachineWorkloadInstanceDeleted_ScriptFails covers the non-zero exit
-// path for delete: the reconciler returns an ErrWithEvent whose Reason is
-// ScriptFailed so the wrapper substitutes it for the generic FailedDelete
-// row, with a 30s requeue for retry.
+// TestMachineWorkloadInstanceDeleted_ScriptFails covers a non-zero delete that returns ErrWithEvent and a 30s requeue.
 func TestMachineWorkloadInstanceDeleted_ScriptFails(t *testing.T) {
 	f := newFixture(t, machinetest.SSHOpts{ExitCode: 1})
 	log := logr.Discard()
 
-	// drive the Deleted reconciler with a script that exits non-zero
+	// run Deleted
 	delay, err := v0MachineWorkloadInstanceDeleted(f.r, f.mwi, &log)
 
-	// reconciler surfaces the failure with a 30s requeue for retry
 	require.Error(t, err)
 	assert.Equal(t, int64(30), delay)
 
-	// error carries the specific-reason event the wrapper will substitute
-	// for the generic FailedDelete row
 	var errWithEvent *tp_errors.ErrWithEvent
 	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")
 	require.NotNil(t, errWithEvent.Event.Reason)
 	assert.Equal(t, "ScriptFailed", *errWithEvent.Event.Reason)
 
-	// failure path defers emission to the wrapper, so the reconciler itself
-	// records no events
 	assert.Empty(t, f.recorder.GetReasons(), "failure path should not call RecordEvent directly; the wrapper substitutes the event")
 }
 
-// TestMachineWorkloadInstanceDeleted_ScriptFailsPastGracePeriod covers the
-// reachable-but-failing grace cap: the host is reachable, the delete script
-// keeps failing, and deletion was scheduled longer ago than the grace period.
-// The handler confirms the deletion anyway - returns (0, nil) so a delete
-// script that can never succeed does not strand the upstream machine - and
-// records a DeleteScriptFailedGraceExceeded warning.
+// TestMachineWorkloadInstanceDeleted_ScriptFailsPastGracePeriod covers confirming delete after the grace period on a failing script.
 func TestMachineWorkloadInstanceDeleted_ScriptFailsPastGracePeriod(t *testing.T) {
-	// reachable host whose delete script exits non-zero
 	f := newFixture(t, machinetest.SSHOpts{ExitCode: 1})
-	// schedule deletion far enough in the past to exceed the grace period
+	// set DeletionScheduled past the grace period
 	f.mwi.DeletionScheduled = util.Ptr(time.Now().Add(-2 * unreachableDeleteGracePeriod))
 	log := logr.Discard()
 
 	delay, err := v0MachineWorkloadInstanceDeleted(f.r, f.mwi, &log)
-	// past the grace period the failing delete confirms rather than requeues
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), delay)
-	// the script ran and failed before the grace cap fired, so both reasons land
 	assert.Equal(t, []string{"ScriptFailed", "DeleteScriptFailedGraceExceeded"}, f.recorder.GetReasons())
 }

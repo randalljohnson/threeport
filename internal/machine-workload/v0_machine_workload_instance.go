@@ -303,7 +303,6 @@ func v0MachineWorkloadInstanceDeleted(
 	return 0, nil
 }
 
-<<<<<<< HEAD
 // deletionScheduledExceeds reports whether the time since deletion was
 // scheduled is greater than grace. A nil timestamp means deletion has not been
 // recorded as scheduled yet, so the grace period has not been exceeded.
@@ -320,10 +319,6 @@ func deletionScheduledExceeds(deletionScheduled *time.Time, grace time.Duration)
 // Normal event in place; failure paths defer emission to the wrapper's
 // HandleEventOverride so the specific reason replaces the generic FailedCreate
 // / FailedUpdate / FailedDelete event.
-=======
-// runScript connects to the runtime, runs the named script, and returns
-// the resulting workload status. A non-nil error carries the failure event.
->>>>>>> feat-events-pipeline
 func runScript(
 	r *controller.Reconciler,
 	mwi *v0.MachineWorkloadInstance,

@@ -3473,7 +3473,7 @@
                     "application/json"
                 ],
                 "summary": "gets all events, filtered by subject.",
-                "operationId": "get-v0-events-join-attached-object-references",
+                "operationId": "get-v0-events-filtered",
                 "parameters": [
                     {
                         "type": "string",

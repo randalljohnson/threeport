@@ -5722,7 +5722,7 @@ paths:
       - application/json
       description: Get events from the Threeport database, narrowed by the object_type
         and object_id columns each event row carries.
-      operationId: get-v0-events-join-attached-object-references
+      operationId: get-v0-events-filtered
       parameters:
       - description: filter events by object ID
         in: query

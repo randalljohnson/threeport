@@ -467,6 +467,7 @@ func CreateGCPServiceAccountWithKey(projectID, accountName string) (*GCPServiceA
 		return nil, fmt.Errorf("failed to create service account: %w", err)
 	}
 
+	// grant IAM roles to the service account
 	if err := grantServiceAccountRolesForProject(crmService, projectID, account.Email); err != nil {
 		return nil, fmt.Errorf("failed to grant IAM roles: %w", err)
 	}

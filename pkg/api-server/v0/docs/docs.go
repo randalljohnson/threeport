@@ -19386,7 +19386,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "InfraProviderAccountName": {
-                    "description": "The provider account name that selects which account the machine is\nprovisioned on. Empty falls back to the default provider account.",
+                    "description": "The provider account name that selects which account the machine is\nprovisioned on, empty falling back to the default provider account",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
@@ -19394,7 +19394,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "MachineProfile": {
-                    "description": "The CPU-to-memory ratio of the machine. Resolved server-side together\nwith the machine size to a provider machine type.",
+                    "description": "The CPU-to-memory ratio of the machine",
                     "type": "string"
                 },
                 "MachineRuntimeInstances": {
@@ -19405,11 +19405,11 @@ const docTemplate = `{
                     }
                 },
                 "MachineSize": {
-                    "description": "The compute capacity of the machine. Resolved server-side together with\nthe machine profile to a provider machine type.",
+                    "description": "The compute capacity of the machine",
                     "type": "string"
                 },
                 "MachineType": {
-                    "description": "The provider-specific machine type. Populated by the controller from the\nmachine size and profile; not supplied for provider-provisioned machines.",
+                    "description": "The provider-specific machine type",
                     "type": "string"
                 },
                 "Name": {
@@ -19488,7 +19488,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "Location": {
-                    "description": "The abstract threeport location for the machine. Mapped server-side to a\nprovider region and zone. Optional so imported machines that supply a\nconcrete region directly still validate.",
+                    "description": "The abstract threeport location for the machine",
                     "type": "string"
                 },
                 "MachineRuntimeDefinitionID": {

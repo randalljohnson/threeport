@@ -1812,7 +1812,7 @@ definitions:
       InfraProviderAccountName:
         description: |-
           The provider account name that selects which account the machine is
-          provisioned on. Empty falls back to the default provider account.
+          provisioned on, empty falling back to the default provider account
         type: string
       InterruptReconciliation:
         description: |-
@@ -1822,9 +1822,7 @@ definitions:
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       MachineProfile:
-        description: |-
-          The CPU-to-memory ratio of the machine. Resolved server-side together
-          with the machine size to a provider machine type.
+        description: The CPU-to-memory ratio of the machine
         type: string
       MachineRuntimeInstances:
         description: |-
@@ -1834,14 +1832,10 @@ definitions:
           $ref: '#/definitions/v0.MachineRuntimeInstance'
         type: array
       MachineSize:
-        description: |-
-          The compute capacity of the machine. Resolved server-side together with
-          the machine profile to a provider machine type.
+        description: The compute capacity of the machine
         type: string
       MachineType:
-        description: |-
-          The provider-specific machine type. Populated by the controller from the
-          machine size and profile; not supplied for provider-provisioned machines.
+        description: The provider-specific machine type
         type: string
       Name:
         description: An arbitrary name for the definition.
@@ -1933,10 +1927,7 @@ definitions:
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       Location:
-        description: |-
-          The abstract threeport location for the machine. Mapped server-side to a
-          provider region and zone. Optional so imported machines that supply a
-          concrete region directly still validate.
+        description: The abstract threeport location for the machine
         type: string
       MachineRuntimeDefinitionID:
         description: |-

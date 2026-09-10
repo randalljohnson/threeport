@@ -20,7 +20,6 @@ func AddVersions() {
 	AddGcpGceMachineRuntimeInstanceVersions()
 	AddGcpGkeKubernetesRuntimeDefinitionVersions()
 	AddGcpGkeKubernetesRuntimeInstanceVersions()
-	AddGcpNetworkVersions()
 	AddGcpProviderVersions()
 	AddHelmWorkloadDefinitionVersions()
 	AddHelmWorkloadInstanceVersions()

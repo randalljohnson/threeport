@@ -138,38 +138,6 @@ func AddGcpGkeKubernetesRuntimeInstanceVersions() {
 	apiserver_lib.AddObjectVersion(versionObj)
 }
 
-// AddGcpNetworkVersions adds field validation info and adds it
-// to the REST API versions.
-func AddGcpNetworkVersions() {
-	apiserver_v0.GcpNetworkTaggedFields[string(api_lib.ValidateTag)] = &apiserver_lib.FieldsByTag{
-		Optional:             []string{},
-		OptionalAssociations: []string{},
-		Required:             []string{},
-		TagName:              string(api_lib.ValidateTag),
-	}
-
-	// parse struct and populate the FieldsByTag object
-	apiserver_lib.ParseStruct(
-		string(api_lib.ValidateTag),
-		reflect.ValueOf(new(api_v0.GcpNetwork)),
-		"",
-		apiserver_lib.Translate,
-		apiserver_v0.GcpNetworkTaggedFields,
-	)
-
-	// create a version object which contains the object name and versions
-	versionObj := apiserver_lib.VersionObject{
-		Object:  string(api_v0.ObjectTypeGcpNetwork),
-		Version: "v0",
-	}
-
-	// add the object tagged fields to the global tagged fields map
-	apiserver_lib.ObjectTaggedFields[versionObj] = apiserver_v0.GcpNetworkTaggedFields[string(api_lib.ValidateTag)]
-
-	// add the object tagged fields to the rest API version
-	apiserver_lib.AddObjectVersion(versionObj)
-}
-
 // AddGcpProviderVersions adds field validation info and adds it
 // to the REST API versions.
 func AddGcpProviderVersions() {

@@ -6,22 +6,17 @@ import (
 	"time"
 )
 
-// TestChangeDetectionFuzz feeds pairs of logically-equal values through
-// the change-detection helpers and ReconciliationStateChanged() and
-// records where a naive comparator (reflect.DeepEqual on *time.Time,
-// pointer identity on *bool) would report a false positive but the
-// helper correctly reports equal. Each pair is a shape that comes up
-// on a DB round-trip and previously caused a publish-loop bug.
+// TestChangeDetectionFuzz feeds logically-equal value pairs through the
+// change-detection helpers and ReconciliationStateChanged. Each pair is a
+// DB round-trip shape where reflect.DeepEqual can false-positive.
 func TestChangeDetectionFuzz(t *testing.T) {
-	// build a boolean pair: two nil pointers.
-	// change-detection expects nil == nil.
+	// build a boolean pair: two nil pointers; change-detection expects nil == nil
 	var nilBoolA, nilBoolB *bool
 	if got := boolPtrEqual(nilBoolA, nilBoolB); !got {
 		t.Errorf("boolPtrEqual(nil, nil) = false, want true")
 	}
 
-	// build a boolean pair: same value, distinct pointer identity.
-	// change-detection expects value equality, not pointer equality.
+	// build a boolean pair: same value, distinct pointer identity
 	trueA := true
 	trueB := true
 	if got := boolPtrEqual(&trueA, &trueB); !got {
@@ -31,30 +26,26 @@ func TestChangeDetectionFuzz(t *testing.T) {
 		t.Fatalf("test setup: expected distinct pointer identity")
 	}
 
-	// build a *time.Time pair: same UTC instant, one carries a monotonic
-	// clock reading (fresh time.Now), the other has been stripped of it
-	// (mirrors a value loaded from the DB via gorm).
+	// build a *time.Time pair: same UTC instant, one with monotonic reading
+	// (time.Now) and one stripped (mirrors a value loaded from the DB via gorm)
 	withMono := time.Now().UTC()
 	stripped := withMono.Round(0)
 	if got := timePtrEqual(&withMono, &stripped); !got {
 		t.Errorf("timePtrEqual(withMono, stripped) = false, want true (same instant)")
 	}
-	// confirm reflect.DeepEqual is the naive comparator this helper defends against.
+	// confirm reflect.DeepEqual is the naive comparator this helper defends against
 	if reflect.DeepEqual(withMono, stripped) {
 		t.Logf("note: reflect.DeepEqual returned true here; monotonic reading may already be absent")
 	}
 
-	// build a *time.Time pair: same wall instant expressed in UTC vs a
-	// Local location that happens to share the same offset. Naive
-	// reflect.DeepEqual would compare the loc pointer and report changed.
+	// build a *time.Time pair: same wall instant in UTC vs Local
 	instant := time.Date(2026, 7, 3, 12, 0, 0, 0, time.UTC)
 	sameInstantLocal := instant.In(time.Local)
 	if got := timePtrEqual(&instant, &sameInstantLocal); !got {
 		t.Errorf("timePtrEqual across loc = false, want true")
 	}
 
-	// exercise timePtrSet on the same time pairs: it only distinguishes
-	// nil vs set, so both members being set must compare equal.
+	// exercise timePtrSet: it only distinguishes nil vs set
 	if got := timePtrSet(&withMono, &stripped); !got {
 		t.Errorf("timePtrSet(both set) = false, want true")
 	}
@@ -66,49 +57,37 @@ func TestChangeDetectionFuzz(t *testing.T) {
 		t.Errorf("timePtrSet(set, nil) = true, want false")
 	}
 
-	// build a []byte pair: two encrypted blobs whose plaintexts are equal
-	// but whose ciphertexts differ (random nonce). There is no dedicated
-	// helper for this shape on the Reconciliation type, so record the
-	// naive comparator's answer for the record. The change-detection path
-	// does not compare encrypted fields today; a helper would be needed
-	// if a Reconciliation field were ever encrypted.
+	// build a []byte pair with differing ciphertexts; no Reconciliation helper
+	// compares encrypted fields today, so this is documentation-only
 	cipherA := []byte{0x01, 0x02, 0x03, 0x04}
 	cipherB := []byte{0x0a, 0x0b, 0x0c, 0x0d}
 	if reflect.DeepEqual(cipherA, cipherB) {
 		t.Fatalf("test setup: expected differing ciphertexts")
 	}
-	// no helper exists; this is a documentation-only observation.
 	t.Logf("byte-slice pair with differing ciphertexts: no helper on Reconciliation; naive DeepEqual = false")
 
-	// build a struct-copy pair: two independent copies of the same
-	// Reconciliation value. Different memory, identical fields.
-	// ReconciliationStateChanged must report false.
+	// build a struct-copy pair: independent copies, identical fields
 	base := makeReconciliation(true, false, false, instant, instant, instant, instant, instant)
 	copyOf := makeReconciliation(true, false, false, instant, instant, instant, instant, instant)
 	if got := ReconciliationStateChanged(base, copyOf); got {
 		t.Errorf("ReconciliationStateChanged(identical copies) = true, want false")
 	}
 
-	// feed the monotonic-vs-stripped pair through ReconciliationStateChanged
-	// on a one-shot field (CreationConfirmed): the round-trip strips
-	// monotonic reading, and a naive DeepEqual would flag this as a change.
+	// feed monotonic-vs-stripped through ReconciliationStateChanged
 	fresh := makeReconciliation(true, false, false, withMono, withMono, withMono, withMono, withMono)
 	fromDB := makeReconciliation(true, false, false, stripped, stripped, stripped, stripped, stripped)
 	if got := ReconciliationStateChanged(fresh, fromDB); got {
 		t.Errorf("ReconciliationStateChanged(fresh vs DB-round-trip) = true, want false")
 	}
 
-	// feed the UTC-vs-Local same-instant pair through ReconciliationStateChanged.
+	// feed UTC-vs-Local same-instant through ReconciliationStateChanged
 	utc := makeReconciliation(true, false, false, instant, instant, instant, instant, instant)
 	local := makeReconciliation(true, false, false, sameInstantLocal, sameInstantLocal, sameInstantLocal, sameInstantLocal, sameInstantLocal)
 	if got := ReconciliationStateChanged(utc, local); got {
 		t.Errorf("ReconciliationStateChanged(UTC vs Local same instant) = true, want false")
 	}
 
-	// feed an ack re-stamp through ReconciliationStateChanged: only the
-	// CreationAcknowledged / DeletionAcknowledged instant advances by a
-	// full second (so it survives DB precision), all other markers hold.
-	// timePtrSet must treat both as set and report no change.
+	// feed an ack re-stamp: only CreationAcknowledged / DeletionAcknowledged advance
 	later := instant.Add(1 * time.Second)
 	prev := makeReconciliation(true, false, false, instant, instant, instant, instant, instant)
 	restamped := makeReconciliation(true, false, false, later, instant, instant, later, instant)
@@ -116,8 +95,7 @@ func TestChangeDetectionFuzz(t *testing.T) {
 		t.Errorf("ReconciliationStateChanged(ack re-stamp) = true, want false")
 	}
 
-	// negative control: an unset-to-set transition on CreationConfirmed is
-	// a genuine state change that must publish.
+	// negative control: unset-to-set CreationConfirmed must publish
 	noConfirm := Reconciliation{
 		Reconciled:           ptrBool(true),
 		CreationAcknowledged: ptrTime(instant),
@@ -131,7 +109,7 @@ func TestChangeDetectionFuzz(t *testing.T) {
 		t.Errorf("ReconciliationStateChanged(unset -> set CreationConfirmed) = false, want true")
 	}
 
-	// negative control: Reconciled flipping from false to true must publish.
+	// negative control: Reconciled flipping false to true must publish
 	unreconciled := Reconciliation{Reconciled: ptrBool(false)}
 	reconciled := Reconciliation{Reconciled: ptrBool(true)}
 	if got := ReconciliationStateChanged(unreconciled, reconciled); !got {
@@ -139,8 +117,8 @@ func TestChangeDetectionFuzz(t *testing.T) {
 	}
 }
 
-// makeReconciliation builds a Reconciliation whose every marker is set
-// so a single field flip in a caller's copy shows up as the only diff.
+// makeReconciliation builds a Reconciliation with every marker set so a
+// single field flip in a caller's copy shows up as the only diff.
 func makeReconciliation(
 	reconciled, creationFailed, deletionFailed bool,
 	creationAck, creationConfirmed, deletionScheduled, deletionAck, deletionConfirmed time.Time,

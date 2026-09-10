@@ -430,16 +430,14 @@ type fakeLifecycle struct {
 }
 
 // fakeLifecycleCounter mints a unique default stack key per fakeLifecycle
-// so tests that spin up multiple independent instances don't accidentally
-// serialize on the same key.
+// so independent fakes do not serialize on the same key by accident.
 var fakeLifecycleCounter int64
 
-// newFakeLifecycle returns a lifecycle fake that walks the given
-// reconciliation snapshots in order: each call consumes the next
-// snapshot, and once exhausted the last snapshot repeats. With no
-// snapshots, an empty snapshot (a brand new create request) repeats.
-// The built infra defaults to a fresh fakeInfra. Each instance gets a
-// unique default stack key so multiple fakes stay concurrency-independent
+// newFakeLifecycle returns a lifecycle fake that walks snaps in order: each
+// call consumes the next snapshot, and once exhausted the last snapshot
+// repeats. With no snaps, an empty snapshot (a brand new create request)
+// repeats. The built infra defaults to a fresh fakeInfra. Each instance gets
+// a unique default stack key so multiple fakes stay concurrency-independent
 // unless a test opts them into a shared key via setStackKey.
 func newFakeLifecycle(snaps ...*ReconciliationSnapshot) *fakeLifecycle {
 	id := atomic.AddInt64(&fakeLifecycleCounter, 1)
@@ -461,9 +459,7 @@ func (f *fakeLifecycle) recordSimple(method string) error {
 }
 
 // StackKey returns the programmed stack key. Every fake starts with a
-// unique default so multiple instances stay concurrency-independent; a
-// test can call setStackKey to point two fakes at the same key when it
-// wants to assert same-stack serialization.
+// unique default so multiple instances stay concurrency-independent.
 func (f *fakeLifecycle) StackKey() string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -471,7 +467,7 @@ func (f *fakeLifecycle) StackKey() string {
 }
 
 // setStackKey programs the stack key returned by StackKey so tests can
-// assert both same-key serialization and cross-key concurrency.
+// assert same-key serialization or cross-key concurrency.
 func (f *fakeLifecycle) setStackKey(key string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

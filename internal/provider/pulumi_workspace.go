@@ -22,42 +22,33 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// transientPulumiErrorMarkers lists substrings that identify errors the
-// pulumi automation surface is expected to recover from on its own next
-// pass. A transient error must not flip CreationFailed=true because that
-// widens the reconciler's retry into a permanent-failure path; instead
-// the natural requeue re-fires and the operation converges.
+// transientPulumiErrorMarkers lists error substrings the create path
+// treats as recoverable. A match skips SetCreationFailed so the next
+// reconcile retries instead of entering the permanent-failure path.
 var transientPulumiErrorMarkers = []string{
-	// pulumi's cross-process stack lock: another goroutine or another
-	// controller replica is holding the local state lock. The next pass
-	// will find it released.
+	// pulumi stack lock held by another process or replica
 	"stack is currently locked",
 
-	// upstream cloud API call hit its own deadline: the next reconcile
-	// pass gets a fresh deadline
+	// upstream or client deadline; next pass gets a fresh one
 	"context deadline exceeded",
 
-	// grpc timeout wrapping the same class of error
+	// grpc status wrapping the same deadline class
 	"DeadlineExceeded",
 
-	// google cloud rate-limit and internal transient responses; a fresh
-	// pulumi up retries against a settled backend
+	// GCP rate-limit and backend errors that settle on retry
 	"quotaExceeded",
 	"rateLimitExceeded",
 	"backendError",
 	"internalError",
 
-	// transport-level retryable
+	// transport failures that retry cleanly
 	"connection reset by peer",
 	"i/o timeout",
 	"TLS handshake timeout",
 }
 
-// isTransientPulumiError reports whether the error looks like one the
-// next reconcile pass will resolve without operator intervention. A true
-// result tells the lifecycle handler to leave CreationFailed unset so the
-// next requeue reruns the create without flipping into a permanent-failure
-// path that widens retries and confuses downstream consumers.
+// isTransientPulumiError reports whether err matches a transient marker.
+// True leaves CreationFailed unset so the next requeue retries create.
 func isTransientPulumiError(err error) bool {
 	if err == nil {
 		return false

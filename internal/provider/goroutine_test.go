@@ -26,10 +26,8 @@ func fastRefreshConfig() LifecycleConfig {
 	}
 }
 
-// TestRefreshAck_QuitClean covers the quit-channel branch of refreshAck:
-// the loop ticks on the configured refresh interval, returns promptly
-// once quit is signalled, and stops invoking the refresh function after
-// it returns.
+// TestRefreshAck_QuitClean covers refreshAck quit: the loop ticks, returns
+// promptly on quit, and stops invoking refresh afterward.
 func TestRefreshAck_QuitClean(t *testing.T) {
 	restore := setLifecycleConfig(fastRefreshConfig())
 	t.Cleanup(restore)
@@ -67,9 +65,8 @@ func TestRefreshAck_QuitClean(t *testing.T) {
 	}, 100*time.Millisecond, 5*time.Millisecond, "refresh calls must stop after refreshAck returns")
 }
 
-// TestRefreshAck_RefreshErrorDoesNotBlock covers the error branch of the
-// tick case: refresh failures are logged and swallowed, the loop keeps
-// ticking through them, and quit still exits the loop promptly.
+// TestRefreshAck_RefreshErrorDoesNotBlock covers refreshAck error ticks:
+// failures are swallowed, the loop keeps ticking, and quit still exits.
 func TestRefreshAck_RefreshErrorDoesNotBlock(t *testing.T) {
 	restore := setLifecycleConfig(fastRefreshConfig())
 	t.Cleanup(restore)
@@ -214,10 +211,8 @@ func (h *streamHarness) waitDone(deadline time.Duration) {
 	}
 }
 
-// TestStreamState_ValidJSON_SavesImmediately covers the happy streaming
-// path: streamState creates the state directory itself, watches it, and
-// on a real fsnotify write event reads the state file and pushes the
-// exact bytes through the save callback.
+// TestStreamState_ValidJSON_SavesImmediately covers happy streaming:
+// streamState creates the watch dir, and an fsnotify write saves exact bytes.
 func TestStreamState_ValidJSON_SavesImmediately(t *testing.T) {
 	h := newStreamHarness(t)
 	want := validStackState()
@@ -225,8 +220,8 @@ func TestStreamState_ValidJSON_SavesImmediately(t *testing.T) {
 
 	h.start()
 
-	// streamState must create the watch directory before the test writes
-	// anything; this confirms the production MkdirAll on the parent dir
+	// streamState must create the watch directory before the test writes;
+	// this confirms the production MkdirAll on the parent dir
 	stateDir := filepath.Dir(h.path)
 	require.Eventually(t, func() bool {
 		_, err := os.Stat(stateDir)
@@ -249,9 +244,8 @@ func TestStreamState_ValidJSON_SavesImmediately(t *testing.T) {
 	h.waitDone(5 * time.Second)
 }
 
-// TestStreamState_PartialJSON_Skipped covers the invalid-JSON guard: a
-// state file read returning partial JSON is skipped without saving and
-// without ending the loop, and a later valid read still saves.
+// TestStreamState_PartialJSON_Skipped covers the invalid-JSON guard: partial
+// JSON is skipped without saving, and a later valid read still saves.
 func TestStreamState_PartialJSON_Skipped(t *testing.T) {
 	h := newStreamHarness(t)
 	partial := jsonPtr(`{"deployment":{"resources":[`)
@@ -283,9 +277,8 @@ func TestStreamState_PartialJSON_Skipped(t *testing.T) {
 	h.waitDone(5 * time.Second)
 }
 
-// TestStreamState_QuitOrdering_NoLateWrite asserts the quit ordering
-// contract: once quit has been honored and streamState has returned, a
-// subsequent state file write produces no save.
+// TestStreamState_QuitOrdering_NoLateWrite asserts that after streamState
+// returns on quit, a later state file write produces no save.
 func TestStreamState_QuitOrdering_NoLateWrite(t *testing.T) {
 	h := newStreamHarness(t)
 	want := validStackState()
@@ -313,9 +306,7 @@ func TestStreamState_QuitOrdering_NoLateWrite(t *testing.T) {
 }
 
 // TestStreamState_NonStateFileEvent_Ignored covers the filename filter:
-// events for other files in the watched directory trigger neither a
-// state file read nor a save, while the loop stays live for real state
-// file events.
+// sibling file events trigger neither a read nor a save.
 func TestStreamState_NonStateFileEvent_Ignored(t *testing.T) {
 	h := newStreamHarness(t)
 	want := validStackState()

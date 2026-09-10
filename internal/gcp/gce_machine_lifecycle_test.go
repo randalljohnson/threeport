@@ -437,8 +437,8 @@ func TestGceLifecycleBuildInfra(t *testing.T) {
 		s := gceNewAPIStub(t)
 		s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
 		prov := gceBaseProvider()
-		// empty credentials must fail fast so a misconfigured provider does
-		// not defer the failure to the adopt step and hang on interactive oauth
+		// reject empty credentials at BuildInfra so a misconfigured provider
+		// fails before later steps fall through to ambient ADC
 		prov.ServiceAccountCredentials = gcePtr("")
 		s.gceHandleProvider(t, gceTestProviderID, prov)
 		s.gceHandleDefinition(t, gceTestDefinitionID, gceBaseDefinition())
@@ -452,8 +452,8 @@ func TestGceLifecycleBuildInfra(t *testing.T) {
 	t.Run("nil service account credentials rejected", func(t *testing.T) {
 		s := gceNewAPIStub(t)
 		s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
-		// gceBaseProvider defaults ServiceAccountCredentials to nil, which must
-		// fail fast the same as an empty string
+		// gceBaseProvider leaves ServiceAccountCredentials nil; reject nil
+		// the same as an empty string
 		s.gceHandleProvider(t, gceTestProviderID, gceBaseProvider())
 		s.gceHandleDefinition(t, gceTestDefinitionID, gceBaseDefinition())
 

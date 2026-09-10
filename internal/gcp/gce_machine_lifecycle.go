@@ -23,7 +23,7 @@ import (
 )
 
 // defaultGceImageID is the boot image used when a GCE machine runtime
-// definition leaves the image identifier unset.
+// definition leaves ImageID unset.
 const defaultGceImageID = "debian-cloud/debian-12"
 
 // gceMachineLifecycle implements provider.InfraLifecycleProvider for GCP GCE
@@ -40,11 +40,7 @@ type gceMachineLifecycle struct {
 var _ provider.InfraLifecycleProvider = (*gceMachineLifecycle)(nil)
 
 // StackKey returns the runtime-instance name so the shared state machine
-// can serialize infra operations per stack. Two reconciles for the same
-// instance name resolve to the same key and cannot spawn racing pulumi
-// subprocesses against the same local state directory. A malformed instance
-// with a nil Name returns an empty key and logs a warning so the caller
-// requeues rather than panicking the reconciler worker.
+// serializes pulumi operations against one local state directory.
 func (g *gceMachineLifecycle) StackKey() string {
 	if g.instance == nil || g.instance.Name == nil {
 		if g.log != nil {
@@ -121,9 +117,9 @@ func (g *gceMachineLifecycle) IsCreateComplete() (bool, error) {
 	if latest.ResourceInventory == nil {
 		return false, nil
 	}
-	// trim whitespace before the literal compares so a padded or array-shaped
-	// inventory does not read as complete, matching how the shared handler
-	// treats a cleared inventory.
+	// trim whitespace and reject placeholder inventory forms; stricter than
+	// inventoryCleared, which compares raw bytes and skips padding, arrays,
+	// and quoted null
 	inventory := strings.TrimSpace(string(*latest.ResourceInventory))
 	switch inventory {
 	case "", "{}", "[]", "null", `"null"`:
@@ -133,8 +129,8 @@ func (g *gceMachineLifecycle) IsCreateComplete() (bool, error) {
 }
 
 // OnCreateConfirmed populates the married machine runtime instance once the VM
-// is provisioned. By this point SaveCreateOutputs has persisted the external IP,
-// SSH user, and SSH key onto the GCE instance, so this fetches that record,
+// is provisioned. By this point SaveCreateOutputs has persisted the hostname,
+// external IP, and SSH key onto the GCE instance, so this fetches that record,
 // copies the connection fields onto the related machine runtime instance, and
 // clears its Reconciled flag so the machine workload SSH install can proceed.
 func (g *gceMachineLifecycle) OnCreateConfirmed(_ provider.InfraProvider) error {
@@ -298,10 +294,9 @@ func (g *gceMachineLifecycle) SetDeletionFailed() error {
 	return err
 }
 
-// RecordSuccessfulCreate emits a SuccessfulCreate event for the GCE instance
-// so a reader tailing events sees provisioning completion; the wrapper's
-// wasReconciled gate skips its own emit because ConfirmCreation flipped
-// Reconciled=true before the redelivered reconcile pass captured it.
+// RecordSuccessfulCreate records a CreateSuccessful event when provisioning
+// finishes. ConfirmCreation sets Reconciled first, so a redelivered pass's
+// wasReconciled gate skips the generated wrapper emit.
 func (g *gceMachineLifecycle) RecordSuccessfulCreate() error {
 	return g.r.EventsRecorder.RecordEvent(
 		&v0.Event{
@@ -481,8 +476,7 @@ func buildGceMachineInfra(
 	if definition.MachineType != nil {
 		infraGce.MachineType = *definition.MachineType
 	}
-	// default the boot image when the definition leaves it unset so the
-	// provider never fails on a missing image identifier
+	// default the boot image when the definition leaves ImageID unset
 	if definition.ImageID != nil && *definition.ImageID != "" {
 		infraGce.ImageID = *definition.ImageID
 	} else {
@@ -499,10 +493,10 @@ func buildGceMachineInfra(
 		infraGce.SSHUser = *instance.SSHUser
 	}
 
-	// load the parent machine runtime instance so NetworkID, IngressRules,
-	// NetworkCIDR, SubnetCIDR, and AssignPublicIP are read from the abstract
-	// instance where they now live; a nil MachineRuntimeInstanceID leaves
-	// those fields at their zero values.
+	// load the parent machine runtime instance so NetworkID, SubnetID,
+	// IngressRules, NetworkCIDR, SubnetCIDR, and AssignPublicIP are read from
+	// the abstract instance; a nil MachineRuntimeInstanceID leaves those
+	// fields at their zero values.
 	var mri *v0.MachineRuntimeInstance
 	if instance.MachineRuntimeInstanceID != nil {
 		var err error
@@ -556,10 +550,7 @@ func buildGceMachineInfra(
 		}
 	}
 
-	// require service account credentials on the gcp provider so a
-	// misconfigured provider fails at buildinfra time rather than deferring the
-	// failure to the adopt step, where an empty credential silently drops the
-	// caller into the interactive oauth path and hangs for 5 minutes
+	// require service account credentials so create does not fall through to ambient ADC
 	if gcpProvider.ServiceAccountCredentials == nil || *gcpProvider.ServiceAccountCredentials == "" {
 		if gcpProvider.ID == nil {
 			return nil, errors.New("gcp provider has no service account credentials")

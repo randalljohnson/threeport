@@ -40,11 +40,8 @@ func checkpointState(project, name, marker string) string {
 	)
 }
 
-// TestNewPulumiWorkspace_WithStateDirRoot covers the constructor seam: the
-// runtime instance name and project name are set from the arguments, the
-// state dir root option makes the state dir resolve to <root>/<name>, and
-// the state file path lands under the injected root at
-// .pulumi/stacks/<project>/<name>.json.
+// TestNewPulumiWorkspace_WithStateDirRoot covers the constructor with a
+// state dir root: names come from args and the state file lands under the root.
 func TestNewPulumiWorkspace_WithStateDirRoot(t *testing.T) {
 	root := t.TempDir()
 	w := NewPulumiWorkspace("instance-a", "oke", WithStateDirRoot(root))
@@ -68,11 +65,8 @@ func TestNewPulumiWorkspace_WithStateDirRoot(t *testing.T) {
 	assert.True(t, info.IsDir())
 }
 
-// TestNewPulumiWorkspace_DefaultRoot covers the fallback branch of state dir
-// resolution: without the state dir root option, the state dir resolves
-// under the home-dir runtime state path. The home dir is redirected to a
-// temp dir so the side-effecting mkdir never touches the real home dir;
-// the assertions check the prefix and suffix structure of the path.
+// TestNewPulumiWorkspace_DefaultRoot covers state dir fallback under the
+// home-dir runtime path. Home is redirected to a temp dir for the mkdir.
 func TestNewPulumiWorkspace_DefaultRoot(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
@@ -102,10 +96,8 @@ func TestNewPulumiWorkspace_DefaultRoot(t *testing.T) {
 	assert.True(t, info.IsDir())
 }
 
-// TestGetStateFilePath_EmptyName covers the empty-name guard added by the
-// seam: an empty runtime instance name returns an error refusing to build
-// the path, before any filesystem side effects, so two unnamed instances
-// can never collide on the same state file.
+// TestGetStateFilePath_EmptyName covers the empty-name guard: an error
+// returns before any filesystem side effects so unnamed instances cannot collide.
 func TestGetStateFilePath_EmptyName(t *testing.T) {
 	root := t.TempDir()
 	w := NewPulumiWorkspace("", "oke", WithStateDirRoot(root))
@@ -121,11 +113,8 @@ func TestGetStateFilePath_EmptyName(t *testing.T) {
 	assert.Empty(t, entries)
 }
 
-// TestSetStackState_CheckpointRoundTrip covers the checkpoint-format branch
-// of state restoration: JSON with a top-level "checkpoint" key, and no
-// top-level "deployment" key, bypasses the backend import and is written
-// directly to the state file, landing on disk byte-identical and reading
-// back unchanged.
+// TestSetStackState_CheckpointRoundTrip covers checkpoint-format restore:
+// JSON with top-level "checkpoint" and no "deployment" writes the file directly.
 func TestSetStackState_CheckpointRoundTrip(t *testing.T) {
 	requirePulumiCLI(t)
 
@@ -147,22 +136,11 @@ func TestSetStackState_CheckpointRoundTrip(t *testing.T) {
 	assert.Equal(t, state, string(*readBack))
 }
 
-// TestSetStackState_AtomicTempThenRename covers the atomic temp-then-rename
-// write of the checkpoint branch in three parts. Success: the target holds
-// the content and no temp file remains. Temp-write failure: a directory
-// occupying the temp path makes the temp write fail, the temp-write error
-// surfaces, and the previously written state is left intact, which is the
-// atomicity guarantee. Rename failure: the implementation exposes no
-// injectable rename failure, so the test simulates one by pre-creating the
-// target as a directory. Reading the live code, the simulation is expected
-// to be intercepted before the rename: the backend stack upsert fails
-// first because the file backend treats a directory as a missing blob and
-// then cannot write its own snapshot over it, leaving the production
-// rename branch unreachable from outside. Because that interception cannot
-// be confirmed without a live backend run, the test asserts the invariants
-// shared by both candidate failure points: an error surfaces, no temp file
-// survives (the rename branch removes its temp file on failure), and the
-// directory occupying the target is untouched.
+// TestSetStackState_AtomicTempThenRename covers checkpoint temp-then-rename
+// writes: success leaves content with no temp; temp-write failure keeps prior
+// state; a directory at the target surfaces an error without a leftover temp.
+// Rename itself is not injectable, so the directory case asserts the shared
+// failure invariants rather than reaching the rename branch directly.
 func TestSetStackState_AtomicTempThenRename(t *testing.T) {
 	requirePulumiCLI(t)
 
@@ -194,12 +172,8 @@ func TestSetStackState_AtomicTempThenRename(t *testing.T) {
 	require.NoError(t, os.Remove(path+".tmp"))
 }
 
-// TestSetStackState_ExportFormatRequiresBackend covers the export-format
-// branch of state restoration: JSON with a top-level "deployment" key is
-// routed through the backend stack import, which converts it to checkpoint
-// format on disk, and a subsequent state export returns deployment-format
-// JSON. This needs a real pulumi backend, so the test skips when the CLI
-// is unavailable.
+// TestSetStackState_ExportFormatRequiresBackend covers export-format restore
+// through the backend import. Skips when the pulumi CLI is unavailable.
 func TestSetStackState_ExportFormatRequiresBackend(t *testing.T) {
 	requirePulumiCLI(t)
 
@@ -228,12 +202,8 @@ func TestSetStackState_ExportFormatRequiresBackend(t *testing.T) {
 	assert.NotNil(t, deployment.Deployment)
 }
 
-// TestPulumiWorkspace_ZeroValueStillWorks asserts zero-value compatibility
-// for the embedder pattern: a workspace built as a plain struct literal
-// with only the name fields set, no constructor and no options, still
-// resolves the state file path through the home-dir fallback exactly as
-// before the seams. The home dir is redirected to a temp dir so the path
-// resolution side effects stay out of the real home dir.
+// TestPulumiWorkspace_ZeroValueStillWorks asserts a plain struct literal
+// with only name fields still resolves the state file via the home-dir fallback.
 func TestPulumiWorkspace_ZeroValueStillWorks(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

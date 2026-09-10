@@ -44,8 +44,8 @@ func newOkeLifecycleProvider(
 	}
 }
 
-// StackKey returns the runtime instance name so per-stack serialization
-// keys off the same identifier that names the pulumi stack on disk.
+// StackKey returns the runtime instance name used as the per-stack lock
+// key and as the pulumi stack name on disk.
 func (o *okeLifecycle) StackKey() string {
 	if o.instance == nil || o.instance.Name == nil {
 		return ""
@@ -300,10 +300,9 @@ func (o *okeLifecycle) SetCreationFailed() error {
 	return err
 }
 
-// RecordSuccessfulCreate emits a SuccessfulCreate event for the OKE instance
-// so a reader tailing events sees provisioning completion; the wrapper's
-// wasReconciled gate skips its own emit because ConfirmCreation flipped
-// Reconciled=true before the redelivered reconcile pass captured it.
+// RecordSuccessfulCreate records a CreateSuccessful event for provisioning
+// completion. ConfirmCreation sets Reconciled=true first, so the generated
+// reconciler's wasReconciled gate skips its own emit on redelivery.
 func (o *okeLifecycle) RecordSuccessfulCreate() error {
 	return o.r.EventsRecorder.RecordEvent(
 		&v0.Event{

@@ -24,10 +24,8 @@ func drainDeleteOps(t *testing.T) {
 	}, 5*time.Second, 5*time.Millisecond, "in-flight infrastructure operations did not drain")
 }
 
-// TestHandleInfraDelete_NotScheduled_Error covers the validation branch: a
-// delete notification for an instance with no DeletionScheduled timestamp
-// returns the "received but not scheduled" error and never acknowledges or
-// builds infra.
+// TestHandleInfraDelete_NotScheduled_Error covers a delete with no
+// DeletionScheduled: returns the not-scheduled error and never acks or builds.
 func TestHandleInfraDelete_NotScheduled_Error(t *testing.T) {
 	// zero snapshots means an empty snapshot repeats: DeletionScheduled nil
 	fl := newFakeLifecycle()
@@ -42,9 +40,8 @@ func TestHandleInfraDelete_NotScheduled_Error(t *testing.T) {
 	assert.Equal(t, 0, fl.callCount("BuildInfra"))
 }
 
-// TestHandleInfraDelete_AlreadyConfirmed_EarlyReturn covers the idempotency
-// branch: when DeletionConfirmed is already set the handler returns (0, nil)
-// without acknowledging, building infra, or launching anything.
+// TestHandleInfraDelete_AlreadyConfirmed_EarlyReturn covers an already
+// confirmed delete: returns (0, nil) without ack, build, or launch.
 func TestHandleInfraDelete_AlreadyConfirmed_EarlyReturn(t *testing.T) {
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
 		DeletionScheduled: timePtr(deleteTestBase.Add(-time.Hour)),
@@ -62,9 +59,7 @@ func TestHandleInfraDelete_AlreadyConfirmed_EarlyReturn(t *testing.T) {
 }
 
 // TestHandleInfraDelete_CrossReplicaSafety_Requeue60 covers the cross-replica
-// guard: a fresh CreationAcknowledged with no CreationConfirmed means a
-// create is in progress on some replica, so the delete requeues at 60
-// seconds without launching.
+// guard: a fresh CreationAcknowledged without CreationConfirmed requeues at 60.
 func TestHandleInfraDelete_CrossReplicaSafety_Requeue60(t *testing.T) {
 	restoreCfg := setLifecycleConfig(testLifecycleConfig())
 	t.Cleanup(restoreCfg)
@@ -88,10 +83,8 @@ func TestHandleInfraDelete_CrossReplicaSafety_Requeue60(t *testing.T) {
 	assert.Equal(t, int64(0), inFlightCount())
 }
 
-// TestHandleInfraDelete_StaleCreateAck_AllowsDelete covers the guard's stale
-// escape hatch: when the CreationAcknowledged timestamp has gone stale the
-// create is presumed interrupted, the guard passes, and the delete proceeds
-// to acknowledge, build infra, and launch the destroy goroutine.
+// TestHandleInfraDelete_StaleCreateAck_AllowsDelete covers a stale create ack:
+// the guard passes and delete proceeds to ack, build, and launch destroy.
 func TestHandleInfraDelete_StaleCreateAck_AllowsDelete(t *testing.T) {
 	cfg := testLifecycleConfig()
 	cfg.SemaphoreCapacity = 1
@@ -127,14 +120,10 @@ func TestHandleInfraDelete_StaleCreateAck_AllowsDelete(t *testing.T) {
 	assert.Equal(t, 1, fl.callCount("PublishDeleteNotification"))
 }
 
-// TestHandleInfraDelete_FreshAckButCreateFailed_StillRequeues60 documents
-// current behavior: the cross-replica guard ignores
-// CreationFailed by design today, so a fresh CreationAcknowledged with
-// CreationFailed set and no CreationConfirmed still requeues at 60 seconds
-// without launching. A failed create may be retried by another replica at
-// any moment, so deleting underneath it is unsafe; making the guard treat
-// failed creates as deletable requires coordination with the provider
-// adapter owners. If this test starts failing, that contract changed.
+// TestHandleInfraDelete_FreshAckButCreateFailed_StillRequeues60 documents that
+// the cross-replica guard ignores CreationFailed today: a fresh create ack
+// with CreationFailed set still requeues at 60. A failed create may retry on
+// another replica, so deleting underneath it is unsafe.
 func TestHandleInfraDelete_FreshAckButCreateFailed_StillRequeues60(t *testing.T) {
 	restoreCfg := setLifecycleConfig(testLifecycleConfig())
 	t.Cleanup(restoreCfg)
@@ -157,11 +146,8 @@ func TestHandleInfraDelete_FreshAckButCreateFailed_StillRequeues60(t *testing.T)
 	assert.Equal(t, int64(0), inFlightCount())
 }
 
-// TestHandleInfraDelete_AckedInventoryCleared_Confirms covers the confirmation
-// branch: with deletion already acknowledged, the handler re-fetches state
-// and reads inventory cleared from the latest snapshot's ResourceInventory,
-// then refreshes the ack, builds infra, runs post-deletion cleanup, confirms
-// deletion, and returns (0, nil) without launching a goroutine.
+// TestHandleInfraDelete_AckedInventoryCleared_Confirms covers an acked delete
+// with cleared inventory: refresh ack, build, cleanup, confirm, return (0, nil).
 func TestHandleInfraDelete_AckedInventoryCleared_Confirms(t *testing.T) {
 	// "{}" is one of the cleared inventory sentinels
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
@@ -183,10 +169,8 @@ func TestHandleInfraDelete_AckedInventoryCleared_Confirms(t *testing.T) {
 	assert.Equal(t, int64(0), inFlightCount())
 }
 
-// TestHandleInfraDelete_OnDeleteConfirmedError_Requeue60 covers the cleanup
-// retry branch: when post-deletion cleanup fails the handler requeues at 60
-// seconds and does not confirm deletion, so the next reconciliation retries
-// the cleanup.
+// TestHandleInfraDelete_OnDeleteConfirmedError_Requeue60 covers cleanup
+// failure: requeue at 60 without ConfirmDeletion so the next pass retries.
 func TestHandleInfraDelete_OnDeleteConfirmedError_Requeue60(t *testing.T) {
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
 		DeletionScheduled:    timePtr(deleteTestBase.Add(-time.Hour)),
@@ -205,10 +189,8 @@ func TestHandleInfraDelete_OnDeleteConfirmedError_Requeue60(t *testing.T) {
 	assert.Equal(t, int64(0), inFlightCount())
 }
 
-// TestHandleInfraDelete_AckedInventoryNotCleared_FreshAck_Requeue60 covers the
-// wait branch: deletion acknowledged, inventory still holds resources, and
-// the ack is fresh, meaning a destroy is presumed in progress elsewhere, so
-// the handler requeues at 60 seconds without re-acking or launching.
+// TestHandleInfraDelete_AckedInventoryNotCleared_FreshAck_Requeue60 covers a
+// fresh acked delete with inventory still present: requeue at 60, no relaunch.
 func TestHandleInfraDelete_AckedInventoryNotCleared_FreshAck_Requeue60(t *testing.T) {
 	restoreCfg := setLifecycleConfig(testLifecycleConfig())
 	t.Cleanup(restoreCfg)
@@ -234,12 +216,9 @@ func TestHandleInfraDelete_AckedInventoryNotCleared_FreshAck_Requeue60(t *testin
 }
 
 // TestHandleInfraDelete_AckedFreshButDeletionFailed_RelaunchesPromptly asserts
-// the failed-delete retry path closes the stale-window blind spot: deletion
-// acknowledged with the ack still fresh and inventory not cleared would
-// normally requeue at 60 seconds and wait for the ack to age out, but a
-// persisted DeletionFailed flag makes the handler re-acknowledge, build infra,
-// restore the surviving inventory, and re-launch the destroy goroutine
-// immediately instead of stalling.
+// DeletionFailed closes the stale-window blind spot: a fresh ack with inventory
+// still present re-acks, builds, restores inventory, and re-launches destroy
+// immediately instead of waiting for the ack to age out.
 func TestHandleInfraDelete_AckedFreshButDeletionFailed_RelaunchesPromptly(t *testing.T) {
 	cfg := testLifecycleConfig()
 	cfg.SemaphoreCapacity = 1
@@ -252,8 +231,6 @@ func TestHandleInfraDelete_AckedFreshButDeletionFailed_RelaunchesPromptly(t *tes
 	fi := newFakeInfra()
 	fi.setDestroy(infraBlock, nil)
 	inventory := validStackState()
-	// ack aged one minute against a 240 second threshold: fresh, so without
-	// the failed flag this would requeue at 60 instead of relaunching
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
 		DeletionScheduled:    timePtr(deleteTestBase.Add(-time.Hour)),
 		DeletionAcknowledged: timePtr(deleteTestBase.Add(-time.Minute)),
@@ -272,7 +249,6 @@ func TestHandleInfraDelete_AckedFreshButDeletionFailed_RelaunchesPromptly(t *tes
 	assert.Equal(t, 1, fl.callCount("AckDeletion"))
 	assert.Equal(t, 1, fl.callCount("BuildInfra"))
 
-	// the surviving inventory is restored before the relaunched destroy
 	assert.Equal(t, 1, fi.setStackStateCallCount())
 	assert.Equal(t, inventory, fi.lastRestoredState())
 
@@ -282,11 +258,8 @@ func TestHandleInfraDelete_AckedFreshButDeletionFailed_RelaunchesPromptly(t *tes
 	assert.Equal(t, 1, fl.callCount("PublishDeleteNotification"))
 }
 
-// TestHandleInfraDelete_AckedInventoryNotCleared_StaleAck_Relaunches covers
-// the recovery branch: deletion acknowledged, inventory still holds
-// resources, but the ack has gone stale, so the prior destroy is presumed
-// interrupted. The handler re-acks, builds infra, restores the surviving
-// inventory into the stack, and re-launches the destroy goroutine.
+// TestHandleInfraDelete_AckedInventoryNotCleared_StaleAck_Relaunches covers a
+// stale acked delete with inventory still present: re-ack, build, restore, relaunch.
 func TestHandleInfraDelete_AckedInventoryNotCleared_StaleAck_Relaunches(t *testing.T) {
 	cfg := testLifecycleConfig()
 	cfg.SemaphoreCapacity = 1
@@ -327,10 +300,8 @@ func TestHandleInfraDelete_AckedInventoryNotCleared_StaleAck_Relaunches(t *testi
 	assert.Equal(t, 1, fl.callCount("PublishDeleteNotification"))
 }
 
-// TestHandleInfraDelete_NewRequest_AcksBuildsLaunches covers the happy-path
-// launch branch: deletion scheduled with no prior acknowledgement means a
-// brand new delete request, so the handler acks deletion, builds infra,
-// launches the destroy goroutine, and returns the 300 second requeue.
+// TestHandleInfraDelete_NewRequest_AcksBuildsLaunches covers a brand-new
+// delete: ack, build, launch destroy, and return the 300 second requeue.
 func TestHandleInfraDelete_NewRequest_AcksBuildsLaunches(t *testing.T) {
 	cfg := testLifecycleConfig()
 	cfg.SemaphoreCapacity = 1

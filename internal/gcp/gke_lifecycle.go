@@ -45,7 +45,7 @@ func newGkeLifecycleProvider(
 }
 
 // StackKey returns the runtime instance name so per-stack serialization
-// keys off the same identifier that names the pulumi stack on disk.
+// keys off the same identifier that names the Pulumi stack on disk.
 func (g *gkeLifecycle) StackKey() string {
 	if g.instance == nil || g.instance.Name == nil {
 		return ""
@@ -120,10 +120,9 @@ func (g *gkeLifecycle) IsCreateComplete() (bool, error) {
 	if latest.ResourceInventory == nil {
 		return false, nil
 	}
-	// trim whitespace and reject the placeholder forms that signal an empty or
-	// cleared inventory. this is intentionally stricter than the provider
-	// lifecycle's cleared-inventory check, which compares raw bytes and handles
-	// neither padding, arrays, nor a quoted null; the two deliberately diverge
+	// trim whitespace and reject placeholder inventory forms; stricter than
+	// inventoryCleared, which compares raw bytes and skips padding, arrays,
+	// and quoted null
 	inventory := strings.TrimSpace(string(*latest.ResourceInventory))
 	switch inventory {
 	case "", "{}", "null", `"null"`, "[]":
@@ -147,11 +146,9 @@ func (g *gkeLifecycle) OnCreateConfirmed(infra provider.InfraProvider) error {
 
 // updateKubeRuntimeConnection writes the GKE cluster connection info onto the
 // linked kubernetes runtime instance. It is split out from OnCreateConfirmed so
-// it can be unit tested without the environment-dependent GetConnection call.
+// unit tests can cover it without calling GetConnection.
 func (g *gkeLifecycle) updateKubeRuntimeConnection(kubeConnectionInfo *kube.KubeConnectionInfo) error {
-	// reject partial connection info so a transient cloud read cannot write
-	// empty connection fields onto the kubernetes runtime instance; the
-	// resulting error requeues the confirmation for a later retry
+	// reject incomplete connection info so empty fields are not written
 	if kubeConnectionInfo.APIEndpoint == "" ||
 		kubeConnectionInfo.CACertificate == "" ||
 		kubeConnectionInfo.Token == "" {
@@ -258,10 +255,9 @@ func (g *gkeLifecycle) SetCreationFailed() error {
 	return err
 }
 
-// RecordSuccessfulCreate emits a SuccessfulCreate event for the GKE instance
-// so a reader tailing events sees provisioning completion; the wrapper's
-// wasReconciled gate skips its own emit because ConfirmCreation flipped
-// Reconciled=true before the redelivered reconcile pass captured it.
+// RecordSuccessfulCreate records a CreateSuccessful event for the GKE instance.
+// ConfirmCreation sets Reconciled=true first, so a later reconcile pass sees
+// wasReconciled and skips the generated wrapper's success emit.
 func (g *gkeLifecycle) RecordSuccessfulCreate() error {
 	return g.r.EventsRecorder.RecordEvent(
 		&v0.Event{
@@ -407,8 +403,7 @@ func buildGkeInfra(
 	definition *v0.GcpGkeKubernetesRuntimeDefinition,
 	log *logr.Logger,
 ) (*provider.KubernetesRuntimeInfraGKE, error) {
-	// validate required pointers before dereference so a malformed API
-	// object yields an error instead of panicking the create goroutine
+	// validate required pointers before dereference
 	switch {
 	case instance.GcpProviderID == nil:
 		return nil, errors.New("GKE instance missing required field GcpProviderID")
@@ -442,10 +437,7 @@ func buildGkeInfra(
 		WorkerNodeInitialCount: int32(*definition.DefaultNodeGroupInitialSize),
 	}
 
-	// require service account credentials on the gcp provider so a
-	// misconfigured provider fails at buildinfra time rather than deferring the
-	// failure to the gke create, where an empty credential silently drops the
-	// caller into the interactive oauth path and hangs for 5 minutes
+	// require service account credentials so a missing key fails at BuildInfra
 	if gcpProvider.ServiceAccountCredentials == nil || *gcpProvider.ServiceAccountCredentials == "" {
 		if gcpProvider.ID == nil {
 			return nil, errors.New("gcp provider has no service account credentials")

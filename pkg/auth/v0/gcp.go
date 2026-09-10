@@ -30,7 +30,7 @@ const (
 	gcpOAuthClientSecret = "d-FL95Q19q7MQmFpd7hHD0Ty"
 )
 
-// GcpOAuthScopes defines the scopes needed for GKE operations.
+// GcpOAuthScopes defines the scopes needed for GCP operations.
 var GcpOAuthScopes = []string{
 	"https://www.googleapis.com/auth/cloud-platform",
 	"https://www.googleapis.com/auth/userinfo.email",
@@ -44,65 +44,50 @@ type adcCredentials struct {
 	Type         string `json:"type"`
 }
 
-// EnsureGCPAuth prepares GCP credentials for a controller-side caller and never
-// falls back to the interactive browser OAuth flow. When a service account JSON
-// is provided it is checked for validity and nothing else; the caller passes
-// that same JSON to each GCP client per call, which is what keeps two
-// concurrent operations for different service accounts from authenticating as
-// each other. Otherwise any valid ambient credential is accepted, meaning
-// Workload Identity in GKE or user credentials from gcloud auth.
-//
-// When neither an ambient credential nor a service account JSON is available,
-// this returns a descriptive error instead of hanging on the browser flow: a
-// controller pod has no browser and would otherwise wait the full 5 minute OAuth
-// timeout before giving up. CLI callers that legitimately want the browser flow
-// call EnsureGCPAuthWithBrowser instead.
+// EnsureGCPAuth ensures GCP credentials for a controller-side caller and never
+// opens a browser. When serviceAccountCredentials is non-empty, it validates
+// that JSON in memory only; the caller passes the same JSON into each GCP
+// client per call so concurrent operations for different accounts stay
+// independent. Otherwise it requires application default credentials already
+// on the machine, such as Workload Identity or a gcloud user login. Without
+// either, it returns an error immediately: a controller pod has no browser and
+// the OAuth flow would wait five minutes before timing out.
 func EnsureGCPAuth(serviceAccountCredentials string) error {
 	return ensureGCPAuth(serviceAccountCredentials, false)
 }
 
-// EnsureGCPAuthWithBrowser prepares GCP credentials for an interactive CLI
-// caller. It handles the same ambient and service account paths as EnsureGCPAuth
-// and additionally falls back to the browser-based OAuth flow when neither is
-// available, so tptctl can prompt the user to sign in. Controller code paths
-// must never use this: no browser is available in the pod and the fallback
-// hangs for 5 minutes before timing out.
+// EnsureGCPAuthWithBrowser ensures GCP credentials for an interactive CLI
+// caller. It follows the same service-account and ambient paths as the
+// non-browser entry point, then opens a browser OAuth flow when neither is
+// available. Controller paths must not call this: a pod has no browser and the
+// fallback waits five minutes before timing out.
 func EnsureGCPAuthWithBrowser(serviceAccountCredentials string) error {
 	return ensureGCPAuth(serviceAccountCredentials, true)
 }
 
-// ensureGCPAuth is the shared implementation behind EnsureGCPAuth and
-// EnsureGCPAuthWithBrowser. When interactive is false and no ambient or
-// service account credentials are available, it returns an error rather than
-// invoking the browser OAuth flow.
+// ensureGCPAuth ensures GCP credentials, opening a browser only when
+// interactive is true and no usable credentials exist.
 func ensureGCPAuth(serviceAccountCredentials string, interactive bool) error {
 	ctx := context.Background()
 
-	// a service account json wins when provided. confirm it parses and return;
-	// the caller threads the same json into each gcp client per call, so
-	// nothing is stored here. this is the controller path for a controller
-	// running outside gcp.
+	// validate service account JSON in memory and return; caller threads it per call
 	if serviceAccountCredentials != "" {
 		return validateServiceAccountCredentials(ctx, serviceAccountCredentials)
 	}
 
-	// otherwise accept any valid ambient credentials, in this order of
-	// preference: workload identity in gke, then user credentials from
-	// gcloud auth.
+	// accept ambient credentials from workload identity or gcloud user login
 	if hasValidGCPCredentials(ctx) {
 		return nil
 	}
 
-	// non-interactive callers (controllers) must not fall through to the
-	// browser oauth flow: there is no browser in the pod and the flow would
-	// hang for 5 minutes before timing out. fail fast with a descriptive error.
+	// refuse the browser flow for non-interactive callers; a pod has no browser
 	if !interactive {
 		return errors.New("gcp authentication unavailable: no ambient application default credentials and no service account credentials configured")
 	}
 
-	// interactive callers (tptctl) fall back to the browser oauth flow.
 	util.CliOutputInfo("GCP credentials not found or expired. Initiating authentication...")
 
+	// run browser OAuth and write application default credentials
 	if err := performGCPOAuthFlow(ctx); err != nil {
 		return fmt.Errorf("failed to authenticate with GCP: %w", err)
 	}
@@ -111,19 +96,13 @@ func ensureGCPAuth(serviceAccountCredentials string, interactive bool) error {
 	return nil
 }
 
-// validateServiceAccountCredentials confirms the service account JSON parses
-// into GCP credentials, so malformed JSON or an unsupported credential type
-// fails here with a clear error rather than deep inside the first cloud call.
-// It is the same parse the per-call client options perform, so anything it
-// accepts the clients accept. Note that it does not reach the private key:
-// a well-formed document holding a corrupt key still fails later, at the
-// first token request.
-//
-// It deliberately stores nothing. Credentials reach the Google SDK as a
-// per-call option built from this same JSON, so two concurrent operations for
-// different service accounts stay independent. Writing the key to a temp file
-// and exporting GOOGLE_APPLICATION_CREDENTIALS would reintroduce exactly the
-// process-global both operations raced on.
+// validateServiceAccountCredentials reports whether the JSON parses as Google
+// credentials for the required scopes. Malformed JSON and unsupported types
+// fail here rather than on the first cloud call. Parsing does not exercise the
+// private key, so a well-formed document with a corrupt key still fails later
+// at the first token request. It stores nothing and does not set
+// GOOGLE_APPLICATION_CREDENTIALS, so concurrent operations for different
+// accounts stay independent.
 func validateServiceAccountCredentials(ctx context.Context, credentialsJSON string) error {
 	if _, err := google.CredentialsFromJSON(ctx, []byte(credentialsJSON), GcpOAuthScopes...); err != nil {
 		return fmt.Errorf("failed to parse service account credentials: %w", err)
@@ -131,20 +110,21 @@ func validateServiceAccountCredentials(ctx context.Context, credentialsJSON stri
 	return nil
 }
 
-// hasValidGCPCredentials checks if valid Application Default Credentials exist
-// and that those credentials carry the cloud-platform scope required for IAM
-// operations.
+// hasValidGCPCredentials reports whether application default credentials on the
+// machine can mint a live token that includes cloud-platform.
 func hasValidGCPCredentials(ctx context.Context) bool {
 	tokenSource, err := google.DefaultTokenSource(ctx, GcpOAuthScopes...)
 	if err != nil {
 		return false
 	}
 
+	// mint an access token from the ambient credentials
 	token, err := tokenSource.Token()
 	if err != nil {
 		return false
 	}
 
+	// reject an expired or empty access token
 	if !token.Valid() {
 		return false
 	}
@@ -153,14 +133,16 @@ func hasValidGCPCredentials(ctx context.Context) bool {
 }
 
 // tokeninfoClient is a dedicated HTTP client for scope checks with a short
-// timeout so a stalled tokeninfo response never blocks EnsureGCPAuth.
+// timeout so a stalled tokeninfo response cannot block EnsureGCPAuth for long.
 var tokeninfoClient = &http.Client{Timeout: 5 * time.Second}
 
 // gcpTokenHasCloudPlatformScope verifies the access token includes the
 // cloud-platform scope by querying the Google tokeninfo endpoint.
 func gcpTokenHasCloudPlatformScope(token *oauth2.Token) bool {
+	// query Google tokeninfo for the token's granted scopes
 	resp, err := tokeninfoClient.Get("https://oauth2.googleapis.com/tokeninfo?access_token=" + token.AccessToken)
 	if err != nil {
+		// treat an unreachable tokeninfo endpoint as in-scope
 		return true
 	}
 	defer resp.Body.Close()
@@ -173,9 +155,11 @@ func gcpTokenHasCloudPlatformScope(token *oauth2.Token) bool {
 		Scope string `json:"scope"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		// treat an unreadable tokeninfo body as in-scope
 		return true
 	}
 
+	// accept only when cloud-platform is among the granted scopes
 	for _, s := range strings.Fields(info.Scope) {
 		if s == "https://www.googleapis.com/auth/cloud-platform" {
 			return true

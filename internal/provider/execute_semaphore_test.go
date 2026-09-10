@@ -99,11 +99,9 @@ func (o *orderRecordingInfra) DeployInfra() error {
 	return o.fakeRefreshableInfra.DeployInfra()
 }
 
-// TestSemaphoreBackpressure_Requeue30 covers the non-blocking semaphore
-// acquire: with capacity 2 and blocking deploys, the first two creates
-// get slots and requeue at 120, the next three get (30, nil) without
-// launching a goroutine, and slots freed by completed deploys can be
-// acquired by a subsequent call.
+// TestSemaphoreBackpressure_Requeue30 covers non-blocking semaphore acquire:
+// capacity 2 lets the first two creates launch at requeue 120, rejects the
+// next three at 30 without launching, and a later call takes a freed slot.
 func TestSemaphoreBackpressure_Requeue30(t *testing.T) {
 	configureSemaphoreTest(t, 2)
 	log := newTestLogger()
@@ -161,10 +159,8 @@ func TestSemaphoreBackpressure_Requeue30(t *testing.T) {
 	require.Equal(t, int64(120), requeue)
 }
 
-// TestSemaphoreReleaseOnPanic covers the create launch goroutine's recover
-// path: a panicking deploy is recovered, the failure is persisted via
-// SetCreationFailed, and the semaphore slot is released so a subsequent
-// create can acquire it.
+// TestSemaphoreReleaseOnPanic covers the create launch recover path: a
+// panicking deploy is recovered, SetCreationFailed runs, and the slot frees.
 func TestSemaphoreReleaseOnPanic(t *testing.T) {
 	configureSemaphoreTest(t, 1)
 	log := newTestLogger()
@@ -192,10 +188,8 @@ func TestSemaphoreReleaseOnPanic(t *testing.T) {
 	require.Equal(t, int64(120), requeue)
 }
 
-// TestSemaphoreReleaseOnPanic_Delete asserts the delete launch goroutine's
-// recover path: a panicking destroy is recovered, the deletion failure is
-// persisted via SetDeletionFailed so the next reconciliation retries, and the
-// semaphore slot is released for a subsequent delete.
+// TestSemaphoreReleaseOnPanic_Delete covers the delete launch recover path: a
+// panicking destroy is recovered, SetDeletionFailed runs, and the slot frees.
 func TestSemaphoreReleaseOnPanic_Delete(t *testing.T) {
 	configureSemaphoreTest(t, 1)
 	log := newTestLogger()
@@ -211,8 +205,7 @@ func TestSemaphoreReleaseOnPanic_Delete(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(300), requeue)
 
-	// the test process surviving the panic plus a clean drain confirms the
-	// recover; the delete path persists the deletion failure on panic
+	// surviving the panic plus a clean drain confirms recover ran
 	waitForSemaphoreDrain(t)
 	require.Equal(t, 1, fi.destroyCallCount())
 	require.Equal(t, 1, fl.callCount("SetDeletionFailed"))
@@ -229,10 +222,8 @@ func TestSemaphoreReleaseOnPanic_Delete(t *testing.T) {
 	require.Equal(t, int64(300), requeue)
 }
 
-// TestExecuteInfraCreate_RestoreThenRefreshThenDeploy asserts the create
-// goroutine's sequencing when existing state is present on a refreshable
-// provider: state is restored first, then refreshed against cloud
-// reality, then deployed.
+// TestExecuteInfraCreate_RestoreThenRefreshThenDeploy asserts create sequencing
+// with existing state on a refreshable provider: restore, then refresh, then deploy.
 func TestExecuteInfraCreate_RestoreThenRefreshThenDeploy(t *testing.T) {
 	configureSemaphoreTest(t, 1)
 	log := newTestLogger()
@@ -259,10 +250,8 @@ func TestExecuteInfraCreate_RestoreThenRefreshThenDeploy(t *testing.T) {
 	require.NotNil(t, oi.lastRestoredState())
 	require.JSONEq(t, string(*inventory), string(*oi.lastRestoredState()))
 
-	// the success path completed after the ordered sequence; the inline
-	// confirmation cascade saves outputs, rebuilds infra, runs the
-	// post-creation work, and confirms creation (BuildInfra runs twice: once
-	// for the initial deploy, once for the confirmation rebuild)
+	// success path ran the confirmation cascade; BuildInfra runs twice
+	// (initial deploy, then confirmation rebuild)
 	require.Equal(t, 1, fl.callCount("SaveCreateOutputs"))
 	require.Equal(t, 2, fl.callCount("BuildInfra"))
 	require.Equal(t, 1, fl.callCount("OnCreateConfirmed"))
@@ -270,10 +259,8 @@ func TestExecuteInfraCreate_RestoreThenRefreshThenDeploy(t *testing.T) {
 	require.Equal(t, 0, fl.callCount("PublishCreateNotification"))
 }
 
-// TestExecuteInfraCreate_NonStreamable_NoWatcher asserts that a provider
-// without streaming support runs the create to success with no state
-// watcher: SaveState is the watcher's only writer on the success path,
-// so its count staying at zero proves no watcher streamed state.
+// TestExecuteInfraCreate_NonStreamable_NoWatcher asserts a non-streaming
+// provider still completes create; SaveState stays at zero with no watcher.
 func TestExecuteInfraCreate_NonStreamable_NoWatcher(t *testing.T) {
 	configureSemaphoreTest(t, 1)
 	log := newTestLogger()
@@ -288,11 +275,8 @@ func TestExecuteInfraCreate_NonStreamable_NoWatcher(t *testing.T) {
 
 	waitForSemaphoreDrain(t)
 
-	// success path completed end to end; the inline confirmation cascade
-	// saves outputs, rebuilds infra, runs the post-creation work, and
-	// confirms creation (BuildInfra runs twice: once for the initial deploy,
-	// once for the confirmation rebuild)
 	require.Equal(t, 1, fi.deployCallCount())
+	// success path ran the confirmation cascade; BuildInfra runs twice
 	require.Equal(t, 1, fl.callCount("SaveCreateOutputs"))
 	require.NotNil(t, fl.createOutputs())
 	require.JSONEq(t, string(*validStackState()), string(*fl.createOutputs()))
@@ -307,9 +291,8 @@ func TestExecuteInfraCreate_NonStreamable_NoWatcher(t *testing.T) {
 }
 
 // TestExecuteInfraCreate_DeployError_CapturesStateAndPersistsFailure covers
-// the deploy failure branch: partial state is captured via GetStackState
-// and saved for retry restoration, then the failure is persisted via
-// SetCreationFailed, and the success callbacks never run.
+// deploy failure: GetStackState is saved for retry, SetCreationFailed runs,
+// and success callbacks never run.
 func TestExecuteInfraCreate_DeployError_CapturesStateAndPersistsFailure(t *testing.T) {
 	configureSemaphoreTest(t, 1)
 	log := newTestLogger()
@@ -338,10 +321,8 @@ func TestExecuteInfraCreate_DeployError_CapturesStateAndPersistsFailure(t *testi
 	require.Equal(t, 0, fl.callCount("PublishCreateNotification"))
 }
 
-// TestExecuteInfraCreate_VerifyStateFails_PersistsFailure asserts the state
-// verification gate: a successful deploy whose captured state matches no known
-// Pulumi schema fails verification, persists the failure, and never invokes
-// the success callback.
+// TestExecuteInfraCreate_VerifyStateFails_PersistsFailure asserts that a
+// successful deploy with unrecognized state fails verification and persists.
 func TestExecuteInfraCreate_VerifyStateFails_PersistsFailure(t *testing.T) {
 	configureSemaphoreTest(t, 1)
 	log := newTestLogger()
@@ -357,9 +338,9 @@ func TestExecuteInfraCreate_VerifyStateFails_PersistsFailure(t *testing.T) {
 
 	waitForSemaphoreDrain(t)
 
-	// deploy succeeded but the unrecognized state failed verification
 	require.Equal(t, 1, fi.deployCallCount())
 	require.Equal(t, 1, fi.getStackStateCallCount())
+	// deploy succeeded but unrecognized state failed verification
 	require.Equal(t, 1, fl.callCount("SetCreationFailed"))
 
 	// the success callback never ran
@@ -367,10 +348,8 @@ func TestExecuteInfraCreate_VerifyStateFails_PersistsFailure(t *testing.T) {
 	require.Equal(t, 0, fl.callCount("PublishCreateNotification"))
 }
 
-// TestExecuteInfraDelete_InvalidExistingStateJSON_SkipsRestore covers the
-// delete goroutine's corrupt-state guard: invalid existing state JSON
-// skips the restore entirely but the destroy still proceeds and the
-// success callbacks run.
+// TestExecuteInfraDelete_InvalidExistingStateJSON_SkipsRestore covers delete
+// with corrupt inventory JSON: restore is skipped, destroy and success still run.
 func TestExecuteInfraDelete_InvalidExistingStateJSON_SkipsRestore(t *testing.T) {
 	configureSemaphoreTest(t, 1)
 	log := newTestLogger()
@@ -397,22 +376,17 @@ func TestExecuteInfraDelete_InvalidExistingStateJSON_SkipsRestore(t *testing.T) 
 	require.Equal(t, 1, fl.callCount("PublishDeleteNotification"))
 }
 
-// TestSemaphoreSerializesPerStack asserts that a second HandleInfraCreate
-// call pointed at a stack that already has an operation in flight is
-// rejected non-blockingly with the 30-second requeue delay, without
-// launching a competing deploy. The reconciler is a poll loop that must
-// never block, so per-stack serialization is enforced by short-circuit
-// requeue, not by holding the caller until the running deploy finishes.
-// The second call becomes eligible to launch once the running deploy
-// releases the per-stack lock on the next reconcile pass.
+// TestSemaphoreSerializesPerStack asserts a second HandleInfraCreate for a
+// stack already in flight returns requeue 30 without launching a competing
+// deploy. The reconciler is a poll loop, so serialization is short-circuit
+// requeue rather than blocking the caller until the running deploy finishes.
 func TestSemaphoreSerializesPerStack(t *testing.T) {
 	configureSemaphoreTest(t, 5)
 	log := newTestLogger()
 
-	// two fakes share the same stack key so both callers contend on the
-	// same per-stack lock
 	const sharedKey = "shared-stack"
 
+	// two fakes share the same stack key so both callers contend on one lock
 	fi1 := newFakeInfra()
 	fi1.setDeploy(infraBlock, nil)
 	fl1 := newFakeLifecycle()
@@ -433,8 +407,7 @@ func TestSemaphoreSerializesPerStack(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(120), requeue1)
 
-	// wait until fi1 is actually inside the deploy so the lock is held by
-	// the goroutine before the second call arrives
+	// wait until fi1 is inside DeployInfra so the lock is held before call 2
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		if fi1.deployCallCount() == 1 {
@@ -444,17 +417,13 @@ func TestSemaphoreSerializesPerStack(t *testing.T) {
 	}
 	require.Equal(t, 1, fi1.deployCallCount())
 
-	// second call for the same stack while the first is still in flight
-	// must return quickly with the pool-full requeue delay and must NOT
-	// launch a competing deploy
+	// second same-stack call must requeue at 30 and must not launch
 	requeue2, err := HandleInfraCreate(fl2, log)
 	require.NoError(t, err)
 	require.Equal(t, int64(30), requeue2, "second call for in-flight stack must non-blockingly requeue at 30")
 	require.Equal(t, 0, fi2.deployCallCount(), "second stack-mate must not deploy while first still holds per-stack lock")
 
-	// release fi1's deploy so its goroutine returns and releases the
-	// per-stack lock; a subsequent reconcile pass for the same stack
-	// should now succeed and launch its deploy
+	// release fi1 so a later reconcile for the same stack can launch
 	fi1.releaseDeploy()
 	waitForSemaphoreDrain(t)
 
@@ -466,10 +435,8 @@ func TestSemaphoreSerializesPerStack(t *testing.T) {
 	require.Equal(t, 1, fi2.deployCallCount(), "second caller failed to run its deploy after the first released the lock")
 }
 
-// TestSemaphoreAllowsDifferentStacks asserts that two HandleInfraCreate calls
-// pointed at different stack keys can launch concurrently under the global
-// cap: distinct stacks do not share a per-stack lock, so unrelated reconciles
-// run in parallel up to the cap.
+// TestSemaphoreAllowsDifferentStacks asserts distinct stack keys launch
+// concurrently under the global cap because they do not share a per-stack lock.
 func TestSemaphoreAllowsDifferentStacks(t *testing.T) {
 	configureSemaphoreTest(t, 5)
 	log := newTestLogger()
@@ -492,8 +459,7 @@ func TestSemaphoreAllowsDifferentStacks(t *testing.T) {
 		fi2.releaseDeploy()
 	})
 
-	// both HandleInfraCreate calls acquire their own per-stack lock and
-	// return promptly since distinct keys don't contend
+	// both calls acquire their own lock and return promptly
 	requeue1, err := HandleInfraCreate(fl1, log)
 	require.NoError(t, err)
 	require.Equal(t, int64(120), requeue1)
@@ -502,8 +468,7 @@ func TestSemaphoreAllowsDifferentStacks(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(120), requeue2)
 
-	// both deploys reach their blocking calls concurrently, proving they
-	// were launched independently instead of serializing
+	// both deploys block concurrently, proving independent launches
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		if fi1.deployCallCount() == 1 && fi2.deployCallCount() == 1 {
@@ -521,10 +486,8 @@ func TestSemaphoreAllowsDifferentStacks(t *testing.T) {
 }
 
 // TestExecuteInfraDelete_DestroyError_CapturesStateAndPersistsFailure asserts
-// the destroy failure branch: remaining state is captured via GetStackState
-// and saved so retries know which resources remain, the deletion failure is
-// persisted via SetDeletionFailed so the next reconciliation retries promptly,
-// and the success callbacks never run.
+// destroy failure captures remaining state, persists SetDeletionFailed, and
+// skips success callbacks.
 func TestExecuteInfraDelete_DestroyError_CapturesStateAndPersistsFailure(t *testing.T) {
 	configureSemaphoreTest(t, 1)
 	log := newTestLogger()
@@ -558,17 +521,13 @@ func TestExecuteInfraDelete_DestroyError_CapturesStateAndPersistsFailure(t *test
 	require.Equal(t, 0, fl.callCount("PublishDeleteNotification"))
 }
 
-// TestDeployInfra_TransientLockError_DoesNotSetCreationFailed asserts that a
-// transient pulumi stack-lock error from DeployInfra does not flip
-// CreationFailed=true. A transient error is expected to clear on the next
-// reconcile pass, so persisting a permanent failure would widen the retry
-// path and short-circuit subsequent reconciles.
+// TestDeployInfra_TransientLockError_DoesNotSetCreationFailed asserts a
+// transient pulumi stack-lock error from DeployInfra does not set CreationFailed.
 func TestDeployInfra_TransientLockError_DoesNotSetCreationFailed(t *testing.T) {
 	configureSemaphoreTest(t, 1)
 	log := newTestLogger()
 
-	// deploy returns the canonical transient marker so the classifier
-	// recognizes it and skips persistFailure
+	// deploy returns the canonical transient marker so persistFailure is skipped
 	errLocked := errors.New("stack is currently locked by 1 lock(s)")
 	fi := newFakeInfra()
 	fi.setDeploy(infraError, errLocked)
@@ -581,18 +540,15 @@ func TestDeployInfra_TransientLockError_DoesNotSetCreationFailed(t *testing.T) {
 
 	waitForSemaphoreDrain(t)
 
-	// deploy attempted, but the transient error must not persist
-	// CreationFailed=true and must not run the success callbacks
+	// deploy ran; transient path must not persist CreationFailed or succeed
 	require.Equal(t, 1, fi.deployCallCount())
 	require.Equal(t, 0, fl.callCount("SetCreationFailed"), "transient error incorrectly flipped CreationFailed=true")
 	require.Equal(t, 0, fl.callCount("SaveCreateOutputs"))
 	require.Equal(t, 0, fl.callCount("PublishCreateNotification"))
 }
 
-// TestDeployInfra_PermanentError_SetsCreationFailed asserts that a permanent
-// deploy error still flips CreationFailed=true so the reconciler retries
-// promptly instead of waiting for the acknowledgement to go stale. This
-// covers the classifier's negative case and pins the pre-existing behavior.
+// TestDeployInfra_PermanentError_SetsCreationFailed asserts a permanent deploy
+// error still sets CreationFailed so the reconciler retries promptly.
 func TestDeployInfra_PermanentError_SetsCreationFailed(t *testing.T) {
 	configureSemaphoreTest(t, 1)
 	log := newTestLogger()
@@ -610,8 +566,7 @@ func TestDeployInfra_PermanentError_SetsCreationFailed(t *testing.T) {
 
 	waitForSemaphoreDrain(t)
 
-	// deploy attempted and the failure was persisted so the retry does
-	// not wait for the ack to go stale
+	// deploy ran and failure was persisted for a prompt retry
 	require.Equal(t, 1, fi.deployCallCount())
 	require.Equal(t, 1, fl.callCount("SetCreationFailed"))
 	require.Equal(t, 0, fl.callCount("SaveCreateOutputs"))
@@ -619,17 +574,12 @@ func TestDeployInfra_PermanentError_SetsCreationFailed(t *testing.T) {
 }
 
 // TestDeployInfra_TransientErrorAfterCreationConfirmed_LeavesCreationFailedFalse
-// covers the observed live failure: an in-place update on an already-confirmed
-// runtime instance re-runs the create state machine (the update handler adapts
-// the create lifecycle for an update pass). If the up hits a transient error,
-// CreationFailed must stay false so the next reconcile pass re-fires without
-// short-circuiting on the permanent-failure path.
+// covers a transient error on a post-confirmation update: CreationFailed stays false.
 func TestDeployInfra_TransientErrorAfterCreationConfirmed_LeavesCreationFailedFalse(t *testing.T) {
 	configureSemaphoreTest(t, 1)
 	log := newTestLogger()
 
-	// snapshot mimics an already-confirmed create with an intact inventory
-	// so the update path restores state before running deploy
+	// snapshot mimics an already-confirmed create with intact inventory
 	confirmedAt := time.Now().UTC().Add(-time.Hour)
 	acknowledgedAt := confirmedAt.Add(-time.Minute)
 	snap := &ReconciliationSnapshot{
@@ -643,10 +593,7 @@ func TestDeployInfra_TransientErrorAfterCreationConfirmed_LeavesCreationFailedFa
 	fi := newFakeInfra()
 	fi.setDeploy(infraError, errTransient)
 
-	// the update handler in production feeds the create state machine a
-	// snapshot with confirmation cleared so it falls through to launch a
-	// fresh up; simulate that by presenting a snapshot that lacks the
-	// confirmation on the second GetReconciliation call
+	// present a snapshot without confirmation so the create machine launches
 	updateSnap := &ReconciliationSnapshot{
 		CreationAcknowledged: nil,
 		CreationConfirmed:    nil,
@@ -661,22 +608,17 @@ func TestDeployInfra_TransientErrorAfterCreationConfirmed_LeavesCreationFailedFa
 
 	waitForSemaphoreDrain(t)
 
-	// deploy attempted, transient error surfaced, but CreationFailed
-	// must NOT be flipped or the next reconcile pass short-circuits into
-	// a permanent-failure path and the update never converges
+	// deploy ran; CreationFailed must stay false so the next reconcile retries
 	require.Equal(t, 1, fi.deployCallCount())
 	require.Equal(t, 0, fl.callCount("SetCreationFailed"), "transient error on post-confirmation update incorrectly flipped CreationFailed=true")
 	require.Equal(t, 0, fl.callCount("SaveCreateOutputs"))
 	require.Equal(t, 0, fl.callCount("PublishCreateNotification"))
 }
 
-// TestIsTransientPulumiError_MarkerMatch asserts that the transient error
-// classifier accepts the canonical pulumi stack-lock message that surfaces
-// when a prior operation left a stale lock; the classifier's whole purpose
-// is to keep this class of error out of the permanent-failure path.
+// TestIsTransientPulumiError_MarkerMatch asserts the classifier accepts the
+// canonical transient markers so those errors stay off the permanent-failure path.
 func TestIsTransientPulumiError_MarkerMatch(t *testing.T) {
-	// each marker string must be recognized so a real error carrying
-	// that phrase routes to the transient path
+	// each marker must classify as transient
 	transient := []string{
 		"stack is currently locked by 1 lock(s)",
 		"rpc error: code = DeadlineExceeded desc = context deadline exceeded",
@@ -688,9 +630,8 @@ func TestIsTransientPulumiError_MarkerMatch(t *testing.T) {
 	}
 }
 
-// TestIsTransientPulumiError_PermanentRejected asserts that a permanent
-// failure (invalid input, unauthenticated, resource not found) does not
-// match the transient markers so the caller still persists CreationFailed.
+// TestIsTransientPulumiError_PermanentRejected asserts permanent failures do
+// not match transient markers so the caller still persists CreationFailed.
 func TestIsTransientPulumiError_PermanentRejected(t *testing.T) {
 	permanent := []string{
 		"gcp compute api rejected instance: invalid machine type",

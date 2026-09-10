@@ -38,9 +38,8 @@ func waitForCreateCond(t *testing.T, desc string, cond func() bool) {
 	t.Fatalf("timed out waiting for %s", desc)
 }
 
-// TestHandleInfraCreate_AlreadyConfirmed_EarlyReturn covers the branch
-// where CreationConfirmed is already set: the handler returns (0, nil)
-// after the initial fetch with no further calls on the provider.
+// TestHandleInfraCreate_AlreadyConfirmed_EarlyReturn covers an already
+// confirmed create: the handler returns (0, nil) with no further provider calls.
 func TestHandleInfraCreate_AlreadyConfirmed_EarlyReturn(t *testing.T) {
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
 		CreationConfirmed: timePtr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
@@ -57,13 +56,10 @@ func TestHandleInfraCreate_AlreadyConfirmed_EarlyReturn(t *testing.T) {
 	assert.Equal(t, 0, fl.callCount("ConfirmCreation"))
 }
 
-// TestHandleInfraCreate_AckedComplete_ConfirmsInOrder covers the branch
-// where creation is acknowledged, not failed, and complete: the handler
-// builds infra, runs post-creation work, confirms creation, and returns
-// (0, nil) without re-acking or launching. The fakes record counts, not
-// sequence, so the BuildInfra -> OnCreateConfirmed -> ConfirmCreation
-// order is confirmed indirectly by the error-propagation test below, which
-// shows a post-creation failure prevents confirmation.
+// TestHandleInfraCreate_AckedComplete_ConfirmsInOrder covers an acked,
+// complete create: BuildInfra, OnCreateConfirmed, and ConfirmCreation run
+// without re-acking or launching. Count order is checked by the error-
+// propagation test below, where a post-creation failure blocks confirmation.
 func TestHandleInfraCreate_AckedComplete_ConfirmsInOrder(t *testing.T) {
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
 		CreationAcknowledged: timePtr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
@@ -87,10 +83,9 @@ func TestHandleInfraCreate_AckedComplete_ConfirmsInOrder(t *testing.T) {
 	assert.Equal(t, int64(0), inFlightCount())
 }
 
-// TestHandleInfraCreate_OnCreateConfirmedError_Propagates covers the
-// branch where post-creation work fails: the wrapped error is returned
-// to the reconciler for retry and ConfirmCreation is never called, so
-// the create is not marked confirmed past a failed post-creation step.
+// TestHandleInfraCreate_OnCreateConfirmedError_Propagates covers a
+// post-creation failure: the error returns to the reconciler and ConfirmCreation
+// never runs.
 func TestHandleInfraCreate_OnCreateConfirmedError_Propagates(t *testing.T) {
 	errPostCreate := errors.New("post-creation work failed")
 	fl := newFakeLifecycle(&ReconciliationSnapshot{
@@ -109,10 +104,8 @@ func TestHandleInfraCreate_OnCreateConfirmedError_Propagates(t *testing.T) {
 	assert.Equal(t, 0, fl.callCount("ConfirmCreation"))
 }
 
-// TestHandleInfraCreate_AckedIncomplete_FreshAck_Requeue120 covers the
-// branch where creation is acknowledged but incomplete and the ack is
-// still fresh: the handler requeues at 120 seconds without re-acking
-// or relaunching.
+// TestHandleInfraCreate_AckedIncomplete_FreshAck_Requeue120 covers a fresh
+// incomplete ack: the handler requeues at 120 without re-acking or relaunching.
 func TestHandleInfraCreate_AckedIncomplete_FreshAck_Requeue120(t *testing.T) {
 	restoreConfig := setLifecycleConfig(createTestConfig())
 	t.Cleanup(restoreConfig)
@@ -137,10 +130,8 @@ func TestHandleInfraCreate_AckedIncomplete_FreshAck_Requeue120(t *testing.T) {
 	assert.Equal(t, int64(0), inFlightCount())
 }
 
-// TestHandleInfraCreate_StaleAck_Relaunches covers the branch where
-// creation is acknowledged but incomplete and the ack has gone stale:
-// the handler re-acks and launches the create goroutine, indicating the
-// prior operation was interrupted.
+// TestHandleInfraCreate_StaleAck_Relaunches covers a stale incomplete ack:
+// the handler re-acks and launches create, treating the prior op as interrupted.
 func TestHandleInfraCreate_StaleAck_Relaunches(t *testing.T) {
 	restoreConfig := setLifecycleConfig(createTestConfig())
 	t.Cleanup(restoreConfig)
@@ -174,10 +165,8 @@ func TestHandleInfraCreate_StaleAck_Relaunches(t *testing.T) {
 	})
 }
 
-// TestHandleInfraCreate_NewRequest_AcksBuildsLaunches covers the brand
-// new create path: no ack on the snapshot, so the handler acks, builds
-// infra, re-fetches reconciliation for the deletion check, launches the
-// create goroutine, and returns (120, nil).
+// TestHandleInfraCreate_NewRequest_AcksBuildsLaunches covers a brand-new
+// create: ack, build, deletion re-check, launch, and return (120, nil).
 func TestHandleInfraCreate_NewRequest_AcksBuildsLaunches(t *testing.T) {
 	restoreConfig := setLifecycleConfig(createTestConfig())
 	t.Cleanup(restoreConfig)
@@ -208,9 +197,8 @@ func TestHandleInfraCreate_NewRequest_AcksBuildsLaunches(t *testing.T) {
 	})
 }
 
-// TestHandleInfraCreate_AckCreationError covers the branch where the
-// creation acknowledgement write fails: the wrapped error is returned
-// and nothing is built or launched.
+// TestHandleInfraCreate_AckCreationError covers AckCreation failure: the
+// wrapped error returns and nothing is built or launched.
 func TestHandleInfraCreate_AckCreationError(t *testing.T) {
 	errAck := errors.New("ack write failed")
 	fl := newFakeLifecycle()
@@ -227,11 +215,9 @@ func TestHandleInfraCreate_AckCreationError(t *testing.T) {
 }
 
 // TestHandleInfraCreate_DeletionScheduledBeforeLaunch_Aborts covers the
-// pre-acknowledge deletion check: when the second reconciliation fetch shows
-// DeletionScheduled set, the handler aborts with (0, nil) before
-// acknowledging creation or building infra, so it deploys nothing and leaves
-// no fresh acknowledgement for the delete handler's cross-replica guard to
-// trip on.
+// pre-acknowledge deletion check: DeletionScheduled on the second fetch aborts
+// with (0, nil) before ack or build, leaving no fresh ack for the delete
+// handler's cross-replica guard.
 func TestHandleInfraCreate_DeletionScheduledBeforeLaunch_Aborts(t *testing.T) {
 	fi := newFakeInfra()
 	fl := newFakeLifecycle(
@@ -254,11 +240,8 @@ func TestHandleInfraCreate_DeletionScheduledBeforeLaunch_Aborts(t *testing.T) {
 }
 
 // TestHandleInfraCreate_DeletionScheduledDuringInfra_SuppressesNotification
-// covers the success-callback deletion check: when deletion is scheduled
-// while infrastructure is being created, the callback still saves the
-// create outputs but suppresses the create notification so the delete
-// handler proceeds. Driven through a real launch with a blocked deploy
-// so the callback runs on the production goroutine wiring.
+// covers deletion scheduled mid-create: outputs still save, but the create
+// notification is suppressed so the delete handler can proceed.
 func TestHandleInfraCreate_DeletionScheduledDuringInfra_SuppressesNotification(t *testing.T) {
 	restoreConfig := setLifecycleConfig(createTestConfig())
 	t.Cleanup(restoreConfig)
@@ -297,9 +280,8 @@ func TestHandleInfraCreate_DeletionScheduledDuringInfra_SuppressesNotification(t
 	assert.Equal(t, 0, fl.callCount("PublishCreateNotification"))
 }
 
-// TestHandleInfraCreate_GetReconciliationError_FirstFetch covers the
-// branch where the initial reconciliation fetch fails: the wrapped
-// error is returned and no state transitions occur.
+// TestHandleInfraCreate_GetReconciliationError_FirstFetch covers an initial
+// GetReconciliation failure: the wrapped error returns with no state changes.
 func TestHandleInfraCreate_GetReconciliationError_FirstFetch(t *testing.T) {
 	errFetch := errors.New("api unavailable")
 	fl := newFakeLifecycle()

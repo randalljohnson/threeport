@@ -9,8 +9,7 @@ type MachineRuntimeDefinition struct {
 	Definition     `mapstructure:",squash"`
 	Reconciliation `mapstructure:",squash"`
 
-	// The infrastructure provider that provisions machines from this
-	// definition. Empty for imported machines that already exist.
+	// The infrastructure provider that provisions machines from this definition
 	InfraProvider *string `json:",omitempty" validate:"optional"`
 
 	// The provider account name that selects which account the machine is
@@ -29,7 +28,7 @@ type MachineRuntimeDefinition struct {
 	// machine size and profile; not supplied for provider-provisioned machines.
 	MachineType *string `json:",omitempty" validate:"optional"`
 
-	// The provider image identifier used to boot the machine.
+	// The provider image identifier used to boot the machine
 	ImageID *string `json:",omitempty" validate:"optional"`
 
 	// The associated machine runtime instances that are deployed from this
@@ -75,7 +74,7 @@ type MachineRuntimeInstance struct {
 	// connection. If not provided, captured on first connection.
 	HostKey *string `validate:"optional"`
 
-	// The provider region in which the machine is provisioned.
+	// The provider region in which the machine is provisioned
 	Region *string `json:",omitempty" validate:"optional"`
 
 	// The abstract threeport location for the machine. Mapped server-side to a
@@ -86,9 +85,7 @@ type MachineRuntimeInstance struct {
 	// The provider network identifier the machine attaches to.
 	NetworkID *string `json:",omitempty" validate:"optional"`
 
-	// The provider-specific subnet identifier the VM should attach to.
-	// Required in custom-mode shared VPCs where multiple subnets share a
-	// region.
+	// The provider subnet identifier the machine attaches to
 	SubnetID *string `json:",omitempty" gorm:"type:text" validate:"optional"`
 
 	// IngressRules are the firewall ingress rules applied to the machine.

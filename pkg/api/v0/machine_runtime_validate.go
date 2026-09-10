@@ -35,6 +35,7 @@ func (m *MachineRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 // enforced under both PATCH and PUT; the infra provider, machine type, and
 // image must stay fixed once instances derive from the definition.
 func (m *MachineRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
+	// reject changes to infra provider, machine type, and image
 	immutableFields := []struct {
 		column string
 		name   string
@@ -75,6 +76,7 @@ func (m *MachineRuntimeDefinition) beforeDelete(tx *gorm.DB) error {
 //     knows where to provision the machine. The controller maps a location to
 //     a provider region and zone; a concrete region serves imported machines.
 func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
+	// require an SSH credential
 	if m.SSHKey == nil && m.SSHPassword == nil {
 		return util.NewBadRequestError(
 			fmt.Sprintf(
@@ -84,6 +86,7 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 		)
 	}
 
+	// load referenced definition when present
 	if m.MachineRuntimeDefinitionID != nil {
 		var def MachineRuntimeDefinition
 		if err := tx.First(&def, *m.MachineRuntimeDefinitionID).Error; err != nil {
@@ -95,6 +98,7 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 				),
 			)
 		}
+		// require region when the definition has an infra provider
 		if def.InfraProvider != nil && *def.InfraProvider != "" {
 			locationEmpty := m.Location == nil || *m.Location == ""
 			regionEmpty := m.Region == nil || *m.Region == ""
@@ -117,6 +121,7 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 // enforced under both PATCH and PUT; changing them after creation would
 // orphan the provisioned resources.
 func (m *MachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
+	// reject changes to region, network, and subnet
 	immutableFields := []struct {
 		column string
 		name   string

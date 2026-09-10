@@ -28,31 +28,24 @@ import (
 // Package-level so tests can override it.
 var unpopulatedRequeueDelaySeconds int64 = 15
 
-// sshOperationTimeout bounds the SSH operations of one reconcile pass.
-// Package-level so tests can shrink it to exercise the timeout path.
+// sshOperationTimeout bounds GetClient and Ping so a hung handshake cannot hold the reconcile.
 var sshOperationTimeout = 30 * time.Second
 
-// newReconcileContext returns the context that bounds one reconcile pass's
-// SSH operations. Package-level so tests can swap in a context that is
-// already canceled or cancels mid-flight.
+// newReconcileContext builds the per-pass timeout. Tests replace it to inject cancellation.
 var newReconcileContext = func() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), sshOperationTimeout)
 }
 
-// getClientResult carries an SSH connect outcome across a goroutine
-// boundary.
+// getClientResult is the outcome of a GetClient call run in a goroutine.
+// It carries the client, any captured host key, and the connect error.
 type getClientResult struct {
 	client          *ssh.Client
 	capturedHostKey string
 	err             error
 }
 
-// getClientWithContext establishes the SSH connection in its own goroutine
-// so the caller returns promptly when ctx is canceled or times out, even
-// though the underlying connect cannot be interrupted. When the caller
-// abandons the attempt, a reaper goroutine waits for the connect to finish
-// and closes any connection it produced; the buffered channel lets the
-// connect goroutine exit without blocking either way.
+// getClientWithContext runs machine.GetClient until it returns or ctx ends.
+// ssh.Dial cannot be interrupted, so on abort a reaper closes a client that arrives later.
 func getClientWithContext(
 	ctx context.Context,
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
@@ -76,10 +69,8 @@ func getClientWithContext(
 	}
 }
 
-// pingWithContext verifies the connection is usable, returning early with
-// ctx's error when the context is canceled or times out before the ping
-// completes. The underlying call cannot be interrupted; an abandoned ping
-// unblocks and exits when the caller closes the SSH client.
+// pingWithContext runs machine.Ping until it returns or ctx ends.
+// An abandoned ping unblocks when the caller closes the SSH client.
 func pingWithContext(ctx context.Context, sshClient *ssh.Client) error {
 	done := make(chan error, 1)
 	go func() {
@@ -158,8 +149,7 @@ func v0MachineRuntimeInstanceCreated(
 		return unpopulatedRequeueDelaySeconds, nil
 	}
 
-	// bound all ssh operations in this reconcile pass so a partitioned or
-	// hanging host cannot stall the reconciler indefinitely
+	// bound ssh connect and ping for this pass
 	ctx, cancel := newReconcileContext()
 	defer cancel()
 

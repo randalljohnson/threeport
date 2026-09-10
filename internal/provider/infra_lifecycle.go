@@ -292,10 +292,9 @@ type InfraLifecycleProvider interface {
 	// ConfirmCreation sets CreationConfirmed and Reconciled=true in the API.
 	ConfirmCreation() error
 
-	// RecordSuccessfulCreate emits a SuccessfulCreate event for the provider's
-	// object. Called from the OnSuccess callback after ConfirmCreation succeeds,
-	// so the reader sees provisioning completion even though the wrapper's
-	// wasReconciled gate suppresses its own emit.
+	// RecordSuccessfulCreate emits a CreateSuccessful event for the provider's
+	// object. The OnSuccess path calls it after ConfirmCreation because the
+	// reconciler wrapper's wasReconciled gate suppresses its own emit.
 	RecordSuccessfulCreate() error
 
 	// AckDeletion sets DeletionAcknowledged in the API.
@@ -454,9 +453,8 @@ func HandleInfraCreate(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 				return fmt.Errorf("failed to confirm creation: %w", err)
 			}
 
-			// emit the provisioning-complete event directly; an emit
-			// failure must not fail the callback and trip
-			// PersistFailure, since ConfirmCreation already succeeded
+			// emit provisioning-complete; log emit failures after ConfirmCreation
+			// so PersistFailure cannot mark a confirmed create as failed
 			if err := p.RecordSuccessfulCreate(); err != nil {
 				log.Error(err, "failed to record SuccessfulCreate event")
 			}

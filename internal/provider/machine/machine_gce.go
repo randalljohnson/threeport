@@ -356,10 +356,9 @@ func (i *GceMachineInfra) SetStackState(state *datatypes.JSON) error {
 // generated public key injected into ssh-keys metadata.
 func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 	return func(pctx *pulumi.Context) error {
-		// thread service account credentials directly into the gcp provider
-		// for this stack rather than relying on a process-global env var, so
-		// two concurrent gce creates for different service accounts each get
-		// their own provider credentials
+		// configure the GCP provider for this stack; thread service account
+		// credentials into the provider when set rather than a process-global
+		// env var, so concurrent creates for different accounts stay isolated
 		providerArgs := &gcp.ProviderArgs{
 			Project: pulumi.String(i.ProjectID),
 			Region:  pulumi.String(i.Region),
@@ -798,13 +797,11 @@ func (i *GceMachineInfra) SeedSSHKeyPair(sshPrivateKeyPEM string) error {
 	return nil
 }
 
-// GcpClientOptions returns the client options for GCP SDK clients built on
-// behalf of this instance. When ServiceAccountCredentials is set, the JSON key
-// is threaded in per call so two concurrent operations for different service
-// accounts authenticate independently rather than sharing whatever ambient
-// credentials the process happens to hold. Base options such as scopes are
-// preserved ahead of the credentials option. It is exported because the orphan
-// reclaim client is built outside this package from the same provider.
+// GcpClientOptions returns the GCP SDK client options for this instance.
+// When ServiceAccountCredentials is set it appends that JSON key after any
+// base options so concurrent calls for different accounts authenticate
+// independently. Exported for orphan reclaim, which builds its client outside
+// this package.
 func (i *GceMachineInfra) GcpClientOptions(base ...option.ClientOption) []option.ClientOption {
 	if i.ServiceAccountCredentials == "" {
 		return base

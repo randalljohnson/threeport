@@ -637,6 +637,9 @@ func (h Handler) GetEventsFiltered(c echo.Context) error {
 			// name is deterministic from the queryId)
 			resolvedViewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 			if err != nil {
+				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				}
 				h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}

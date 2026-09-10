@@ -60,12 +60,6 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				gen.Module,
 			))
 			f.ImportAlias(util.SetImportAlias(
-				"github.com/threeport/threeport/pkg/api/lib/v0",
-				"api_lib",
-				"tpapi_lib",
-				gen.Module,
-			))
-			f.ImportAlias(util.SetImportAlias(
 				"github.com/threeport/threeport/pkg/util/v0",
 				"util_v0",
 				"tputil_v0",
@@ -448,7 +442,21 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					deleteObjectChecks.Line()
 					deleteObjectChecks.Comment("check to make sure no dependent instances exist for this definition")
 					deleteObjectChecks.Line()
-					emitBlockedByChildrenCheck(deleteObjectChecks, strcase.ToLowerCamel(apiObject.TypeName), instancesName, gen.Module)
+					deleteObjectChecks.If(
+						Len(Id(strcase.ToLowerCamel(apiObject.TypeName)).Dot(instancesName)).Op("!=").Lit(0).Block(
+							Id("err").Op(":=").Qual("errors", "New").Call(
+								Lit(fmt.Sprintf(
+									"%s has related %s - cannot be deleted",
+									strcase.ToDelimited(apiObject.TypeName, ' '),
+									strcase.ToDelimited(instancesName, ' '),
+								)),
+							),
+							Return().Qual(
+								"github.com/threeport/threeport/pkg/api-server/lib/v0",
+								"ResponseStatus409",
+							).Call(Id("c").Op(",").Nil().Op(",").Id("err").Op(",").Id("objectType")),
+						),
+					)
 					deleteObjectChecks.Line()
 				} else {
 					deleteObjectChecks = If(
@@ -1482,12 +1490,6 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							).Call(Id("c").Op(",").Nil().Op(",").Id("err").Op(",").Id("fullyQualifiedType")))
 						}),
 					)
-					if apiObject.Reconciler {
-						g.Line()
-						g.Comment("snapshot reconciliation state before update so the notify block")
-						g.Comment("can skip publishing when the update did not touch any state marker")
-						g.Id("prevReconciliation").Op(":=").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciliation")
-					}
 					g.Line()
 					g.Comment("update object in database")
 					g.If(

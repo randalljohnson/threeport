@@ -44,9 +44,9 @@ type Reconciliation struct {
 	// A flag set to true if deletion of the object fails
 	DeletionFailed *bool `validate:"optional" gorm:"default:false"`
 
-	// InterruptReconciliation is used by the controller to indicated that future
-	// reconcilation should be interrupted.  Useful in cases where there is a
-	// situation where future reconciliation could be descructive such as
+	// InterruptReconciliation is used by the controller to indicate that future
+	// reconciliation should be interrupted. Useful in cases where there is a
+	// situation where future reconciliation could be destructive such as
 	// spinning up more infrastructure when there is a unresolved problem.
 	InterruptReconciliation *bool `validate:"optional" gorm:"default:false"`
 }

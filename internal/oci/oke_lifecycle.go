@@ -300,10 +300,9 @@ func (o *okeLifecycle) SetCreationFailed() error {
 	return err
 }
 
-// RecordSuccessfulCreate emits a SuccessfulCreate event for the OKE instance
-// so a reader tailing events sees provisioning completion; the wrapper's
-// wasReconciled gate skips its own emit because ConfirmCreation flipped
-// Reconciled=true before the redelivered reconcile pass captured it.
+// RecordSuccessfulCreate records a CreateSuccessful event for provisioning
+// completion. ConfirmCreation sets Reconciled=true first, so the generated
+// reconciler's wasReconciled gate skips its own emit on redelivery.
 func (o *okeLifecycle) RecordSuccessfulCreate() error {
 	return o.r.EventsRecorder.RecordEvent(
 		&v0.Event{

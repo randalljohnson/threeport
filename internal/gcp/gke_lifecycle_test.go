@@ -3,18 +3,6 @@
 // a small fake provider.InfraProvider; no GCP, Pulumi, or NATS infrastructure is
 // touched.
 //
-// Coverage spans every reachable branch in the two hand-written adapter files:
-// GetReconciliation field mapping plus nil-CreationFailed guard and GET error;
-// BuildInfra / buildGkeInfra projection, each fetch error, the credentials
-// gate, and nil-required-field validation; IsCreateComplete edge cases plus
-// GET error; OnCreateConfirmed wrong-infra-type error; the extracted
-// updateKubeRuntimeConnection helper (PATCH target, five fields, every error
-// path, incomplete-connection guard); the ten reconciliation-update methods
-// (exact PATCH body plus error); OnDeleteConfirmed nil; the two publish
-// methods (success subject plus publish error); the reconciler entry points
-// (Created confirmed-noop, Updated noop, Deleted scheduled-and-confirmed noop,
-// Deleted not-scheduled error); and N-instance concurrency under -race.
-//
 // Every package-level identifier is gke-prefixed and there is no TestMain, so
 // GCE tests sharing this package do not collide.
 package gcp
@@ -49,16 +37,21 @@ import (
 )
 
 const (
-	gkeTestInstanceID   uint = 42
-	gkeTestInstanceName      = "gke-test-instance"
+	// gkeTestInstanceID is the default API ID used by single-instance test cases.
+	gkeTestInstanceID uint = 42
+	// gkeTestInstanceName is the default name used by single-instance test cases.
+	gkeTestInstanceName = "gke-test-instance"
+	// gkeTestDefinitionID is the GKE definition ID referenced by test instances.
 	gkeTestDefinitionID uint = 9
-	gkeTestProviderID   uint = 5
-	gkeTestKriID        uint = 77
+	// gkeTestProviderID is the GCP provider ID referenced by test instances.
+	gkeTestProviderID uint = 5
+	// gkeTestKriID is the linked kubernetes runtime instance ID used by connection tests.
+	gkeTestKriID uint = 77
 )
 
-// gkeFakeInfra is a non-GKE provider.InfraProvider used to drive the
-// wrong-infra-type path and to stand in for the ignored infra argument of
-// SaveCreateOutputs.
+// gkeFakeInfra is a provider.InfraProvider that is not *provider.KubernetesRuntimeInfraGKE.
+// It drives OnCreateConfirmed's wrong-type branch and supplies SaveCreateOutputs'
+// unused infra argument.
 type gkeFakeInfra struct{}
 
 func (gkeFakeInfra) DeployInfra() error                      { return nil }
@@ -66,14 +59,15 @@ func (gkeFakeInfra) DestroyInfra() error                     { return nil }
 func (gkeFakeInfra) SetStackState(*datatypes.JSON) error     { return nil }
 func (gkeFakeInfra) GetStackState() (*datatypes.JSON, error) { return nil, nil }
 
-// gkePublishedMessage is one message captured by the fake jetstream context.
+// gkePublishedMessage is one JetStream Publish call captured by gkeFakeJetStream.
 type gkePublishedMessage struct {
 	subject string
 	data    []byte
 }
 
-// gkeFakeJetStream stubs nats.JetStreamContext by embedding the interface
-// (nil) and overriding only Publish, the one method the adapter calls.
+// gkeFakeJetStream embeds nats.JetStreamContext and overrides Publish so tests
+// can drive both the publish-success and publish-error paths. All other
+// interface methods are inherited from the embedded nil and must not be called.
 type gkeFakeJetStream struct {
 	nats.JetStreamContext
 	mu         sync.Mutex
@@ -81,6 +75,7 @@ type gkeFakeJetStream struct {
 	publishErr error
 }
 
+// Publish records the subject and body, or returns the configured error.
 func (f *gkeFakeJetStream) Publish(subject string, data []byte, _ ...nats.PubOpt) (*nats.PubAck, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -91,6 +86,7 @@ func (f *gkeFakeJetStream) Publish(subject string, data []byte, _ ...nats.PubOpt
 	return &nats.PubAck{}, nil
 }
 
+// messages returns a copy of the recorded Publish calls.
 func (f *gkeFakeJetStream) messages() []gkePublishedMessage {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -99,7 +95,7 @@ func (f *gkeFakeJetStream) messages() []gkePublishedMessage {
 	return out
 }
 
-// gkeCapturedPatch is one recorded PATCH request.
+// gkeCapturedPatch is one recorded PATCH path and body.
 type gkeCapturedPatch struct {
 	path string
 	body []byte
@@ -111,12 +107,14 @@ type gkePatchRecorder struct {
 	patches []gkeCapturedPatch
 }
 
+// add stores a captured PATCH body for the given path.
 func (rec *gkePatchRecorder) add(path string, body []byte) {
 	rec.mu.Lock()
 	defer rec.mu.Unlock()
 	rec.patches = append(rec.patches, gkeCapturedPatch{path: path, body: body})
 }
 
+// snapshot returns a copy of the recorded PATCH requests.
 func (rec *gkePatchRecorder) snapshot() []gkeCapturedPatch {
 	rec.mu.Lock()
 	defer rec.mu.Unlock()
@@ -138,12 +136,12 @@ func gkeParsePathID(path string) (uint, bool) {
 	return uint(id), true
 }
 
-// gkeStubReconciler points a real Reconciler at the API stub.
+// gkeStubReconciler builds a controller.Reconciler pointed at the stub.
 func gkeStubReconciler(api *machinetest.APIStub) *controller.Reconciler {
 	return &controller.Reconciler{APIClient: api.Client, APIServer: api.Addr}
 }
 
-// gkeNewLifecycle constructs the adapter under test against the stub API.
+// gkeNewLifecycle constructs the adapter against the stub for a given instance.
 func gkeNewLifecycle(api *machinetest.APIStub, inst *v0.GcpGkeKubernetesRuntimeInstance) *gkeLifecycle {
 	log := logr.Discard()
 	return newGkeLifecycleProvider(gkeStubReconciler(api), inst, &log)
@@ -279,8 +277,7 @@ func gkeServeProvider(t *testing.T, api *machinetest.APIStub, prov *v0.GcpProvid
 }
 
 // gkeRunUpdateMethod exercises one reconciliation-update method: a success run
-// asserting the PATCH path and exact body, and a 500 run asserting the error
-// propagates.
+// asserting the PATCH path and body, and a 500 run asserting the error propagates.
 func gkeRunUpdateMethod(
 	t *testing.T,
 	call func(g *gkeLifecycle) error,
@@ -313,6 +310,8 @@ func gkeRunUpdateMethod(
 	})
 }
 
+// TestGkeLifecycleGetReconciliation covers field mapping, the nil-CreationFailed
+// guard, and a GET error from the stub.
 func TestGkeLifecycleGetReconciliation(t *testing.T) {
 	t.Run("maps all fields", func(t *testing.T) {
 		api := machinetest.NewAPIStub(t)
@@ -388,6 +387,8 @@ func gkeBuildFixtures() (*v0.GcpGkeKubernetesRuntimeInstance, *v0.GcpGkeKubernet
 	return inst, def, prov
 }
 
+// TestGkeLifecycleBuildInfra covers field projection, credential gates, and
+// fetch errors for BuildInfra.
 func TestGkeLifecycleBuildInfra(t *testing.T) {
 	t.Run("happy path projects all fields", func(t *testing.T) {
 		api := machinetest.NewAPIStub(t)
@@ -420,8 +421,7 @@ func TestGkeLifecycleBuildInfra(t *testing.T) {
 	t.Run("nil credentials rejected", func(t *testing.T) {
 		api := machinetest.NewAPIStub(t)
 		inst, def, prov := gkeBuildFixtures()
-		// nil credentials must fail fast so a misconfigured provider does not
-		// defer the failure to the gke create and hang on interactive oauth
+		// reject before DeployInfra so an empty key never reaches the Pulumi provider
 		prov.ServiceAccountCredentials = nil
 		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
 		gkeServeDefinition(t, api, def, http.StatusOK)
@@ -435,7 +435,7 @@ func TestGkeLifecycleBuildInfra(t *testing.T) {
 	t.Run("empty credentials rejected", func(t *testing.T) {
 		api := machinetest.NewAPIStub(t)
 		inst, def, prov := gkeBuildFixtures()
-		// empty credentials must fail fast the same as nil
+		// empty credentials must fail the same gate as nil
 		prov.ServiceAccountCredentials = util.Ptr("")
 		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
 		gkeServeDefinition(t, api, def, http.StatusOK)
@@ -494,8 +494,7 @@ func TestGkeBuildInfraFieldValidation(t *testing.T) {
 		name    string
 		mutate  func(inst *v0.GcpGkeKubernetesRuntimeInstance, def *v0.GcpGkeKubernetesRuntimeDefinition, prov *v0.GcpProvider)
 		errPart string
-		// servePrv controls whether the provider endpoint is registered; the
-		// project-id guard fires only after the provider fetch succeeds.
+		// The flag that registers the provider endpoint; ProjectID is checked only after fetch
 		servePrv bool
 	}{
 		{
@@ -553,7 +552,11 @@ func TestGkeBuildInfraFieldValidation(t *testing.T) {
 	}
 }
 
+// TestGkeLifecycleIsCreateComplete covers inventory edge cases and a GET error.
 func TestGkeLifecycleIsCreateComplete(t *testing.T) {
+	// empty- and whitespace-only inventory bytes are not representable in the
+	// JSON response envelope, so those forms cannot reach the adapter over
+	// the wire; the nil and padded cases cover their semantics
 	tests := []struct {
 		name      string
 		inventory *string
@@ -567,9 +570,6 @@ func TestGkeLifecycleIsCreateComplete(t *testing.T) {
 		{name: "newline padded empty object", inventory: util.Ptr("\t{}\n"), want: false},
 		{name: "empty array", inventory: util.Ptr("[]"), want: false},
 		{name: "quoted null string", inventory: util.Ptr(`"null"`), want: false},
-		// empty- and whitespace-only inventory bytes are not representable in the
-		// JSON response envelope, so those forms cannot reach the adapter over
-		// the wire; the nil and padded cases cover their semantics
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -597,9 +597,8 @@ func TestGkeLifecycleIsCreateComplete(t *testing.T) {
 	})
 }
 
-// TestGkeLifecycleOnCreateConfirmedWrongInfraType drives OnCreateConfirmed with
-// a non-GKE infra provider: the comma-ok assertion returns a descriptive error
-// instead of panicking, and no connection lookup is attempted.
+// TestGkeLifecycleOnCreateConfirmedWrongInfraType rejects a non-GKE infra
+// provider with a descriptive error instead of panicking on the type assert.
 func TestGkeLifecycleOnCreateConfirmedWrongInfraType(t *testing.T) {
 	api := machinetest.NewAPIStub(t)
 	inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
@@ -609,6 +608,7 @@ func TestGkeLifecycleOnCreateConfirmedWrongInfraType(t *testing.T) {
 	assert.ErrorContains(t, err, "expected a GKE infra provider")
 }
 
+// gkeValidConnection returns complete kube connection info for connection tests.
 func gkeValidConnection() *kube.KubeConnectionInfo {
 	return &kube.KubeConnectionInfo{
 		APIEndpoint:     "https://10.0.0.1",
@@ -618,10 +618,8 @@ func gkeValidConnection() *kube.KubeConnectionInfo {
 	}
 }
 
-// TestGkeLifecycleUpdateKubeConnection drives the extracted helper directly
-// (bypassing the environment-dependent GetConnection), covering the PATCH
-// target and body plus every error path including the incomplete-connection
-// guard.
+// TestGkeLifecycleUpdateKubeConnection drives updateKubeRuntimeConnection
+// directly, bypassing GetConnection, covering the PATCH body and every error path.
 func TestGkeLifecycleUpdateKubeConnection(t *testing.T) {
 	t.Run("success patches linked kubernetes runtime instance", func(t *testing.T) {
 		api := machinetest.NewAPIStub(t)
@@ -651,6 +649,7 @@ func TestGkeLifecycleUpdateKubeConnection(t *testing.T) {
 		assert.Equal(t, conn.Token, *patched.ConnectionToken)
 		require.NotNil(t, patched.ConnectionTokenExpiration)
 		assert.WithinDuration(t, conn.TokenExpiration, *patched.ConnectionTokenExpiration, time.Second)
+		// confirm reconciled is cleared so the linked runtime reconciler runs next
 		require.NotNil(t, patched.Reconciled)
 		assert.False(t, *patched.Reconciled)
 	})
@@ -721,6 +720,7 @@ func TestGkeLifecycleUpdateKubeConnection(t *testing.T) {
 	})
 }
 
+// TestGkeLifecycleSaveCreateOutputs asserts ResourceInventory is PATCHed from the create state.
 func TestGkeLifecycleSaveCreateOutputs(t *testing.T) {
 	state := datatypes.JSON([]byte(`{"deployment":{"resources":[{"urn":"a"}]}}`))
 	gkeRunUpdateMethod(t,
@@ -732,12 +732,14 @@ func TestGkeLifecycleSaveCreateOutputs(t *testing.T) {
 	)
 }
 
+// TestGkeLifecycleOnDeleteConfirmed asserts the post-delete hook is a no-op.
 func TestGkeLifecycleOnDeleteConfirmed(t *testing.T) {
 	api := machinetest.NewAPIStub(t)
 	inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
 	assert.NoError(t, gkeNewLifecycle(api, inst).OnDeleteConfirmed(nil))
 }
 
+// TestGkeLifecycleAckCreation asserts CreationAcknowledged is set and CreationFailed cleared.
 func TestGkeLifecycleAckCreation(t *testing.T) {
 	gkeRunUpdateMethod(t,
 		func(g *gkeLifecycle) error { return g.AckCreation() },
@@ -751,6 +753,7 @@ func TestGkeLifecycleAckCreation(t *testing.T) {
 	)
 }
 
+// TestGkeLifecycleRefreshCreationAck asserts only CreationAcknowledged is refreshed.
 func TestGkeLifecycleRefreshCreationAck(t *testing.T) {
 	gkeRunUpdateMethod(t,
 		func(g *gkeLifecycle) error { return g.RefreshCreationAck() },
@@ -763,6 +766,7 @@ func TestGkeLifecycleRefreshCreationAck(t *testing.T) {
 	)
 }
 
+// TestGkeLifecycleSetCreationFailed asserts CreationFailed is set true alone.
 func TestGkeLifecycleSetCreationFailed(t *testing.T) {
 	gkeRunUpdateMethod(t,
 		func(g *gkeLifecycle) error { return g.SetCreationFailed() },
@@ -775,6 +779,7 @@ func TestGkeLifecycleSetCreationFailed(t *testing.T) {
 	)
 }
 
+// TestGkeLifecycleConfirmCreation asserts CreationConfirmed and Reconciled are set.
 func TestGkeLifecycleConfirmCreation(t *testing.T) {
 	gkeRunUpdateMethod(t,
 		func(g *gkeLifecycle) error { return g.ConfirmCreation() },
@@ -788,6 +793,7 @@ func TestGkeLifecycleConfirmCreation(t *testing.T) {
 	)
 }
 
+// TestGkeLifecycleAckDeletion asserts DeletionAcknowledged is set.
 func TestGkeLifecycleAckDeletion(t *testing.T) {
 	gkeRunUpdateMethod(t,
 		func(g *gkeLifecycle) error { return g.AckDeletion() },
@@ -799,6 +805,7 @@ func TestGkeLifecycleAckDeletion(t *testing.T) {
 	)
 }
 
+// TestGkeLifecycleRefreshDeletionAck asserts only DeletionAcknowledged is refreshed.
 func TestGkeLifecycleRefreshDeletionAck(t *testing.T) {
 	gkeRunUpdateMethod(t,
 		func(g *gkeLifecycle) error { return g.RefreshDeletionAck() },
@@ -810,6 +817,7 @@ func TestGkeLifecycleRefreshDeletionAck(t *testing.T) {
 	)
 }
 
+// TestGkeLifecycleConfirmDeletion asserts DeletionConfirmed is set.
 func TestGkeLifecycleConfirmDeletion(t *testing.T) {
 	gkeRunUpdateMethod(t,
 		func(g *gkeLifecycle) error { return g.ConfirmDeletion() },
@@ -821,6 +829,7 @@ func TestGkeLifecycleConfirmDeletion(t *testing.T) {
 	)
 }
 
+// TestGkeLifecycleSaveState asserts ResourceInventory is PATCHed from intermediate state.
 func TestGkeLifecycleSaveState(t *testing.T) {
 	state := datatypes.JSON([]byte(`{"checkpoint":{"latest":{"resources":[{"urn":"b"}]}}}`))
 	gkeRunUpdateMethod(t,
@@ -832,6 +841,7 @@ func TestGkeLifecycleSaveState(t *testing.T) {
 	)
 }
 
+// TestGkeLifecycleClearInventory asserts ResourceInventory is cleared to {}.
 func TestGkeLifecycleClearInventory(t *testing.T) {
 	gkeRunUpdateMethod(t,
 		func(g *gkeLifecycle) error { return g.ClearInventory() },
@@ -842,6 +852,7 @@ func TestGkeLifecycleClearInventory(t *testing.T) {
 	)
 }
 
+// TestGkeLifecyclePublishCreateNotification covers the create subject and a publish error.
 func TestGkeLifecyclePublishCreateNotification(t *testing.T) {
 	t.Run("success publishes to create subject", func(t *testing.T) {
 		js := &gkeFakeJetStream{}
@@ -869,6 +880,7 @@ func TestGkeLifecyclePublishCreateNotification(t *testing.T) {
 	})
 }
 
+// TestGkeLifecyclePublishDeleteNotification covers the delete subject and a publish error.
 func TestGkeLifecyclePublishDeleteNotification(t *testing.T) {
 	t.Run("success publishes to delete subject", func(t *testing.T) {
 		js := &gkeFakeJetStream{}
@@ -896,6 +908,7 @@ func TestGkeLifecyclePublishDeleteNotification(t *testing.T) {
 	})
 }
 
+// TestGkeInstanceUpdatedNoop asserts the Updated reconciler returns delay 0.
 func TestGkeInstanceUpdatedNoop(t *testing.T) {
 	inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
 	log := logr.Discard()
@@ -904,6 +917,7 @@ func TestGkeInstanceUpdatedNoop(t *testing.T) {
 	assert.Equal(t, int64(0), delay)
 }
 
+// TestGkeInstanceCreatedConfirmedNoop asserts Created short-circuits once CreationConfirmed is set.
 func TestGkeInstanceCreatedConfirmedNoop(t *testing.T) {
 	api := machinetest.NewAPIStub(t)
 	inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
@@ -916,6 +930,7 @@ func TestGkeInstanceCreatedConfirmedNoop(t *testing.T) {
 	assert.Equal(t, int64(0), delay)
 }
 
+// TestGkeInstanceDeletedConfirmedNoop asserts Deleted short-circuits once DeletionConfirmed is set.
 func TestGkeInstanceDeletedConfirmedNoop(t *testing.T) {
 	api := machinetest.NewAPIStub(t)
 	inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
@@ -929,6 +944,7 @@ func TestGkeInstanceDeletedConfirmedNoop(t *testing.T) {
 	assert.Equal(t, int64(0), delay)
 }
 
+// TestGkeInstanceDeletedNotScheduled rejects a delete notification without DeletionScheduled.
 func TestGkeInstanceDeletedNotScheduled(t *testing.T) {
 	api := machinetest.NewAPIStub(t)
 	inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
@@ -940,15 +956,19 @@ func TestGkeInstanceDeletedNotScheduled(t *testing.T) {
 	assert.ErrorContains(t, err, "deletion notification received but not scheduled")
 }
 
-// TestGkeLifecycleConcurrentInstancesNoRace proves the adapter holds no shared
-// mutable state: many adapters for distinct instance IDs run the fetch and
-// update methods concurrently against one stub with no data race and no
-// cross-instance bleed in the PATCHed bodies.
+// TestGkeLifecycleConcurrentInstancesNoRace constructs N adapters for distinct
+// instance IDs and drives their stateless methods concurrently. The adapter
+// holds no shared mutable state: there is no data race under -race and no
+// cross-instance bleed (each goroutine's PATCH carries its own ID). Semaphore-
+// cap, goroutine-leak, and stale-ack behavior live in the shared handler and
+// are not asserted here.
 func TestGkeLifecycleConcurrentInstancesNoRace(t *testing.T) {
 	const instanceCount = 200
 
 	api := machinetest.NewAPIStub(t)
 	rec := &gkePatchRecorder{}
+	// register one handler for all instance IDs, returning each ID on GET and
+	// recording PATCH bodies under its own path
 	api.Mux.HandleFunc(v0.PathGcpGkeKubernetesRuntimeInstances+"/", func(w http.ResponseWriter, r *http.Request) {
 		id, ok := gkeParsePathID(r.URL.Path)
 		if !ok {

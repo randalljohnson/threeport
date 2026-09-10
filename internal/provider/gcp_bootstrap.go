@@ -347,11 +347,9 @@ func (i *KubernetesRuntimeInfraGKE) validateGCPServiceAccountPropagation(
 		close(statusChan)
 	}()
 
-	// Drain status updates into statusMap until all goroutines finish
-	// and the closer goroutine closes the channel. Without this drain,
-	// workers block on send once the buffer fills and statusMap keeps its
-	// zero-valued entries, so the failure check below sees no failures and
-	// swallows real IAM propagation errors.
+	// Drain status updates into statusMap until the closer closes the channel.
+	// Without this drain workers block once the buffer fills, and statusMap
+	// keeps zero-valued entries so the check below misses propagation failures
 	for update := range statusChan {
 		statusMap[update.serviceID] = &update.status
 	}
@@ -449,8 +447,8 @@ func (i *KubernetesRuntimeInfraGKE) getServiceAccountEmail() string {
 func CreateGCPServiceAccountWithKey(projectID, accountName string) (*GCPServiceAccountWithKey, error) {
 	ctx := context.Background()
 
-	// ensure gcp authentication is in place; this runs under tptctl so the
-	// browser oauth fallback is allowed when no ambient credentials exist
+	// ensure GCP authentication is in place; this runs under tptctl so the
+	// browser OAuth fallback is allowed when no ambient credentials exist
 	if err := gcpauth.EnsureGCPAuthWithBrowser(""); err != nil {
 		return nil, fmt.Errorf("failed to ensure GCP authentication: %w", err)
 	}
@@ -526,8 +524,8 @@ func CreateGCPServiceAccountWithKey(projectID, accountName string) (*GCPServiceA
 func DeleteGCPServiceAccountWithKey(projectID, accountName string) error {
 	ctx := context.Background()
 
-	// ensure gcp authentication is in place; this runs under tptctl so the
-	// browser oauth fallback is allowed when no ambient credentials exist
+	// ensure GCP authentication is in place; this runs under tptctl so the
+	// browser OAuth fallback is allowed when no ambient credentials exist
 	if err := gcpauth.EnsureGCPAuthWithBrowser(""); err != nil {
 		return fmt.Errorf("failed to ensure GCP authentication: %w", err)
 	}

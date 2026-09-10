@@ -192,10 +192,10 @@ func TestHandleInfraCreate_CompleteBranch_ReentryConfirmsOnce(t *testing.T) {
 // TestHandleInfraCreate_DeleteRacesCreate_NoFreshAck covers a create that
 // observes a scheduled delete and writes no ack, so delete can launch.
 func TestHandleInfraCreate_DeleteRacesCreate_NoFreshAck(t *testing.T) {
+	// initial fetch: brand new create; pre-ack re-check: delete already scheduled
 	fl := newFakeLifecycle(
 		// initial fetch: new create, nothing acked
 		&ReconciliationSnapshot{},
-		// pre-acknowledge re-check: a delete landed in the race window
 		&ReconciliationSnapshot{
 			DeletionScheduled: util.Ptr(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
 		},

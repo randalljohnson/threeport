@@ -466,7 +466,7 @@ func (h Handler) GetEventsFiltered(c echo.Context) error {
 
 		// total greater than the limit means the client will need to
 		// page through the result set; HasMore signals that
-		pagination.HasMore = totalCount > pagination.Limit
+		pagination.HasMore = int64(len(*records)) > threshold
 
 		switch pagination.HasMore {
 		case false:
@@ -763,7 +763,7 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 			}
 			continue
 		}
-		namesByType[typ] = names
+		namesByType[typ] = resolved
 	}
 
 	// project the resolved name onto each event row when available;

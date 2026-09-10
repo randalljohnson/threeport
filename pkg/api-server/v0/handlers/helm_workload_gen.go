@@ -310,6 +310,9 @@ func (h Handler) UpdateHelmWorkloadDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingHelmWorkloadDefinition.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingHelmWorkloadDefinition).Updates(&updatedHelmWorkloadDefinition)
@@ -332,7 +335,6 @@ func (h Handler) UpdateHelmWorkloadDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingHelmWorkloadDefinition.Reconciliation
 	if existingHelmWorkloadDefinition.Reconciled != nil && !*existingHelmWorkloadDefinition.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingHelmWorkloadDefinition.Reconciliation) {
 		notifPayload, err := existingHelmWorkloadDefinition.NotificationPayload(
@@ -886,6 +888,9 @@ func (h Handler) UpdateHelmWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingHelmWorkloadInstance.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingHelmWorkloadInstance).Updates(&updatedHelmWorkloadInstance)
@@ -908,7 +913,6 @@ func (h Handler) UpdateHelmWorkloadInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingHelmWorkloadInstance.Reconciliation
 	if existingHelmWorkloadInstance.Reconciled != nil && !*existingHelmWorkloadInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingHelmWorkloadInstance.Reconciliation) {
 		notifPayload, err := existingHelmWorkloadInstance.NotificationPayload(

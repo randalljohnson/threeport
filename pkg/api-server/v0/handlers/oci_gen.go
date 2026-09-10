@@ -783,6 +783,9 @@ func (h Handler) UpdateOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingOciOkeKubernetesRuntimeInstance.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingOciOkeKubernetesRuntimeInstance).Updates(&updatedOciOkeKubernetesRuntimeInstance)
@@ -805,7 +808,6 @@ func (h Handler) UpdateOciOkeKubernetesRuntimeInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingOciOkeKubernetesRuntimeInstance.Reconciliation
 	if existingOciOkeKubernetesRuntimeInstance.Reconciled != nil && !*existingOciOkeKubernetesRuntimeInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingOciOkeKubernetesRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingOciOkeKubernetesRuntimeInstance.NotificationPayload(

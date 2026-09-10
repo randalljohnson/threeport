@@ -310,6 +310,9 @@ func (h Handler) UpdateKubernetesWorkloadDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingKubernetesWorkloadDefinition.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingKubernetesWorkloadDefinition).Updates(&updatedKubernetesWorkloadDefinition)
@@ -332,7 +335,6 @@ func (h Handler) UpdateKubernetesWorkloadDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingKubernetesWorkloadDefinition.Reconciliation
 	if existingKubernetesWorkloadDefinition.Reconciled != nil && !*existingKubernetesWorkloadDefinition.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesWorkloadDefinition.Reconciliation) {
 		notifPayload, err := existingKubernetesWorkloadDefinition.NotificationPayload(
@@ -886,6 +888,9 @@ func (h Handler) UpdateKubernetesWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingKubernetesWorkloadInstance.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingKubernetesWorkloadInstance).Updates(&updatedKubernetesWorkloadInstance)
@@ -908,7 +913,6 @@ func (h Handler) UpdateKubernetesWorkloadInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingKubernetesWorkloadInstance.Reconciliation
 	if existingKubernetesWorkloadInstance.Reconciled != nil && !*existingKubernetesWorkloadInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesWorkloadInstance.Reconciliation) {
 		notifPayload, err := existingKubernetesWorkloadInstance.NotificationPayload(

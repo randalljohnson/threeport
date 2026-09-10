@@ -783,6 +783,9 @@ func (h Handler) UpdateMachineWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingMachineWorkloadInstance.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingMachineWorkloadInstance).Updates(&updatedMachineWorkloadInstance)
@@ -805,7 +808,6 @@ func (h Handler) UpdateMachineWorkloadInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingMachineWorkloadInstance.Reconciliation
 	if existingMachineWorkloadInstance.Reconciled != nil && !*existingMachineWorkloadInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMachineWorkloadInstance.Reconciliation) {
 		notifPayload, err := existingMachineWorkloadInstance.NotificationPayload(

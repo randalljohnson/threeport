@@ -310,6 +310,9 @@ func (h Handler) UpdateTerraformDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingTerraformDefinition.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingTerraformDefinition).Updates(&updatedTerraformDefinition)
@@ -332,7 +335,6 @@ func (h Handler) UpdateTerraformDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingTerraformDefinition.Reconciliation
 	if existingTerraformDefinition.Reconciled != nil && !*existingTerraformDefinition.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingTerraformDefinition.Reconciliation) {
 		notifPayload, err := existingTerraformDefinition.NotificationPayload(
@@ -886,6 +888,9 @@ func (h Handler) UpdateTerraformInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingTerraformInstance.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingTerraformInstance).Updates(&updatedTerraformInstance)
@@ -908,7 +913,6 @@ func (h Handler) UpdateTerraformInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingTerraformInstance.Reconciliation
 	if existingTerraformInstance.Reconciled != nil && !*existingTerraformInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingTerraformInstance.Reconciliation) {
 		notifPayload, err := existingTerraformInstance.NotificationPayload(

@@ -783,6 +783,9 @@ func (h Handler) UpdateDomainNameInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingDomainNameInstance.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingDomainNameInstance).Updates(&updatedDomainNameInstance)
@@ -805,7 +808,6 @@ func (h Handler) UpdateDomainNameInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingDomainNameInstance.Reconciliation
 	if existingDomainNameInstance.Reconciled != nil && !*existingDomainNameInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingDomainNameInstance.Reconciliation) {
 		notifPayload, err := existingDomainNameInstance.NotificationPayload(
@@ -1353,6 +1355,9 @@ func (h Handler) UpdateGatewayDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingGatewayDefinition.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingGatewayDefinition).Updates(&updatedGatewayDefinition)
@@ -1375,7 +1380,6 @@ func (h Handler) UpdateGatewayDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingGatewayDefinition.Reconciliation
 	if existingGatewayDefinition.Reconciled != nil && !*existingGatewayDefinition.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGatewayDefinition.Reconciliation) {
 		notifPayload, err := existingGatewayDefinition.NotificationPayload(
@@ -2396,6 +2400,9 @@ func (h Handler) UpdateGatewayInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingGatewayInstance.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingGatewayInstance).Updates(&updatedGatewayInstance)
@@ -2418,7 +2425,6 @@ func (h Handler) UpdateGatewayInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingGatewayInstance.Reconciliation
 	if existingGatewayInstance.Reconciled != nil && !*existingGatewayInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGatewayInstance.Reconciliation) {
 		notifPayload, err := existingGatewayInstance.NotificationPayload(

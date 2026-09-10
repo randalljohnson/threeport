@@ -310,6 +310,9 @@ func (h Handler) UpdateSecretDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingSecretDefinition.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingSecretDefinition).Updates(&updatedSecretDefinition)
@@ -332,7 +335,6 @@ func (h Handler) UpdateSecretDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingSecretDefinition.Reconciliation
 	if existingSecretDefinition.Reconciled != nil && !*existingSecretDefinition.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingSecretDefinition.Reconciliation) {
 		notifPayload, err := existingSecretDefinition.NotificationPayload(
@@ -886,6 +888,9 @@ func (h Handler) UpdateSecretInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingSecretInstance.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingSecretInstance).Updates(&updatedSecretInstance)
@@ -908,7 +913,6 @@ func (h Handler) UpdateSecretInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingSecretInstance.Reconciliation
 	if existingSecretInstance.Reconciled != nil && !*existingSecretInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingSecretInstance.Reconciliation) {
 		notifPayload, err := existingSecretInstance.NotificationPayload(

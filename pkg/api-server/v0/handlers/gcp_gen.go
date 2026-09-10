@@ -783,6 +783,9 @@ func (h Handler) UpdateGcpGceMachineRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingGcpGceMachineRuntimeInstance.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingGcpGceMachineRuntimeInstance).Updates(&updatedGcpGceMachineRuntimeInstance)
@@ -805,7 +808,6 @@ func (h Handler) UpdateGcpGceMachineRuntimeInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingGcpGceMachineRuntimeInstance.Reconciliation
 	if existingGcpGceMachineRuntimeInstance.Reconciled != nil && !*existingGcpGceMachineRuntimeInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGcpGceMachineRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingGcpGceMachineRuntimeInstance.NotificationPayload(
@@ -1826,6 +1828,9 @@ func (h Handler) UpdateGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingGcpGkeKubernetesRuntimeInstance.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingGcpGkeKubernetesRuntimeInstance).Updates(&updatedGcpGkeKubernetesRuntimeInstance)
@@ -1848,7 +1853,6 @@ func (h Handler) UpdateGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingGcpGkeKubernetesRuntimeInstance.Reconciliation
 	if existingGcpGkeKubernetesRuntimeInstance.Reconciled != nil && !*existingGcpGkeKubernetesRuntimeInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGcpGkeKubernetesRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingGcpGkeKubernetesRuntimeInstance.NotificationPayload(

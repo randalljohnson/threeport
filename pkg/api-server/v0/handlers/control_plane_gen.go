@@ -311,6 +311,9 @@ func (h Handler) UpdateControlPlaneDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingControlPlaneDefinition.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingControlPlaneDefinition).Updates(&updatedControlPlaneDefinition)
@@ -333,7 +336,6 @@ func (h Handler) UpdateControlPlaneDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingControlPlaneDefinition.Reconciliation
 	if existingControlPlaneDefinition.Reconciled != nil && !*existingControlPlaneDefinition.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingControlPlaneDefinition.Reconciliation) {
 		notifPayload, err := existingControlPlaneDefinition.NotificationPayload(
@@ -887,6 +889,9 @@ func (h Handler) UpdateControlPlaneInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingControlPlaneInstance.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingControlPlaneInstance).Updates(&updatedControlPlaneInstance)
@@ -909,7 +914,6 @@ func (h Handler) UpdateControlPlaneInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingControlPlaneInstance.Reconciliation
 	if existingControlPlaneInstance.Reconciled != nil && !*existingControlPlaneInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingControlPlaneInstance.Reconciliation) {
 		notifPayload, err := existingControlPlaneInstance.NotificationPayload(

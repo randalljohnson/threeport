@@ -310,6 +310,9 @@ func (h Handler) UpdateMachineRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingMachineRuntimeDefinition.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingMachineRuntimeDefinition).Updates(&updatedMachineRuntimeDefinition)
@@ -332,7 +335,6 @@ func (h Handler) UpdateMachineRuntimeDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingMachineRuntimeDefinition.Reconciliation
 	if existingMachineRuntimeDefinition.Reconciled != nil && !*existingMachineRuntimeDefinition.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMachineRuntimeDefinition.Reconciliation) {
 		notifPayload, err := existingMachineRuntimeDefinition.NotificationPayload(
@@ -886,6 +888,9 @@ func (h Handler) UpdateMachineRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
+	prevReconciliation := existingMachineRuntimeInstance.Reconciliation
+
 	// update object in database
 	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
 		return db.Model(&existingMachineRuntimeInstance).Updates(&updatedMachineRuntimeInstance)
@@ -908,7 +913,6 @@ func (h Handler) UpdateMachineRuntimeInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
-	prevReconciliation := existingMachineRuntimeInstance.Reconciliation
 	if existingMachineRuntimeInstance.Reconciled != nil && !*existingMachineRuntimeInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMachineRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingMachineRuntimeInstance.NotificationPayload(

@@ -3,7 +3,7 @@ package secret
 import (
 	"fmt"
 
-	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
+	mapping "github.com/threeport/threeport/pkg/mapping/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"

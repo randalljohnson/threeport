@@ -2,6 +2,7 @@ package v0
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -65,17 +66,22 @@ func ResponseStatus500(c echo.Context, params *PageRequestParams, error error, o
 }
 
 // ResponseStatusBindErr maps an echo request-binding error to an HTTP
-// response. echo's binder returns *echo.HTTPError with a client-facing
-// code (typically 400 for JSON unmarshal or type mismatches); return
-// that as a client error instead of masking it as a 500. Any error
-// that isn't an *echo.HTTPError, or that carries a 5xx code, is
-// treated as an internal error.
+// response. An *echo.HTTPError carrying a 4xx code, typically 400 for a
+// JSON unmarshal or type mismatch, is returned to the client at that
+// code. Any other error, and any *echo.HTTPError carrying a 5xx code,
+// is returned as an internal server error.
+//
+// Only the error's Message reaches the body. Rendering the whole error
+// would repeat the code already carried in Status.Code and append the
+// wrapped cause, which names Go struct and field types. The caller logs
+// the whole error before calling this, so that detail stays available
+// on the server.
 func ResponseStatusBindErr(c echo.Context, params *PageRequestParams, err error, objectType string) error {
 	var httpErr *echo.HTTPError
 	if errors.As(err, &httpErr) && httpErr.Code >= 400 && httpErr.Code < 500 {
 		return c.JSON(httpErr.Code, CreateResponseErrorWithStatus(
 			params,
-			CreateStatus(httpErr.Code, http.StatusText(httpErr.Code), err.Error()),
+			CreateStatus(httpErr.Code, http.StatusText(httpErr.Code), fmt.Sprintf("%v", httpErr.Message)),
 			objectType,
 		))
 	}

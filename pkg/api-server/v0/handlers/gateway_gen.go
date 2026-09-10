@@ -53,7 +53,7 @@ func (h Handler) AddDomainNameDefinition(c echo.Context) error {
 
 	if err := c.Bind(&domainNameDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -109,7 +109,7 @@ func (h Handler) AddDomainNameDefinition(c echo.Context) error {
 // @ID get-v0-domainNameDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "domain name definition search by name"
+// @Param name query string false "filter by exact domain name definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -127,7 +127,7 @@ func (h Handler) GetDomainNameDefinitions(c echo.Context) error {
 	var filter api_v0.DomainNameDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -160,8 +160,11 @@ func (h Handler) GetDomainNameDefinitions(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.DomainNameDefinition{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
+				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				}
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
@@ -181,8 +184,11 @@ func (h Handler) GetDomainNameDefinitions(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.DomainNameDefinition{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
+			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+				return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+			}
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
@@ -291,7 +297,7 @@ func (h Handler) UpdateDomainNameDefinition(c echo.Context) error {
 	var updatedDomainNameDefinition api_v0.DomainNameDefinition
 	if err := c.Bind(&updatedDomainNameDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -359,7 +365,7 @@ func (h Handler) ReplaceDomainNameDefinition(c echo.Context) error {
 	var updatedDomainNameDefinition api_v0.DomainNameDefinition
 	if err := c.Bind(&updatedDomainNameDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -504,7 +510,7 @@ func (h Handler) AddDomainNameInstance(c echo.Context) error {
 
 	if err := c.Bind(&domainNameInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -574,7 +580,7 @@ func (h Handler) AddDomainNameInstance(c echo.Context) error {
 // @ID get-v0-domainNameInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "domain name instance search by name"
+// @Param name query string false "filter by exact domain name instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -592,7 +598,7 @@ func (h Handler) GetDomainNameInstances(c echo.Context) error {
 	var filter api_v0.DomainNameInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -625,8 +631,11 @@ func (h Handler) GetDomainNameInstances(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.DomainNameInstance{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
+				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				}
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
@@ -646,8 +655,11 @@ func (h Handler) GetDomainNameInstances(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.DomainNameInstance{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
+			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+				return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+			}
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
@@ -756,7 +768,7 @@ func (h Handler) UpdateDomainNameInstance(c echo.Context) error {
 	var updatedDomainNameInstance api_v0.DomainNameInstance
 	if err := c.Bind(&updatedDomainNameInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -838,7 +850,7 @@ func (h Handler) ReplaceDomainNameInstance(c echo.Context) error {
 	var updatedDomainNameInstance api_v0.DomainNameInstance
 	if err := c.Bind(&updatedDomainNameInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1028,7 +1040,7 @@ func (h Handler) AddGatewayDefinition(c echo.Context) error {
 
 	if err := c.Bind(&gatewayDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1098,7 +1110,7 @@ func (h Handler) AddGatewayDefinition(c echo.Context) error {
 // @ID get-v0-gatewayDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "gateway definition search by name"
+// @Param name query string false "filter by exact gateway definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1116,7 +1128,7 @@ func (h Handler) GetGatewayDefinitions(c echo.Context) error {
 	var filter api_v0.GatewayDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1149,8 +1161,11 @@ func (h Handler) GetGatewayDefinitions(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GatewayDefinition{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
+				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				}
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
@@ -1170,8 +1185,11 @@ func (h Handler) GetGatewayDefinitions(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GatewayDefinition{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
+			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+				return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+			}
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
@@ -1280,7 +1298,7 @@ func (h Handler) UpdateGatewayDefinition(c echo.Context) error {
 	var updatedGatewayDefinition api_v0.GatewayDefinition
 	if err := c.Bind(&updatedGatewayDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -1362,7 +1380,7 @@ func (h Handler) ReplaceGatewayDefinition(c echo.Context) error {
 	var updatedGatewayDefinition api_v0.GatewayDefinition
 	if err := c.Bind(&updatedGatewayDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1558,7 +1576,7 @@ func (h Handler) AddGatewayHttpPort(c echo.Context) error {
 
 	if err := c.Bind(&gatewayHttpPort); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1598,7 +1616,7 @@ func (h Handler) AddGatewayHttpPort(c echo.Context) error {
 // @ID get-v0-gatewayHttpPorts
 // @Accept json
 // @Produce json
-// @Param name query string false "gateway http port search by name"
+// @Param name query string false "filter by exact gateway http port name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -1616,7 +1634,7 @@ func (h Handler) GetGatewayHttpPorts(c echo.Context) error {
 	var filter api_v0.GatewayHttpPort
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1649,8 +1667,11 @@ func (h Handler) GetGatewayHttpPorts(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GatewayHttpPort{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
+				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				}
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
@@ -1670,8 +1691,11 @@ func (h Handler) GetGatewayHttpPorts(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GatewayHttpPort{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
+			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+				return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+			}
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
@@ -1780,7 +1804,7 @@ func (h Handler) UpdateGatewayHttpPort(c echo.Context) error {
 	var updatedGatewayHttpPort api_v0.GatewayHttpPort
 	if err := c.Bind(&updatedGatewayHttpPort); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -1848,7 +1872,7 @@ func (h Handler) ReplaceGatewayHttpPort(c echo.Context) error {
 	var updatedGatewayHttpPort api_v0.GatewayHttpPort
 	if err := c.Bind(&updatedGatewayHttpPort); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -1987,7 +2011,7 @@ func (h Handler) AddGatewayInstance(c echo.Context) error {
 
 	if err := c.Bind(&gatewayInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -2057,7 +2081,7 @@ func (h Handler) AddGatewayInstance(c echo.Context) error {
 // @ID get-v0-gatewayInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "gateway instance search by name"
+// @Param name query string false "filter by exact gateway instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -2075,7 +2099,7 @@ func (h Handler) GetGatewayInstances(c echo.Context) error {
 	var filter api_v0.GatewayInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -2108,8 +2132,11 @@ func (h Handler) GetGatewayInstances(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GatewayInstance{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
+				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				}
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
@@ -2129,8 +2156,11 @@ func (h Handler) GetGatewayInstances(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GatewayInstance{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
+			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+				return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+			}
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
@@ -2239,7 +2269,7 @@ func (h Handler) UpdateGatewayInstance(c echo.Context) error {
 	var updatedGatewayInstance api_v0.GatewayInstance
 	if err := c.Bind(&updatedGatewayInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -2321,7 +2351,7 @@ func (h Handler) ReplaceGatewayInstance(c echo.Context) error {
 	var updatedGatewayInstance api_v0.GatewayInstance
 	if err := c.Bind(&updatedGatewayInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -2511,7 +2541,7 @@ func (h Handler) AddGatewayTcpPort(c echo.Context) error {
 
 	if err := c.Bind(&gatewayTcpPort); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -2551,7 +2581,7 @@ func (h Handler) AddGatewayTcpPort(c echo.Context) error {
 // @ID get-v0-gatewayTcpPorts
 // @Accept json
 // @Produce json
-// @Param name query string false "gateway tcp port search by name"
+// @Param name query string false "filter by exact gateway tcp port name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -2569,7 +2599,7 @@ func (h Handler) GetGatewayTcpPorts(c echo.Context) error {
 	var filter api_v0.GatewayTcpPort
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -2602,8 +2632,11 @@ func (h Handler) GetGatewayTcpPorts(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GatewayTcpPort{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
+				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				}
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
@@ -2623,8 +2656,11 @@ func (h Handler) GetGatewayTcpPorts(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.GatewayTcpPort{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
+			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+				return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+			}
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
@@ -2733,7 +2769,7 @@ func (h Handler) UpdateGatewayTcpPort(c echo.Context) error {
 	var updatedGatewayTcpPort api_v0.GatewayTcpPort
 	if err := c.Bind(&updatedGatewayTcpPort); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -2801,7 +2837,7 @@ func (h Handler) ReplaceGatewayTcpPort(c echo.Context) error {
 	var updatedGatewayTcpPort api_v0.GatewayTcpPort
 	if err := c.Bind(&updatedGatewayTcpPort); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields

@@ -173,7 +173,7 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of gateway definition encountered for creation")
+					operationErr = errors.New("unrecognized version of gateway definition encountered for create operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
@@ -221,6 +221,10 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
+				if gatewayDefinition.ScheduledForDeletion() != nil {
+					log.Info("gateway definition scheduled for deletion - skipping update")
+					break
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch gatewayDefinition.GetVersion() {
@@ -233,7 +237,7 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of gateway definition encountered for creation")
+					operationErr = errors.New("unrecognized version of gateway definition encountered for update operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
@@ -293,7 +297,7 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of gateway definition encountered for creation")
+					operationErr = errors.New("unrecognized version of gateway definition encountered for delete operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {

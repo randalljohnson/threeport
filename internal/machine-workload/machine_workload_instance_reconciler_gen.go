@@ -173,7 +173,7 @@ func MachineWorkloadInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of machine workload instance encountered for creation")
+					operationErr = errors.New("unrecognized version of machine workload instance encountered for create operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
@@ -221,6 +221,10 @@ func MachineWorkloadInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
+				if machineWorkloadInstance.ScheduledForDeletion() != nil {
+					log.Info("machine workload instance scheduled for deletion - skipping update")
+					break
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch machineWorkloadInstance.GetVersion() {
@@ -233,7 +237,7 @@ func MachineWorkloadInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of machine workload instance encountered for creation")
+					operationErr = errors.New("unrecognized version of machine workload instance encountered for update operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
@@ -293,7 +297,7 @@ func MachineWorkloadInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of machine workload instance encountered for creation")
+					operationErr = errors.New("unrecognized version of machine workload instance encountered for delete operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {

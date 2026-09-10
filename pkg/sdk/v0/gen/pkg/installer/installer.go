@@ -486,9 +486,11 @@ GRANT ALL ON DATABASE %[1]s TO threeport;`, moduleDbName)).Op(",").Line(),
 			Lit("name"): Lit("db-create"),
 		}))
 		g.Id("apiVolumeMounts").Op(":=").Id("tpAuthVolumeMounts")
+		g.Comment("mount env as a file so the secret does not hide /etc/threeport/cert")
 		g.Id("apiVolumeMounts").Op("=").Append(Id("apiVolumeMounts"), Map(String()).Interface().Values(Dict{
-			Lit("mountPath"): Lit("/etc/threeport/"),
+			Lit("mountPath"): Lit("/etc/threeport/env"),
 			Lit("name"):      Id("ThreeportApiConfigSecret"),
+			Lit("subPath"):   Lit("env"),
 		}))
 		g.Id("apiVolumeMounts").Op("=").Append(Id("apiVolumeMounts"), Map(String()).Interface().Values(Dict{
 			Lit("mountPath"): Lit("/etc/threeport/mod/"),

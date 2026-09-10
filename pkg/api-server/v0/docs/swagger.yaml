@@ -5716,7 +5716,7 @@ paths:
           schema:
             $ref: '#/definitions/v0.Response'
       summary: adds a new event.
-  /v0/events-join-attached-object-references:
+  /v0/events-filtered:
     get:
       consumes:
       - application/json

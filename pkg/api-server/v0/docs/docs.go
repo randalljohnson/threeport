@@ -3470,7 +3470,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/v0/events-join-attached-object-references": {
+        "/v0/events-filtered": {
             "get": {
                 "description": "Get events from the Threeport database, narrowed by the object_type and object_id columns each event row carries.",
                 "consumes": [

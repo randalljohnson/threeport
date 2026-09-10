@@ -13,11 +13,9 @@ import (
 	strcase "github.com/iancoleman/strcase"
 	cobra "github.com/spf13/cobra"
 
-	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 var (
@@ -30,7 +28,6 @@ var (
 	eventsOutput     string
 	eventsSort       string
 	eventsLimit      int
-	eventsTopLevel   bool
 	eventsWide       bool
 	eventsReverse    bool
 	eventsSince      time.Duration
@@ -40,33 +37,6 @@ var (
 const (
 	eventShortAlias = "ev"
 )
-
-// topLevelObjectKinds is the set of core kinds --top-level keeps. Sub-object
-// kinds such as KubernetesWorkloadResourceInstance stay off the list.
-var topLevelObjectKinds = map[string]bool{
-	"KubernetesRuntimeDefinition":  true,
-	"KubernetesRuntimeInstance":    true,
-	"KubernetesWorkloadDefinition": true,
-	"KubernetesWorkloadInstance":   true,
-	"HelmWorkloadDefinition":       true,
-	"HelmWorkloadInstance":         true,
-	"ControlPlaneDefinition":       true,
-	"ControlPlaneInstance":         true,
-	"GatewayDefinition":            true,
-	"GatewayInstance":              true,
-	"DomainNameDefinition":         true,
-	"DomainNameInstance":           true,
-	"MachineRuntimeDefinition":     true,
-	"MachineRuntimeInstance":       true,
-	"MachineWorkloadDefinition":    true,
-	"MachineWorkloadInstance":      true,
-	"ObservabilityStackDefinition": true,
-	"ObservabilityStackInstance":   true,
-	"SecretDefinition":             true,
-	"SecretInstance":               true,
-	"TerraformDefinition":          true,
-	"TerraformInstance":            true,
-}
 
 // GetEventsCmd represents the command 'tptctl get events'
 var GetEventsCmd = &cobra.Command{
@@ -106,19 +76,16 @@ var GetEventsCmd = &cobra.Command{
   tptctl get events --object-kind helm-workload-instance --name my-app
 
   # filter by Reason (case-sensitive CamelCase)
-  tptctl get events --reason SuccessfulCreate
+  tptctl get events --reason CreateSuccessful
 
   # filter by Reason prefix (trailing * wildcard)
   tptctl get events --reason 'Create*'
 
-  # show only events on top-level object kinds
-  tptctl get events --top-level
-
   # filter to a subject by --for shape
-  tptctl get events --for router-machine-set/demo1-router-set
+  tptctl get events --for kubernetes-workload-instance/my-app
 
   # name prefix inside a --for shape
-  tptctl get events --for 'router-instance/myfleet2*'
+  tptctl get events --for 'helm-workload-instance/myfleet2*'
 
   # only events within the last 5 minutes
   tptctl get events --since=5m
@@ -126,7 +93,7 @@ var GetEventsCmd = &cobra.Command{
   # only Warning-type events
   tptctl get events --type=Warning
 
-  # widen the MESSAGE column to the terminal width
+  # print the full MESSAGE with no truncation
   tptctl get events --wide
 
   # oldest events first, top-down causal read (equivalent to --sort=oldest)
@@ -135,21 +102,21 @@ var GetEventsCmd = &cobra.Command{
 
 Use --for [<namespace>/][<version>.]<kind>/<name> to filter events to a specific object. <namespace> and <version> are optional; <kind> and <name> are required. The kind is the kebab-case form of the API type name; the name is the object's Name field. The name takes the same trailing-star prefix --name does. Both core and module types are supported.
 
-Use --object-kind <kebab-kind> to filter events to a specific kind across every object of that kind. Mutually exclusive with --for; combinable with --api-group and --name.
+Use --object-kind <kebab-kind> to filter events to a specific kind across every object of that kind. --kind is an alias. Mutually exclusive with --for; combinable with --api-group, --name, and --id.
 
-Use --api-group <namespace> to filter events by API group / namespace alone (e.g. threeport.io). Mutually exclusive with --for; combinable with --object-kind and --name.
+Use --api-group <namespace> to filter events by API group / namespace alone (e.g. threeport.io). Mutually exclusive with --for; combinable with --object-kind, --name, and --id.
 
-Use --name <name> to filter events by object name alone. Supports exact match (--name=my-app) or prefix match with a trailing star (--name='myfleet2*'). A prefix matches every object whose name starts with the token, across every object kind unless --object-kind or --api-group narrows it, so a fleet and the derived children named after it answer one query. Mutually exclusive with --for; combinable with --object-kind and --api-group.
+Use --name <name> to filter events by object name alone. Supports exact match (--name=my-app) or prefix match with a trailing star (--name='myfleet2*'). A prefix matches every object whose name starts with the token, across every object kind unless --object-kind or --api-group narrows it, so a fleet and the derived children named after it answer one query. Mutually exclusive with --for and --id; combinable with --object-kind and --api-group.
 
-Use --reason <reason> to filter events by Reason. Supports exact match (--reason=SuccessfulCreate) or prefix match with a trailing star (--reason='Create*'). Case-sensitive CamelCase. Applied server-side.
+Use --id <id> to filter events by the numeric object ID the API stores. Mutually exclusive with --for and --name; combinable with --object-kind and --api-group.
 
-Use --top-level to drop events on sub-object kinds (e.g. GcpGceMachineRuntimeInstance, KubernetesWorkloadResourceInstance) and keep only events on top-level user-facing kinds.
+Use --reason <reason> to filter events by Reason. Supports exact match (--reason=CreateSuccessful) or prefix match with a trailing star (--reason='Create*'). Case-sensitive CamelCase. Applied server-side.
 
 Use --sort to control row order: newest (default) puts the most recent activity at the top matching kubectl's convention; oldest is reverse and lets a causal sequence read down. -r / --reverse is equivalent to --sort=oldest.
 
 Use --limit N to cap the number of rows shown (after sort). The default of 0 means no cap.
 
-Use --since=<duration> to filter events by recency (e.g. --since=10m). Zero disables the filter.
+Use --since=<duration> to filter events by recency (e.g. --since=10m). Uses last-observed time when present, otherwise first EventTime. Client-side after fetch. Zero disables the filter.
 
 Use --type Normal|Warning to filter events by type. Empty disables the filter.
 
@@ -209,21 +176,10 @@ Full event notes (including captured script stdout/stderr) can be viewed with -o
 		}
 
 		// fetch every matching page; --limit is a display cap after sort
-		events, err := client_v0.GetEventsJoinAttachedObjectReferenceByQueryString(apiClient, apiEndpoint, queryString, 0)
+		events, err := client_v0.GetEventsFilteredByQueryString(apiClient, apiEndpoint, queryString, 0)
 		if err != nil {
 			cli.Error("failed to retrieve events", err)
 			os.Exit(1)
-		}
-
-		// drop events whose kind is not a top-level object
-		if eventsTopLevel {
-			filtered := make([]v0.Event, 0, len(*events))
-			for _, e := range *events {
-				if isTopLevelEvent(&e) {
-					filtered = append(filtered, e)
-				}
-			}
-			events = &filtered
 		}
 
 		// drop events older than --since
@@ -317,11 +273,11 @@ func init() {
 
 	GetEventsCmd.Flags().StringVar(
 		&eventsFor,
-		"for", "", "Filter events by object, in the form [<namespace>/][<version>.]<kind>/<name>. Kind is the kebab-case form of the API type name (e.g. machine-runtime-instance, router-definition). The name accepts a trailing * for a prefix match. Mutually exclusive with --object-kind.",
+		"for", "", "Filter events by object, in the form [<namespace>/][<version>.]<kind>/<name>. Kind is the kebab-case form of the API type name (e.g. machine-runtime-instance, helm-workload-instance). The name accepts a trailing * for a prefix match. Mutually exclusive with --object-kind, --kind, --api-group, --name, and --id.",
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsObjectKind,
-		"object-kind", "", "Filter events by object kind alone (kebab-case form of the API type name, e.g. helm-workload-instance). Mutually exclusive with --for; combinable with --api-group and --name.",
+		"object-kind", "", "Filter events by object kind alone (kebab-case form of the API type name, e.g. helm-workload-instance). Mutually exclusive with --for; combinable with --api-group, --name, and --id.",
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsObjectKind,
@@ -329,11 +285,11 @@ func init() {
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsApiGroup,
-		"api-group", "", "Filter events by API group / namespace (e.g. threeport.io). Mutually exclusive with --for; combinable with --object-kind and --name.",
+		"api-group", "", "Filter events by API group / namespace (e.g. threeport.io). Mutually exclusive with --for; combinable with --object-kind, --name, and --id.",
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsName,
-		"name", "", "Filter events by object name alone. Supports exact match (--name=my-app) or prefix match with trailing * (--name='myfleet2*'). Mutually exclusive with --for; combinable with --object-kind and --api-group.",
+		"name", "", "Filter events by object name alone. Supports exact match (--name=my-app) or prefix match with trailing * (--name='myfleet2*'). Mutually exclusive with --for and --id; combinable with --object-kind and --api-group.",
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsObjectId,
@@ -341,11 +297,7 @@ func init() {
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsReason,
-		"reason", "", "Filter events by reason. Supports exact match (--reason=SuccessfulCreate) or prefix match with trailing * (--reason='Create*').",
-	)
-	GetEventsCmd.Flags().BoolVar(
-		&eventsTopLevel,
-		"top-level", false, "Show only events for top-level objects. Drops events for owned children (RouterMachineInstance under a Set, MachineRuntimeInstance under a RouterMachine, etc).",
+		"reason", "", "Filter events by reason. Supports exact match (--reason=CreateSuccessful) or prefix match with trailing * (--reason='Create*').",
 	)
 	GetEventsCmd.Flags().StringVarP(
 		&eventsOutput,
@@ -361,7 +313,7 @@ func init() {
 	)
 	GetEventsCmd.Flags().DurationVar(
 		&eventsSince,
-		"since", 0, "Only show events with EventTime newer than the given duration ago (e.g. --since=10m, --since=1h). Zero means no time filter.",
+		"since", 0, "Only show events whose last observation (or first EventTime if never re-observed) is newer than the given duration ago (e.g. --since=10m, --since=1h). Zero means no time filter.",
 	)
 	GetEventsCmd.Flags().StringVar(
 		&eventsType,
@@ -369,7 +321,7 @@ func init() {
 	)
 	GetEventsCmd.Flags().BoolVar(
 		&eventsWide,
-		"wide", false, "Widen MESSAGE column to the terminal width.",
+		"wide", false, "Print the full MESSAGE with no truncation, even when the terminal wraps.",
 	)
 	GetEventsCmd.Flags().BoolVarP(
 		&eventsReverse,
@@ -512,20 +464,6 @@ func setReasonQueryParam(q url.Values, reasonFlag string) error {
 	}
 	q.Set("reason", reasonFlag)
 	return nil
-}
-
-// isTopLevelEvent reports whether the event's subject kind is a top-level object.
-// A missing or malformed type is not top-level.
-func isTopLevelEvent(e *v0.Event) bool {
-	rawType := util.DerefString(e.ObjectType)
-	if rawType == "" {
-		return false
-	}
-	_, _, typeName, ok := apilib.ParseQualifiedType(rawType)
-	if !ok {
-		return false
-	}
-	return topLevelObjectKinds[typeName]
 }
 
 // eventActivityTime returns the last observation when present, otherwise the first.

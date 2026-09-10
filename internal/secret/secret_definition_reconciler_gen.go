@@ -129,6 +129,23 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					log.Info("secret definition scheduled for deletion - skipping create")
 					break
 				}
+				// record in-progress before the custom handler so a later failure still has a start event
+				progressNote := "creating"
+				// type-assert so types without relationship-tagged foreign keys still emit creating
+				if owner, ok := secretDefinition.(api_v0.RelationshipTaggedForeignKeyProvider); ok {
+					progressNote = event.CreateNote(owner)
+				}
+				if recordErr := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(progressNote),
+						Reason: util.Ptr(event.ReasonCreateInProgress),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					secretDefinition.GetId(),
+					secretDefinition.GetFullyQualifiedType(),
+				); recordErr != nil {
+					log.Error(recordErr, "failed to record in-progress event")
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch secretDefinition.GetVersion() {
@@ -180,6 +197,19 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					log.Info("secret definition scheduled for deletion - skipping update")
 					break
 				}
+				// record in-progress before the custom handler so a later failure still has a start event
+				progressNote := event.UpdateNote()
+				if recordErr := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(progressNote),
+						Reason: util.Ptr(event.ReasonUpdateInProgress),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					secretDefinition.GetId(),
+					secretDefinition.GetFullyQualifiedType(),
+				); recordErr != nil {
+					log.Error(recordErr, "failed to record in-progress event")
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch secretDefinition.GetVersion() {
@@ -227,6 +257,23 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationDeleted:
+				// record in-progress before the custom handler so a later failure still has a start event
+				progressNote := "deleting"
+				// type-assert so types without relationship-tagged foreign keys still emit deleting
+				if owner, ok := secretDefinition.(api_v0.RelationshipTaggedForeignKeyProvider); ok {
+					progressNote = event.DeleteNote(owner)
+				}
+				if recordErr := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(progressNote),
+						Reason: util.Ptr(event.ReasonDeleteInProgress),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					secretDefinition.GetId(),
+					secretDefinition.GetFullyQualifiedType(),
+				); recordErr != nil {
+					log.Error(recordErr, "failed to record in-progress event")
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch secretDefinition.GetVersion() {
@@ -247,7 +294,9 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 							"conflict reconciling deleted secret definition object, requeueing",
 							"cause", operationErr.Error(),
 						)
+						// start with deleting; types without tagged foreign keys keep this note
 						deleteNote := "deleting"
+						// type-assert so types without relationship-tagged foreign keys still emit deleting
 						if owner, ok := secretDefinition.(api_v0.RelationshipTaggedForeignKeyProvider); ok {
 							deleteNote = event.DeleteNote(owner)
 						}
@@ -331,7 +380,9 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 							"conflict deleting secret definition, requeueing",
 							"cause", err.Error(),
 						)
+						// start with deleting; types without tagged foreign keys keep this note
 						deleteNote := "deleting"
+						// type-assert so types without relationship-tagged foreign keys still emit deleting
 						if owner, ok := secretDefinition.(api_v0.RelationshipTaggedForeignKeyProvider); ok {
 							deleteNote = event.DeleteNote(owner)
 						}

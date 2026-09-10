@@ -19378,11 +19378,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "ImageID": {
-                    "description": "The provider image identifier used to boot the machine.",
+                    "description": "The provider image identifier used to boot the machine",
                     "type": "string"
                 },
                 "InfraProvider": {
-                    "description": "The infrastructure provider that provisions machines from this\ndefinition. Empty for imported machines that already exist.",
+                    "description": "The infrastructure provider that provisions machines from this definition",
                     "type": "string"
                 },
                 "InfraProviderAccountName": {
@@ -19523,7 +19523,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "Region": {
-                    "description": "The provider region in which the machine is provisioned.",
+                    "description": "The provider region in which the machine is provisioned",
                     "type": "string"
                 },
                 "ResourceInventory": {
@@ -19555,7 +19555,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "SubnetID": {
-                    "description": "The provider-specific subnet identifier the VM should attach to.\nRequired in custom-mode shared VPCs where multiple subnets share a\nregion.",
+                    "description": "The provider subnet identifier the machine attaches to",
                     "type": "string"
                 }
             }

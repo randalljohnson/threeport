@@ -1,12 +1,8 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -463,7 +459,10 @@ func (h Handler) GetEventsFiltered(c echo.Context) error {
 			h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
-		pagination.HasMore = int64(len(*records)) > threshold
+
+		// total greater than the limit means the client will need to
+		// page through the result set; HasMore signals that
+		pagination.HasMore = totalCount > pagination.Limit
 
 		switch pagination.HasMore {
 		case false:
@@ -760,7 +759,7 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 			}
 			continue
 		}
-		namesByType[typ] = resolved
+		namesByType[typ] = names
 	}
 
 	// project the resolved name onto each event row when available;

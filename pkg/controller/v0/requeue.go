@@ -7,18 +7,15 @@ const (
 	DefaultMaxRequeueDelay     = 30
 )
 
-// Done is the requeue delay signaling this reconcile pass is complete;
-// the wrapper marks the subject reconciled without requeuing.
+// Done is a 0s delay meaning this pass is complete and should not requeue.
 const Done int64 = 0
 
-// Requeue30s is the standard requeue delay for waiting on a child's
-// Reconciled=true state before marking the parent reconciled.
+// Requeue30s is a 30s wait before the next reconcile of the same object.
 const Requeue30s int64 = 30
 
-// SetRequeueDelay returns the delay before an object is reconciled again. The
-// delay grows with how long ago the notification was published, starting at
-// the initial delay and reaching twice the elapsed time, and it never exceeds
-// the maximum delay.
+// SetRequeueDelay returns the delay before the object is reconciled again.
+// The delay is the initial delay while the notification is younger than that,
+// then twice the age in seconds, never more than the maximum delay.
 func SetRequeueDelay(creationTime *int64) int64 {
 	var requeueDelay int64
 
@@ -31,8 +28,8 @@ func SetRequeueDelay(creationTime *int64) int64 {
 		requeueDelay = elapsedTime * 2
 	}
 
-	// cap the result rather than the elapsed time it was derived from: an
-	// elapsed time just under the maximum doubles to well above it
+	// cap the delay after doubling, not the elapsed time: an elapsed time
+	// one second below the maximum doubles past it
 	if requeueDelay > DefaultMaxRequeueDelay {
 		requeueDelay = DefaultMaxRequeueDelay
 	}

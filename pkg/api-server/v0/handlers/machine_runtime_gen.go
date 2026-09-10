@@ -501,10 +501,12 @@ func (h Handler) DeleteMachineRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
-	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
-	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &machineRuntimeDefinition); checkErr != nil {
+	// delete object
+	if result := h.RequestDB(c).Delete(&machineRuntimeDefinition); result.Error != nil {
+		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
 		var blockedErr *api_v0.BlockedDeleteError
-		if errors.As(checkErr, &blockedErr) {
+		if errors.As(result.Error, &blockedErr) {
 			return RespondBlockedDelete(
 				c,
 				h.RequestDB(c),
@@ -577,6 +579,7 @@ func (h Handler) DeleteMachineRuntimeDefinition(c echo.Context) error {
 				return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
 			}
 		}
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(

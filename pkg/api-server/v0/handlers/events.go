@@ -413,7 +413,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				1,
 			)
 
-			switch h.PaginationMode {
+			switch h.paginationMode() {
 			case apiserver_lib.PaginationModeAsOfSystemTime:
 				// capture the HLC once; the client echoes it back on
 				// every continuation so all pages read the same snapshot
@@ -523,7 +523,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 		// stays empty and the drop below is skipped.
 		var viewName string
 
-		switch h.PaginationMode {
+		switch h.paginationMode() {
 		case apiserver_lib.PaginationModeAsOfSystemTime:
 			// treat the caller queryId as an HLC token; validate to
 			// reject anything that would smuggle SQL into AS OF SYSTEM
@@ -588,12 +588,22 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				pageParams.Limit,
 			)
 			if result := h.DB.Raw(recordsQuery).Find(records); result.Error != nil {
+				pageErr := apiserver_lib.TranslatePaginationSessionError(result.Error)
+				if errors.Is(pageErr, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, pageErr, objectType)
+				}
 				h.Logger.Error("handler error: error finding records", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, apiserver_lib.TranslatePaginationSessionError(result.Error), objectType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
 			returnedCount = int64(len(*records))
 
 		default:
+			if !apiserver_lib.ValidPaginationQueryId(pageParams.QueryId) {
+				return apiserver_lib.ResponseStatus400(c, pageParams,
+					errors.New("invalid queryid: not a server-issued pagination query id, restart pagination with no queryid to obtain a fresh snapshot"),
+					objectType)
+			}
+
 			// use the query ID to find the materialized view name (the view
 			// name is deterministic from the queryId)
 			resolvedViewName, err := h.GetMaterializedViewName(pageParams.QueryId)
@@ -602,12 +612,20 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
 			viewName = resolvedViewName
+			if viewName == "" {
+				return apiserver_lib.ResponseStatus400(c, pageParams,
+					apiserver_lib.ErrPaginationSessionExpired, objectType)
+			}
 
 			// fetch the next page from the view starting just past the
 			// previous cursor. the ID index built at create-time keeps
 			// this O(limit) rather than O(view size)
 			recordsQuery := fmt.Sprintf("SELECT * FROM %s WHERE ID > %d ORDER BY ID ASC LIMIT %d", viewName, pageParams.Cursor, pageParams.Limit)
 			if result := h.DB.Raw(recordsQuery).Find(records); result.Error != nil {
+				pageErr := apiserver_lib.TranslateDroppedViewError(result.Error, viewName)
+				if errors.Is(pageErr, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, pageErr, objectType)
+				}
 				h.Logger.Error("handler error: error finding records", zap.Error(result.Error))
 				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}

@@ -173,7 +173,7 @@ func LoggingDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of logging definition encountered for creation")
+					operationErr = errors.New("unrecognized version of logging definition encountered for create operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
@@ -221,6 +221,10 @@ func LoggingDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
+				if loggingDefinition.ScheduledForDeletion() != nil {
+					log.Info("logging definition scheduled for deletion - skipping update")
+					break
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch loggingDefinition.GetVersion() {
@@ -233,7 +237,7 @@ func LoggingDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of logging definition encountered for creation")
+					operationErr = errors.New("unrecognized version of logging definition encountered for update operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
@@ -293,7 +297,7 @@ func LoggingDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of logging definition encountered for creation")
+					operationErr = errors.New("unrecognized version of logging definition encountered for delete operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {

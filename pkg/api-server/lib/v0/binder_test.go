@@ -74,10 +74,8 @@ func TestQueryBinder_MissingParamLeavesFieldZero(t *testing.T) {
 	assert.Nil(t, filter.Count, "Count stays nil when no count param present")
 }
 
-// TestQueryBinder_UnknownParamRejected verifies extra query params that
-// don't correspond to any field are rejected with an error, so a typo
-// or a filter against a nonexistent field surfaces as a 400 instead of
-// silently returning unfiltered results.
+// TestQueryBinder_UnknownParamRejected verifies a query param matching no
+// field is rejected with an error naming the offending key.
 func TestQueryBinder_UnknownParamRejected(t *testing.T) {
 	c, _ := newBindContext(http.MethodGet, "/?name=keep&irrelevant=junk", nil)
 	var filter bindTestFilter
@@ -139,7 +137,7 @@ func TestQueryBinder_ReservedPaginationParamsAllowed(t *testing.T) {
 // soft-delete filter, ids to restrict a list to a set of row ids) pass
 // the unknown-key gate even though neither is a field on the filter
 // struct. ids resolution across modules relies on this: a bulk name
-// lookup lists by ?ids= and would 500 if the binder rejected the key.
+// lookup lists by `?ids=`, so rejecting the key would fail that lookup.
 func TestQueryBinder_ReservedScopeParamsAllowed(t *testing.T) {
 	c, _ := newBindContext(http.MethodGet, "/?name=keep&includedeleted=true&ids=1,2,3", nil)
 	var filter bindTestFilter

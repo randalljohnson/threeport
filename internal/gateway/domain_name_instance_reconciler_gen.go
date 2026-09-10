@@ -173,7 +173,7 @@ func DomainNameInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of domain name instance encountered for creation")
+					operationErr = errors.New("unrecognized version of domain name instance encountered for create operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
@@ -221,6 +221,10 @@ func DomainNameInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
+				if domainNameInstance.ScheduledForDeletion() != nil {
+					log.Info("domain name instance scheduled for deletion - skipping update")
+					break
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch domainNameInstance.GetVersion() {
@@ -233,7 +237,7 @@ func DomainNameInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of domain name instance encountered for creation")
+					operationErr = errors.New("unrecognized version of domain name instance encountered for update operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
@@ -293,7 +297,7 @@ func DomainNameInstanceReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of domain name instance encountered for creation")
+					operationErr = errors.New("unrecognized version of domain name instance encountered for delete operation")
 				}
 				if operationErr != nil {
 					if errors.Is(operationErr, tpclient_lib.ErrConflict) {

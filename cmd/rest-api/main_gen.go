@@ -60,6 +60,11 @@ func main() {
 	// so api types don't need `query:"..."` struct tags
 	e.Binder = apiserver_lib.NewQueryBinder()
 
+	// omit absent fields from responses instead of spelling them
+	// out as null, so api types don't need `json:",omitempty"`
+	// struct tags
+	e.JSONSerializer = apiserver_lib.NewJSONSerializer()
+
 	var validate *validator.Validate
 	validate = validator.New()
 	validate.RegisterValidation("optional", apiserver_lib.IsOptional)
@@ -77,7 +82,7 @@ func main() {
 
 	// capture the request's mTLS peer identity so GORM hooks can read it via
 	// apiserver_lib.Caller(tx.Statement.Context)
-	e.Use(apiserver_lib.CaptureCaller)
+	e.Use(apiserver_lib.CaptureCaller(authEnabled))
 
 	logger, err := log.NewLogger(verbose)
 	if err != nil {
@@ -130,7 +135,7 @@ func main() {
 	}
 
 	// add module router middleware
-	if err := api_v0.InitModuleRouter(db, e); err != nil {
+	if err := api_v0.InitModuleRouter(db, e, authEnabled); err != nil {
 		e.Logger.Fatalf("failed to initialize module proxy router: %v", err)
 	}
 
@@ -159,7 +164,8 @@ func main() {
 
 	// handlers
 	// v0
-	h_v0 := handlers_v0.New(db, nc, *js, &logger, apiserver_lib.PaginationMode(paginationMode))
+	h_v0 := handlers_v0.New(db, nc, *js, &logger)
+	h_v0.PaginationMode = apiserver_lib.PaginationMode(paginationMode)
 
 	// routes
 	routes_v0.SwaggerRoutes(e)
@@ -190,7 +196,9 @@ func main() {
 
 		// create certificate pool and add server root certificate authority
 		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
+		if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
+			e.Logger.Fatal("failed to parse certificate authority")
+		}
 
 		// configure https server
 		server := http.Server{
@@ -206,8 +214,8 @@ func main() {
 
 		e.Logger.Infof("Threeport REST API: %s", version.GetVersion())
 		configureHealthCheckEndpoint()
-		if server.ListenAndServeTLS("", "") != http.ErrServerClosed {
-			e.Logger.Fatal(err)
+		if serveErr := server.ListenAndServeTLS("", ""); serveErr != http.ErrServerClosed {
+			e.Logger.Fatal(serveErr)
 		}
 	} else {
 		// configure http server
@@ -218,8 +226,8 @@ func main() {
 
 		e.Logger.Infof("Threeport REST API: %s", version.GetVersion())
 		configureHealthCheckEndpoint()
-		if server.ListenAndServe() != http.ErrServerClosed {
-			e.Logger.Fatal(err)
+		if serveErr := server.ListenAndServe(); serveErr != http.ErrServerClosed {
+			e.Logger.Fatal(serveErr)
 		}
 	}
 }

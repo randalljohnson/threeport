@@ -60,12 +60,6 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				gen.Module,
 			))
 			f.ImportAlias(util.SetImportAlias(
-				"github.com/threeport/threeport/pkg/api/lib/v0",
-				"api_lib",
-				"tpapi_lib",
-				gen.Module,
-			))
-			f.ImportAlias(util.SetImportAlias(
 				"github.com/threeport/threeport/pkg/util/v0",
 				"util_v0",
 				"tputil_v0",
@@ -524,7 +518,21 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					deleteObjectChecks.Line()
 					deleteObjectChecks.Comment("check to make sure no dependent instances exist for this definition")
 					deleteObjectChecks.Line()
-					emitBlockedByChildrenCheck(deleteObjectChecks, strcase.ToLowerCamel(apiObject.TypeName), instancesName, gen.Module)
+					deleteObjectChecks.If(
+						Len(Id(strcase.ToLowerCamel(apiObject.TypeName)).Dot(instancesName)).Op("!=").Lit(0).Block(
+							Id("err").Op(":=").Qual("errors", "New").Call(
+								Lit(fmt.Sprintf(
+									"%s has related %s - cannot be deleted",
+									strcase.ToDelimited(apiObject.TypeName, ' '),
+									strcase.ToDelimited(instancesName, ' '),
+								)),
+							),
+							Return().Qual(
+								"github.com/threeport/threeport/pkg/api-server/lib/v0",
+								"ResponseStatus409",
+							).Call(Id("c").Op(",").Nil().Op(",").Id("err").Op(",").Id("objectType")),
+						),
+					)
 					deleteObjectChecks.Line()
 				} else {
 					deleteObjectChecks = If(
@@ -1093,34 +1101,29 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 											s.Id("h")
 										}
 									}).Dot("DispatchGetPaginatedRecords").Call(
+										// the page reads through the same request-scoped, filtered db the
+										// count used, so both see one set of rows
 										Do(func(s *Statement) {
 											if gen.Module {
 												s.Id("h").Dot("Handler")
 											} else {
 												s.Id("h")
 											}
-										}).Dot("PaginationMode"),
+										}).Dot("RequestDB").Call(Id("c")).Dot("Model").Call(
+											Op("&").Qual(
+												fmt.Sprintf(
+													"%s/pkg/api/%s",
+													gen.ModulePath,
+													objCollection.Version,
+												),
+												apiObject.TypeName,
+											).Values(),
+										).Dot("Where").Call(Op("&").Id("filter")),
 										Id("records"),
 										Id("queryTable"),
 										Id("pageParams"),
 									),
-									If(Id("err").Op("!=").Nil()).BlockFunc(func(h *Group) {
-										if gen.Module {
-											h.Id("h").Dot("Handler").Dot("Logger").Dot("Error").Call(
-												Lit("handler error: error fetching paginated records"),
-												Qual("go.uber.org/zap", "Error").Call(Id("err")),
-											)
-										} else {
-											h.Id("h").Dot("Logger").Dot("Error").Call(
-												Lit("handler error: error fetching paginated records"),
-												Qual("go.uber.org/zap", "Error").Call(Id("err")),
-											)
-										}
-										h.Return(Qual(
-											"github.com/threeport/threeport/pkg/api-server/lib/v0",
-											"ResponseStatus500",
-										).Call(Id("c").Op(",").Id("pageParams").Op(",").Id("err").Op(",").Id("objectType")))
-									}),
+									If(Id("err").Op("!=").Nil()).BlockFunc(paginationErrorResponse(gen)),
 									Id("pagination").Dot("QueryId").Op("=").Id("queryId"),
 									Id("returnedCount").Op("=").Id("count"),
 									Line(),
@@ -1154,34 +1157,29 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									s.Id("h")
 								}
 							}).Dot("DispatchGetPaginatedRecords").Call(
+								// the page reads through the same request-scoped, filtered db the
+								// count used, so both see one set of rows
 								Do(func(s *Statement) {
 									if gen.Module {
 										s.Id("h").Dot("Handler")
 									} else {
 										s.Id("h")
 									}
-								}).Dot("PaginationMode"),
+								}).Dot("RequestDB").Call(Id("c")).Dot("Model").Call(
+									Op("&").Qual(
+										fmt.Sprintf(
+											"%s/pkg/api/%s",
+											gen.ModulePath,
+											objCollection.Version,
+										),
+										apiObject.TypeName,
+									).Values(),
+								).Dot("Where").Call(Op("&").Id("filter")),
 								Id("records"),
 								Id("queryTable"),
 								Id("pageParams"),
 							),
-							If(Id("err").Op("!=").Nil()).BlockFunc(func(h *Group) {
-								if gen.Module {
-									h.Id("h").Dot("Handler").Dot("Logger").Dot("Error").Call(
-										Lit("handler error: error fetching paginated records"),
-										Qual("go.uber.org/zap", "Error").Call(Id("err")),
-									)
-								} else {
-									h.Id("h").Dot("Logger").Dot("Error").Call(
-										Lit("handler error: error fetching paginated records"),
-										Qual("go.uber.org/zap", "Error").Call(Id("err")),
-									)
-								}
-								h.Return(Qual(
-									"github.com/threeport/threeport/pkg/api-server/lib/v0",
-									"ResponseStatus500",
-								).Call(Id("c").Op(",").Id("pageParams").Op(",").Id("err").Op(",").Id("objectType")))
-							}),
+							If(Id("err").Op("!=").Nil()).BlockFunc(paginationErrorResponse(gen)),
 							Id("pagination").Dot("QueryId").Op("=").Id("queryId"),
 							Id("returnedCount").Op("=").Id("count"),
 							Line(),
@@ -2203,6 +2201,46 @@ const (
 	blockedDeleteCheckBackstop
 )
 
+// paginationErrorResponse returns the body of the error branch a paginated
+// list handler runs when the dispatcher fails. A queryid the client can
+// correct answers 400 without a log line, since it reports a bad request
+// rather than a fault: either the id names no snapshot the server issued, or
+// the snapshot it named has expired and the client has to start over with no
+// queryid. Everything else is a server fault, so it is logged and answers 500.
+func paginationErrorResponse(gen *gen.Generator) func(*Group) {
+	const apiServerLib = "github.com/threeport/threeport/pkg/api-server/lib/v0"
+
+	return func(h *Group) {
+		h.If(
+			Qual("errors", "Is").Call(
+				Id("err"),
+				Qual(apiServerLib, "ErrInvalidPaginationQueryId"),
+			).Op("||").Qual("errors", "Is").Call(
+				Id("err"),
+				Qual(apiServerLib, "ErrPaginationSessionExpired"),
+			),
+		).Block(
+			Return(Qual(apiServerLib, "ResponseStatus400").Call(
+				Id("c").Op(",").Id("pageParams").Op(",").Id("err").Op(",").Id("objectType"),
+			)),
+		)
+		if gen.Module {
+			h.Id("h").Dot("Handler").Dot("Logger").Dot("Error").Call(
+				Lit("handler error: error fetching paginated records"),
+				Qual("go.uber.org/zap", "Error").Call(Id("err")),
+			)
+		} else {
+			h.Id("h").Dot("Logger").Dot("Error").Call(
+				Lit("handler error: error fetching paginated records"),
+				Qual("go.uber.org/zap", "Error").Call(Id("err")),
+			)
+		}
+		h.Return(Qual(apiServerLib, "ResponseStatus500").Call(
+			Id("c").Op(",").Id("pageParams").Op(",").Id("err").Op(",").Id("objectType"),
+		))
+	}
+}
+
 // emitBlockedDeleteCheck appends the delete-blocked branch that turns a
 // typed signal from the BeforeDelete hook into a 409 listing blockers.
 func emitBlockedDeleteCheck(h *Group, module bool, role blockedDeleteCheckRole) {
@@ -2236,66 +2274,6 @@ func emitBlockedDeleteCheck(h *Group, module bool, role blockedDeleteCheckRole) 
 				}
 			}).Dot("RequestDB").Call(Id("c")),
 			Line().Id("blockedErr"),
-			Line(),
-		)),
-	)
-}
-
-// emitBlockedByChildrenCheck emits the delete-blocked branch for a
-// defined-instance-definition type: when the preloaded child slice is
-// non-empty, build a BlockedDeleteError anchored on the parent with one
-// AttachedObjectReference per child and hand it to RespondBlockedDelete
-// so the 409 body lists each blocker by <api-namespace>/<kind>/<name>.
-func emitBlockedByChildrenCheck(s *Statement, objVar, instancesField string, module bool) {
-	requestDB := func() *Statement {
-		return Do(func(g *Statement) {
-			if module {
-				g.Id("h").Dot("Handler")
-			} else {
-				g.Id("h")
-			}
-		}).Dot("RequestDB").Call(Id("c"))
-	}
-	respondBlocked := func() *Statement {
-		return Do(func(g *Statement) {
-			if module {
-				g.Qual(
-					"github.com/threeport/threeport/pkg/api-server/v0/handlers",
-					"RespondBlockedDelete",
-				)
-			} else {
-				g.Id("RespondBlockedDelete")
-			}
-		})
-	}
-
-	s.If(Len(Id(objVar).Dot(instancesField)).Op("!=").Lit(0)).Block(
-		// collect blocking children as FullyQualifiedTypeProvider so the
-		// constructor can pull each child's type and id via reflection
-		Id("blockingChildren").Op(":=").Make(
-			Index().Qual(
-				"github.com/threeport/threeport/pkg/api/lib/v0",
-				"FullyQualifiedTypeProvider",
-			),
-			Lit(0),
-			Len(Id(objVar).Dot(instancesField)),
-		),
-		For(Id("i").Op(":=").Range().Id(objVar).Dot(instancesField)).Block(
-			Id("blockingChildren").Op("=").Append(
-				Id("blockingChildren"),
-				Id(objVar).Dot(instancesField).Index(Id("i")),
-			),
-		),
-		Return(respondBlocked().Call(
-			Line().Id("c"),
-			Line().Add(requestDB()),
-			Line().Qual(
-				"github.com/threeport/threeport/pkg/api/v0",
-				"NewBlockedDeleteErrorFromChildren",
-			).Call(
-				Op("&").Id(objVar),
-				Id("blockingChildren"),
-			),
 			Line(),
 		)),
 	)

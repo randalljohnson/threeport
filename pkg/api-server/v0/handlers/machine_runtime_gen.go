@@ -53,7 +53,7 @@ func (h Handler) AddMachineRuntimeDefinition(c echo.Context) error {
 
 	if err := c.Bind(&machineRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -91,20 +91,6 @@ func (h Handler) AddMachineRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*machineRuntimeDefinition.Reconciled {
-		notifPayload, err := machineRuntimeDefinition.NotificationPayload(
-			notifications.NotificationOperationCreated,
-			false,
-			time.Now().Unix(),
-		)
-		if err != nil {
-			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-		}
-		h.JS.Publish(notif.MachineRuntimeDefinitionCreateSubject, *notifPayload)
-	}
-
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		machineRuntimeDefinition,
@@ -123,7 +109,7 @@ func (h Handler) AddMachineRuntimeDefinition(c echo.Context) error {
 // @ID get-v0-machineRuntimeDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "machine runtime definition search by name"
+// @Param name query string false "filter by exact machine runtime definition name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -141,7 +127,7 @@ func (h Handler) GetMachineRuntimeDefinitions(c echo.Context) error {
 	var filter api_v0.MachineRuntimeDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -174,8 +160,11 @@ func (h Handler) GetMachineRuntimeDefinitions(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.MachineRuntimeDefinition{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
+				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				}
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
@@ -195,8 +184,11 @@ func (h Handler) GetMachineRuntimeDefinitions(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.MachineRuntimeDefinition{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
+			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+				return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+			}
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
@@ -305,7 +297,7 @@ func (h Handler) UpdateMachineRuntimeDefinition(c echo.Context) error {
 	var updatedMachineRuntimeDefinition api_v0.MachineRuntimeDefinition
 	if err := c.Bind(&updatedMachineRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -319,20 +311,6 @@ func (h Handler) UpdateMachineRuntimeDefinition(c echo.Context) error {
 			)
 		}
 		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-	}
-
-	// notify controller if reconciliation is required
-	if !*existingMachineRuntimeDefinition.Reconciled {
-		notifPayload, err := existingMachineRuntimeDefinition.NotificationPayload(
-			notifications.NotificationOperationUpdated,
-			false,
-			time.Now().Unix(),
-		)
-		if err != nil {
-			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-		}
-		h.JS.Publish(notif.MachineRuntimeDefinitionUpdateSubject, *notifPayload)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -387,7 +365,7 @@ func (h Handler) ReplaceMachineRuntimeDefinition(c echo.Context) error {
 	var updatedMachineRuntimeDefinition api_v0.MachineRuntimeDefinition
 	if err := c.Bind(&updatedMachineRuntimeDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -461,77 +439,26 @@ func (h Handler) DeleteMachineRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
-	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
-	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &machineRuntimeDefinition); checkErr != nil {
+	// delete object
+	if result := h.RequestDB(c).Delete(&machineRuntimeDefinition); result.Error != nil {
+		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
+		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
 		var blockedErr *api_v0.BlockedDeleteError
-		if errors.As(checkErr, &blockedErr) {
+		if errors.As(result.Error, &blockedErr) {
 			return RespondBlockedDelete(
 				c,
 				h.RequestDB(c),
 				blockedErr,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, checkErr, objectType)
-	}
-	// schedule for deletion if not already scheduled
-	// if scheduled and reconciled, delete object from DB
-	// if scheduled but not reconciled, return 409 (controller is working on it)
-	if machineRuntimeDefinition.DeletionScheduled == nil {
-		// schedule for deletion
-		reconciled := false
-		timestamp := time.Now().UTC()
-		scheduledMachineRuntimeDefinition := api_v0.MachineRuntimeDefinition{
-			Reconciliation: api_v0.Reconciliation{
-				DeletionScheduled: &timestamp,
-				Reconciled:        &reconciled,
-			}}
-		if result := h.RequestDB(c).Model(&machineRuntimeDefinition).Updates(&scheduledMachineRuntimeDefinition); result.Error != nil {
-			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		// check if this is a custom HTTP error with specific status code
+		var httpErr *util_v0.HttpError
+		if errors.As(result.Error, &httpErr) {
+			return apiserver_lib.ResponseStatusErr(
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
+			)
 		}
-		// notify controller
-		notifPayload, err := machineRuntimeDefinition.NotificationPayload(
-			notifications.NotificationOperationDeleted,
-			false,
-			time.Now().Unix(),
-		)
-		if err != nil {
-			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
-		}
-		h.JS.Publish(notif.MachineRuntimeDefinitionDeleteSubject, *notifPayload)
-	} else {
-		if machineRuntimeDefinition.DeletionConfirmed == nil {
-			// if deletion scheduled but not reconciled, return 409 - deletion
-			// already underway
-			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
-				"object with ID %d already being deleted",
-				*machineRuntimeDefinition.ID,
-			)), objectType)
-		} else {
-			// object scheduled for deletion and confirmed - it can be deleted
-			// from DB
-			if result := h.RequestDB(c).Delete(&machineRuntimeDefinition); result.Error != nil {
-				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
-				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
-				var blockedErr *api_v0.BlockedDeleteError
-				if errors.As(result.Error, &blockedErr) {
-					return RespondBlockedDelete(
-						c,
-						h.RequestDB(c),
-						blockedErr,
-					)
-				}
-				// check if this is a custom HTTP error with specific status code
-				var httpErr *util_v0.HttpError
-				if errors.As(result.Error, &httpErr) {
-					return apiserver_lib.ResponseStatusErr(
-						httpErr.GetStatusCode(), c, nil, result.Error, objectType,
-					)
-				}
-				return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
-			}
-		}
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
@@ -583,7 +510,7 @@ func (h Handler) AddMachineRuntimeInstance(c echo.Context) error {
 
 	if err := c.Bind(&machineRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
@@ -653,7 +580,7 @@ func (h Handler) AddMachineRuntimeInstance(c echo.Context) error {
 // @ID get-v0-machineRuntimeInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "machine runtime instance search by name"
+// @Param name query string false "filter by exact machine runtime instance name (case sensitive)"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
@@ -671,7 +598,7 @@ func (h Handler) GetMachineRuntimeInstances(c echo.Context) error {
 	var filter api_v0.MachineRuntimeInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -704,8 +631,11 @@ func (h Handler) GetMachineRuntimeInstances(c echo.Context) error {
 		case true:
 			// dispatch to the configured pagination strategy to fetch the first page
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.MachineRuntimeInstance{}).Where(&filter), records, queryTable, pageParams)
 			if err != nil {
+				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+				}
 				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
@@ -725,8 +655,11 @@ func (h Handler) GetMachineRuntimeInstances(c echo.Context) error {
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
 		// continuation: dispatch to the configured pagination strategy to fetch the next page
 		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.PaginationMode, records, queryTable, pageParams)
+		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.MachineRuntimeInstance{}).Where(&filter), records, queryTable, pageParams)
 		if err != nil {
+			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
+				return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+			}
 			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
 			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
@@ -835,7 +768,7 @@ func (h Handler) UpdateMachineRuntimeInstance(c echo.Context) error {
 	var updatedMachineRuntimeInstance api_v0.MachineRuntimeInstance
 	if err := c.Bind(&updatedMachineRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// update object in database
@@ -917,7 +850,7 @@ func (h Handler) ReplaceMachineRuntimeInstance(c echo.Context) error {
 	var updatedMachineRuntimeInstance api_v0.MachineRuntimeInstance
 	if err := c.Bind(&updatedMachineRuntimeInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
 	// check for missing required fields

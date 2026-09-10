@@ -21,15 +21,14 @@ var reservedQueryParams = map[string]bool{
 	QueryParamCursor:         true,
 	QueryParamLimit:          true,
 	QueryParamIncludeDeleted: true,
-	// the ids scope filter (QueryParamIDs, defined alongside the ids
-	// query scope) restricts a list to a set of row ids; the literal is
-	// used because that constant is not declared on this branch.
+	// the ids scope filter restricts a list to a set of row ids. It is
+	// spelled as a literal because no constant names it in this package.
 	"ids": true,
 }
 
 // QueryKeyExtender lets a bound type declare query keys a handler
-// consumes directly (via QueryParam) rather than binding onto one of the
-// type's fields. The binder treats the declared keys as known so a
+// consumes directly (via `QueryParam()`) rather than binding onto one of
+// the type's fields. The binder treats the declared keys as known so a
 // well-formed request carrying them is not rejected as unknown, while a
 // genuinely unknown key on the same endpoint is still rejected. Keys are
 // compared case-insensitively, matching the field-name derivation.
@@ -114,17 +113,14 @@ func (b *QueryBinder) bindQueryParams(qp url.Values, i interface{}) error {
 		return nil
 	}
 
-	// collect the set of query keys this struct can accept, then check
-	// each incoming key against it. rejecting unknown keys prevents
-	// silent no-op filters on types that do not carry the requested
-	// field, and catches typos before they return misleading
-	// unfiltered results
+	// collect the query keys this struct accepts, then check each
+	// incoming key against it
 	known := make(map[string]bool)
 	collectKnownFieldNames(v.Type(), known)
 	// a bound type may accept filter keys its handler reads directly
 	// rather than binding onto a field; fold those in so they pass the
 	// unknown-key gate. assert on i, the original pointer, so a
-	// value-receiver ExtraQueryKeys stays in the method set.
+	// value-receiver `ExtraQueryKeys()` stays in the method set.
 	if ext, ok := i.(QueryKeyExtender); ok {
 		for _, k := range ext.ExtraQueryKeys() {
 			known[strings.ToLower(k)] = true

@@ -60,23 +60,11 @@ type Event struct {
 // ExtraQueryKeys returns the input-only filter keys the events-join
 // read endpoint consumes directly from the query string rather than
 // binding onto an Event field: the type name, api namespace, and api
-// version narrow the attached-object-reference join, and the reason
-// prefix narrows the reason match. Declaring them keeps the strict
+// version narrow the attached-object-reference join, and reason /
+// reasonprefix narrow the reason match. Declaring them keeps the strict
 // query binder from rejecting a well-formed events query as carrying
 // unknown parameters. They are not columns and never serialize into an
 // Event response.
 func (Event) ExtraQueryKeys() []string {
-	return []string{"objecttypename", "objectversion", "objectnamespace", "reasonprefix"}
-}
-
-// ExtraQueryKeys returns the input-only filter keys the events-join
-// read endpoint consumes directly from the query string rather than
-// binding onto an Event field: the type name, api namespace, and api
-// version narrow the attached-object-reference join, and the reason
-// prefix narrows the reason match. Declaring them keeps the strict
-// query binder from rejecting a well-formed events query as carrying
-// unknown parameters. They are not columns and never serialize into an
-// Event response.
-func (Event) ExtraQueryKeys() []string {
-	return []string{"objecttypename", "objectversion", "objectnamespace", "reasonprefix"}
+	return []string{"objecttypename", "objectversion", "objectnamespace", "reason", "reasonprefix"}
 }

@@ -7,12 +7,11 @@ const (
 	DefaultMaxRequeueDelay     = 30
 )
 
-// Done is the requeue delay signaling this reconcile pass is complete;
-// the wrapper marks the subject reconciled without requeuing.
+// Done is the requeue delay of 0 that marks this reconcile pass complete
+// without requeuing.
 const Done int64 = 0
 
-// Requeue30s is the standard requeue delay for waiting on a child's
-// Reconciled=true state before marking the parent reconciled.
+// Requeue30s is a 30 second requeue delay.
 const Requeue30s int64 = 30
 
 // SetRequeueDelay sets the requeue delay.  It will be set to the initial delay

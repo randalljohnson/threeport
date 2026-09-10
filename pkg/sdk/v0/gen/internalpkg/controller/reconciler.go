@@ -248,11 +248,9 @@ func GenReconcilers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							)
 							g.Line()
 
-							// capture pre-pass reconciled state to gate the success-event emit;
-							// getLatestObject flips wasReconciled to true when the object is
-							// already reconciled at fetch time so redelivered notifications
-							// don't emit a duplicate success event
 							g.Comment("capture pre-pass reconciled state to gate the success-event emit")
+							// seed wasReconciled false; getLatestObject sets it true when
+							// the latest object is already reconciled
 							g.Id("wasReconciled").Op(":=").Lit(false)
 							g.Line()
 
@@ -540,9 +538,8 @@ func operationCase(
 		"github.com/threeport/threeport/pkg/notifications/v0",
 		fmt.Sprintf("NotificationOperation%s", upperOpPast),
 	)).BlockFunc(func(i *Group) {
-		// skip create and update when deletion is scheduled
-		// a handler error requeues that notification instead of completing it
 		if op == "create" || op == "update" {
+			// skip create and update when deletion is scheduled
 			h.If(Id(varObjectName).Dot("ScheduledForDeletion").Call().Op("!=").Nil()).Block(
 				Id("log").Dot("Info").Call(
 					Lit(fmt.Sprintf(
@@ -589,8 +586,7 @@ func operationCase(
 			)
 		})
 		h.If(Id("operationErr").Op("!=").Nil()).Block(
-			// treat 409 conflict as a soft requeue: a child object is still being
-			// deleted and the reconciler should wait rather than loop on errors
+			// treat ErrConflict as a 30s unlock-and-requeue
 			If(Qual("errors", "Is").Call(
 				Id("operationErr"),
 				Qual("github.com/threeport/threeport/pkg/client/lib/v0", "ErrConflict"),
@@ -735,8 +731,7 @@ func operationCase(
 				Line(),
 			)
 			h.If(Id("err").Op("!=").Nil()).Block(
-				// treat 409 conflict as a soft requeue: another reconciliation loop
-				// is already draining this object; wait rather than loop on errors
+				// treat ErrConflict as a 30s unlock-and-requeue
 				If(Qual("errors", "Is").Call(
 					Id("err"),
 					Qual("github.com/threeport/threeport/pkg/client/lib/v0", "ErrConflict"),

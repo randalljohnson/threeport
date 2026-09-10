@@ -332,6 +332,7 @@ func (h Handler) UpdateSecretDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
+	prevReconciliation := existingSecretDefinition.Reconciliation
 	if existingSecretDefinition.Reconciled != nil && !*existingSecretDefinition.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingSecretDefinition.Reconciliation) {
 		notifPayload, err := existingSecretDefinition.NotificationPayload(
@@ -498,7 +499,7 @@ func (h Handler) DeleteSecretDefinition(c echo.Context) error {
 	// check to make sure no dependent instances exist for this definition
 	if len(secretDefinition.SecretInstances) != 0 {
 		err := errors.New("secret definition has related secret instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -907,6 +908,7 @@ func (h Handler) UpdateSecretInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
+	prevReconciliation := existingSecretInstance.Reconciliation
 	if existingSecretInstance.Reconciled != nil && !*existingSecretInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingSecretInstance.Reconciliation) {
 		notifPayload, err := existingSecretInstance.NotificationPayload(

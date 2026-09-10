@@ -333,6 +333,7 @@ func (h Handler) UpdateControlPlaneDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
+	prevReconciliation := existingControlPlaneDefinition.Reconciliation
 	if existingControlPlaneDefinition.Reconciled != nil && !*existingControlPlaneDefinition.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingControlPlaneDefinition.Reconciliation) {
 		notifPayload, err := existingControlPlaneDefinition.NotificationPayload(
@@ -499,7 +500,7 @@ func (h Handler) DeleteControlPlaneDefinition(c echo.Context) error {
 	// check to make sure no dependent instances exist for this definition
 	if len(controlPlaneDefinition.ControlPlaneInstances) != 0 {
 		err := errors.New("control plane definition has related control plane instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -908,6 +909,7 @@ func (h Handler) UpdateControlPlaneInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
+	prevReconciliation := existingControlPlaneInstance.Reconciliation
 	if existingControlPlaneInstance.Reconciled != nil && !*existingControlPlaneInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingControlPlaneInstance.Reconciliation) {
 		notifPayload, err := existingControlPlaneInstance.NotificationPayload(

@@ -450,7 +450,7 @@ func (h Handler) DeleteDomainNameDefinition(c echo.Context) error {
 	// check to make sure no dependent instances exist for this definition
 	if len(domainNameDefinition.DomainNameInstances) != 0 {
 		err := errors.New("domain name definition has related domain name instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 
 	// delete object
@@ -805,6 +805,7 @@ func (h Handler) UpdateDomainNameInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
+	prevReconciliation := existingDomainNameInstance.Reconciliation
 	if existingDomainNameInstance.Reconciled != nil && !*existingDomainNameInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingDomainNameInstance.Reconciliation) {
 		notifPayload, err := existingDomainNameInstance.NotificationPayload(
@@ -1374,6 +1375,7 @@ func (h Handler) UpdateGatewayDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
+	prevReconciliation := existingGatewayDefinition.Reconciliation
 	if existingGatewayDefinition.Reconciled != nil && !*existingGatewayDefinition.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGatewayDefinition.Reconciliation) {
 		notifPayload, err := existingGatewayDefinition.NotificationPayload(
@@ -1540,7 +1542,7 @@ func (h Handler) DeleteGatewayDefinition(c echo.Context) error {
 	// check to make sure no dependent instances exist for this definition
 	if len(gatewayDefinition.GatewayInstances) != 0 {
 		err := errors.New("gateway definition has related gateway instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -2416,6 +2418,7 @@ func (h Handler) UpdateGatewayInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
+	prevReconciliation := existingGatewayInstance.Reconciliation
 	if existingGatewayInstance.Reconciled != nil && !*existingGatewayInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGatewayInstance.Reconciliation) {
 		notifPayload, err := existingGatewayInstance.NotificationPayload(

@@ -450,7 +450,7 @@ func (h Handler) DeleteGcpGceMachineRuntimeDefinition(c echo.Context) error {
 	// check to make sure no dependent instances exist for this definition
 	if len(gcpGceMachineRuntimeDefinition.GcpGceMachineRuntimeInstances) != 0 {
 		err := errors.New("gcp gce machine runtime definition has related gcp gce machine runtime instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 
 	// delete object
@@ -805,6 +805,7 @@ func (h Handler) UpdateGcpGceMachineRuntimeInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
+	prevReconciliation := existingGcpGceMachineRuntimeInstance.Reconciliation
 	if existingGcpGceMachineRuntimeInstance.Reconciled != nil && !*existingGcpGceMachineRuntimeInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGcpGceMachineRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingGcpGceMachineRuntimeInstance.NotificationPayload(
@@ -1492,7 +1493,7 @@ func (h Handler) DeleteGcpGkeKubernetesRuntimeDefinition(c echo.Context) error {
 	// check to make sure no dependent instances exist for this definition
 	if len(gcpGkeKubernetesRuntimeDefinition.GcpGkeKubernetesRuntimeInstances) != 0 {
 		err := errors.New("gcp gke kubernetes runtime definition has related gcp gke kubernetes runtime instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 
 	// delete object
@@ -1847,6 +1848,7 @@ func (h Handler) UpdateGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
+	prevReconciliation := existingGcpGkeKubernetesRuntimeInstance.Reconciliation
 	if existingGcpGkeKubernetesRuntimeInstance.Reconciled != nil && !*existingGcpGkeKubernetesRuntimeInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingGcpGkeKubernetesRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingGcpGkeKubernetesRuntimeInstance.NotificationPayload(

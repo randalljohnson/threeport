@@ -913,7 +913,7 @@ func (h Handler) DeleteLogStorageDefinition(c echo.Context) error {
 	// check to make sure no dependent instances exist for this definition
 	if len(logStorageDefinition.LogStorageInstances) != 0 {
 		err := errors.New("log storage definition has related log storage instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 
 	// delete object

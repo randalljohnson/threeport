@@ -332,6 +332,7 @@ func (h Handler) UpdateTerraformDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
+	prevReconciliation := existingTerraformDefinition.Reconciliation
 	if existingTerraformDefinition.Reconciled != nil && !*existingTerraformDefinition.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingTerraformDefinition.Reconciliation) {
 		notifPayload, err := existingTerraformDefinition.NotificationPayload(
@@ -498,7 +499,7 @@ func (h Handler) DeleteTerraformDefinition(c echo.Context) error {
 	// check to make sure no dependent instances exist for this definition
 	if len(terraformDefinition.TerraformInstances) != 0 {
 		err := errors.New("terraform definition has related terraform instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -907,6 +908,7 @@ func (h Handler) UpdateTerraformInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
+	prevReconciliation := existingTerraformInstance.Reconciliation
 	if existingTerraformInstance.Reconciled != nil && !*existingTerraformInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingTerraformInstance.Reconciliation) {
 		notifPayload, err := existingTerraformInstance.NotificationPayload(

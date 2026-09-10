@@ -332,6 +332,7 @@ func (h Handler) UpdateMachineRuntimeDefinition(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
+	prevReconciliation := existingMachineRuntimeDefinition.Reconciliation
 	if existingMachineRuntimeDefinition.Reconciled != nil && !*existingMachineRuntimeDefinition.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMachineRuntimeDefinition.Reconciliation) {
 		notifPayload, err := existingMachineRuntimeDefinition.NotificationPayload(
@@ -498,7 +499,7 @@ func (h Handler) DeleteMachineRuntimeDefinition(c echo.Context) error {
 	// check to make sure no dependent instances exist for this definition
 	if len(machineRuntimeDefinition.MachineRuntimeInstances) != 0 {
 		err := errors.New("machine runtime definition has related machine runtime instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -907,6 +908,7 @@ func (h Handler) UpdateMachineRuntimeInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
+	prevReconciliation := existingMachineRuntimeInstance.Reconciliation
 	if existingMachineRuntimeInstance.Reconciled != nil && !*existingMachineRuntimeInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMachineRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingMachineRuntimeInstance.NotificationPayload(

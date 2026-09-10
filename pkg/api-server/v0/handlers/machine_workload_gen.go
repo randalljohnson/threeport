@@ -450,7 +450,7 @@ func (h Handler) DeleteMachineWorkloadDefinition(c echo.Context) error {
 	// check to make sure no dependent instances exist for this definition
 	if len(machineWorkloadDefinition.MachineWorkloadInstances) != 0 {
 		err := errors.New("machine workload definition has related machine workload instances - cannot be deleted")
-		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
+		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 
 	// delete object
@@ -805,6 +805,7 @@ func (h Handler) UpdateMachineWorkloadInstance(c echo.Context) error {
 	}
 
 	// notify controller if reconciliation is required and the update is notifiable
+	prevReconciliation := existingMachineWorkloadInstance.Reconciliation
 	if existingMachineWorkloadInstance.Reconciled != nil && !*existingMachineWorkloadInstance.Reconciled &&
 		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingMachineWorkloadInstance.Reconciliation) {
 		notifPayload, err := existingMachineWorkloadInstance.NotificationPayload(

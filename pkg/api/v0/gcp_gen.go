@@ -88,6 +88,16 @@ func (ggmrd *GcpGceMachineRuntimeDefinition) GetFullyQualifiedType() string {
 	return "threeport.io/v0.GcpGceMachineRuntimeDefinition"
 }
 
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on GcpGceMachineRuntimeDefinition.
+func (g *GcpGceMachineRuntimeDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "MachineRuntimeDefinitionID",
+		ObjectID:     g.MachineRuntimeDefinitionID,
+		ObjectType:   new(MachineRuntimeDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipMarries,
+	}}
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -151,6 +161,34 @@ func (ggmri *GcpGceMachineRuntimeInstance) GetFullyQualifiedType() string {
 // if scheduled for deletion or nil if not scheduled for deletion.
 func (ggmri *GcpGceMachineRuntimeInstance) ScheduledForDeletion() *time.Time {
 	return ggmri.DeletionScheduled
+}
+
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on GcpGceMachineRuntimeInstance.
+func (g *GcpGceMachineRuntimeInstance) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return []RelationshipTaggedForeignKey{{
+		FieldName:    "GcpGceMachineRuntimeDefinitionID",
+		ObjectID:     g.GcpGceMachineRuntimeDefinitionID,
+		ObjectType:   new(GcpGceMachineRuntimeDefinition).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "GcpProviderID",
+		ObjectID:     g.GcpProviderID,
+		ObjectType:   new(GcpProvider).GetFullyQualifiedType(),
+		Relationship: RelationshipRequires,
+	}, {
+		FieldName:    "MachineRuntimeInstanceID",
+		ObjectID:     g.MachineRuntimeInstanceID,
+		ObjectType:   new(MachineRuntimeInstance).GetFullyQualifiedType(),
+		Relationship: RelationshipMarries,
+	}}
+}
+
+// EncryptedFields returns the encrypt-tagged fields on GcpGceMachineRuntimeInstance.
+func (g *GcpGceMachineRuntimeInstance) EncryptedFields() []lib.EncryptedField {
+	return []lib.EncryptedField{{
+		Name:  "SSHKey",
+		Value: g.SSHKey,
+	}}
 }
 
 // NotificationPayload returns the notification payload that is delivered to the

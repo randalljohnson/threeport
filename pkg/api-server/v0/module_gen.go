@@ -566,7 +566,7 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 
 	// registering object GcpGceMachineRuntimeDefinition
 	object = api_v0.ModuleObject{
-		Description: util.Ptr(""),
+		Description: util.Ptr("GcpGceMachineRuntimeDefinition is the configuration for GCE machine runtime instances."),
 		ModuleApiID: moduleApi.ID,
 		Name:        util.Ptr("GcpGceMachineRuntimeDefinition"),
 		Version:     util.Ptr("v0"),
@@ -610,7 +610,7 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 
 	// registering object GcpGceMachineRuntimeInstance
 	object = api_v0.ModuleObject{
-		Description:        util.Ptr(""),
+		Description:        util.Ptr("GcpGceMachineRuntimeInstance is a deployed instance of a GCE virtual machine."),
 		ModuleApiID:        moduleApi.ID,
 		ModuleControllerID: controller.ID,
 		Name:               util.Ptr("GcpGceMachineRuntimeInstance"),

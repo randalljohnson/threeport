@@ -167,7 +167,7 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of machine runtime definition encountered for creation")
+					operationErr = errors.New("unrecognized version of machine runtime definition encountered for create operation")
 				}
 				if operationErr != nil {
 					errorMsg := "failed to reconcile created machine runtime definition object"
@@ -202,6 +202,10 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
+				if machineRuntimeDefinition.ScheduledForDeletion() != nil {
+					log.Info("machine runtime definition scheduled for deletion - skipping update")
+					break
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch machineRuntimeDefinition.GetVersion() {
@@ -214,7 +218,7 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of machine runtime definition encountered for creation")
+					operationErr = errors.New("unrecognized version of machine runtime definition encountered for update operation")
 				}
 				if operationErr != nil {
 					errorMsg := "failed to reconcile updated machine runtime definition object"
@@ -261,7 +265,7 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of machine runtime definition encountered for creation")
+					operationErr = errors.New("unrecognized version of machine runtime definition encountered for delete operation")
 				}
 				if operationErr != nil {
 					errorMsg := "failed to reconcile deleted machine runtime definition object"

@@ -90,9 +90,8 @@ func TestMarshalObject_EmptyAssociationSliceIsSent(t *testing.T) {
 	assert.NotContains(t, gotNil, "KubernetesWorkloadInstances", "a nil association slice is still omitted")
 }
 
-// TestMarshalObject_EmptyJSONObjectIsSent covers json v2 omitempty dropping a
-// non-nil *datatypes.JSON pointing at {}. OmitZeroStructFields keeps it,
-// because the pointer itself is non-nil.
+// TestMarshalObject_EmptyJSONObjectIsSent covers a non-nil ResourceInventory
+// pointing at {}.
 func TestMarshalObject_EmptyJSONObjectIsSent(t *testing.T) {
 	empty := datatypes.JSON([]byte("{}"))
 	payload := GcpGceMachineRuntimeInstance{

@@ -15,30 +15,26 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// v0MachineRuntimeDefinitionCreated resolves the abstract machine size and
-// profile to a provider machine type and creates the married provider machine
-// runtime definition.
+// v0MachineRuntimeDefinitionCreated maps machine size and profile to a
+// provider machine type and creates the provider machine runtime definition.
 func v0MachineRuntimeDefinitionCreated(
 	r *controller.Reconciler,
 	machineRuntimeDefinition *v0.MachineRuntimeDefinition,
 	log *logr.Logger,
 ) (int64, error) {
-	// a definition registered externally with Reconciled already set needs no
-	// resolution, so return without error
+	// skip when already reconciled
 	if machineRuntimeDefinition.Reconciled != nil && *machineRuntimeDefinition.Reconciled {
 		return 0, nil
 	}
 
-	// imported machines have no infra provider, so there is nothing to resolve
+	// skip when no infra provider is set (imported machines)
 	if machineRuntimeDefinition.InfraProvider == nil || *machineRuntimeDefinition.InfraProvider == "" {
 		return 0, nil
 	}
 
 	switch *machineRuntimeDefinition.InfraProvider {
 	case v0.MachineRuntimeInfraProviderGCE:
-		// map the abstract size and profile to a Google Cloud Platform machine
-		// type; the mapping keys on the cloud provider token, not the machine
-		// runtime infra provider token
+		// map size and profile using the cloud provider token
 		machineType, err := mapping.GetMachineType(
 			util.GcpProvider,
 			*machineRuntimeDefinition.MachineProfile,
@@ -48,7 +44,7 @@ func v0MachineRuntimeDefinitionCreated(
 			return 0, fmt.Errorf("failed to map machine size and profile to GCP machine type: %w", err)
 		}
 
-		// create the married GCE machine runtime definition
+		// create GCE machine runtime definition
 		gcpGceMachineRuntimeDefinition := v0.GcpGceMachineRuntimeDefinition{
 			Definition: v0.Definition{
 				Name: machineRuntimeDefinition.Name,
@@ -68,8 +64,7 @@ func v0MachineRuntimeDefinitionCreated(
 		return 0, fmt.Errorf("infra provider %s not supported", *machineRuntimeDefinition.InfraProvider)
 	}
 
-	// mark reconciled so the resulting update notification does not trigger
-	// another pass
+	// mark reconciled so the update notification does not retrigger this pass
 	machineRuntimeDefinition.Reconciled = util.Ptr(true)
 	if _, err := client.UpdateMachineRuntimeDefinition(
 		r.APIClient,
@@ -93,20 +88,18 @@ func v0MachineRuntimeDefinitionUpdated(
 }
 
 // v0MachineRuntimeDefinitionDeleted performs reconciliation when a v0
-// MachineRuntimeDefinition has been deleted. The married provider definition is
-// torn down by its own reconciler, so the abstract definition only confirms the
-// deletion was scheduled.
+// MachineRuntimeDefinition has been deleted.
 func v0MachineRuntimeDefinitionDeleted(
 	r *controller.Reconciler,
 	machineRuntimeDefinition *v0.MachineRuntimeDefinition,
 	log *logr.Logger,
 ) (int64, error) {
-	// a deletion notification that was not scheduled indicates a problem
+	// check that deletion is scheduled
 	if machineRuntimeDefinition.DeletionScheduled == nil {
 		return 0, errors.New("deletion notification received but not scheduled")
 	}
 
-	// nothing to do once deletion is already confirmed
+	// skip when deletion is already confirmed
 	if machineRuntimeDefinition.DeletionConfirmed != nil {
 		return 0, nil
 	}

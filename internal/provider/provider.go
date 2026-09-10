@@ -16,14 +16,13 @@ const (
 	// to create the control plane is stored in the Threeport API with this name.
 	DefaultAccountName = "default-account"
 
-	// ManagedByLabelKey is the cloud resource label or tag key set on
-	// provider-provisioned infrastructure to mark it as managed by threeport.
-	// It is valid across cloud providers; kubernetes resources use a separate
-	// slash-namespaced key that cloud resource labels reject.
+	// ManagedByLabelKey is the key threeport sets on GCE instance labels.
+	// Google Cloud label keys accept lowercase letters, digits, `_`, `-`,
+	// and international characters. Google Cloud rejects
+	// control-plane.threeport.io/managed-by.
 	ManagedByLabelKey = "managed-by"
 
-	// ManagedByLabelValue is the value paired with ManagedByLabelKey on
-	// infrastructure managed by threeport.
+	// ManagedByLabelValue is the value paired with ManagedByLabelKey.
 	ManagedByLabelValue = "threeport"
 )
 

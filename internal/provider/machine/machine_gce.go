@@ -260,9 +260,8 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 			return fmt.Errorf("failed to create GCP provider: %w", err)
 		}
 
-		// SSH-allow firewall rule scoped to the configured source ranges.
-		// The firewall resource has no labels field, so the managed-by label
-		// is applied only to labelable resources such as the instance.
+		// allow SSH ingress from the configured source ranges
+		// compute firewalls have no labels field, so the managed-by label is only on the instance
 		sourceRanges := pulumi.ToStringArray(i.sshSourceRanges())
 		_, err = compute.NewFirewall(pctx, fmt.Sprintf("%s-ssh", i.RuntimeInstanceName), &compute.FirewallArgs{
 			Name:    pulumi.String(fmt.Sprintf("%s-ssh", i.RuntimeInstanceName)),
@@ -306,7 +305,7 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 					strings.TrimSpace(i.sshPublicKeyAuthorized),
 				)),
 			},
-			// mark the instance as managed by threeport.
+			// label the instance as managed by threeport
 			Labels: pulumi.StringMap{
 				provider.ManagedByLabelKey: pulumi.String(provider.ManagedByLabelValue),
 			},
@@ -403,11 +402,8 @@ func (i *GceMachineInfra) SetCreateOutputs(hostname, externalIP, sshPrivateKey s
 	i.sshPrivateKeyPEM = sshPrivateKey
 }
 
-// SeedSSHKeyPair seeds a previously persisted private key onto the provider and
-// derives its authorized-keys public form, so a rebuilt provider reuses the
-// stored key on the next deploy instead of minting a fresh pair and rotating
-// the instance's authorized key away from it. The public key is derived rather
-// than persisted separately so no extra stored field is needed.
+// SeedSSHKeyPair loads a persisted private key onto the provider and derives
+// its authorized-keys public form so the next deploy reuses that key.
 func (i *GceMachineInfra) SeedSSHKeyPair(sshPrivateKeyPEM string) error {
 	if sshPrivateKeyPEM == "" {
 		return fmt.Errorf("cannot seed SSH key pair from empty private key")

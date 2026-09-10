@@ -19,8 +19,9 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// sshRetryDelaySeconds is the requeue delay (in seconds) returned when an
-// SSH connect or ping fails. Package-level so tests can override it.
+// sshRetryDelaySeconds is the requeue delay (in seconds) after an SSH
+// connect or ping failure, and while waiting on a GCE instance.
+// Package-level so tests can override it.
 var sshRetryDelaySeconds int64 = 30
 
 // unpopulatedRequeueDelaySeconds is the requeue delay (in seconds) returned
@@ -102,9 +103,7 @@ func v0MachineRuntimeInstanceCreated(
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
-	// when the instance is provider-provisioned and has no hostname yet, create
-	// the married provider instance and requeue so the ssh path below waits for
-	// the provider reconciler to write back the hostname
+	// create provider instance when defined and hostname is empty
 	if machineRuntimeInstance.MachineRuntimeDefinitionID != nil &&
 		(machineRuntimeInstance.Hostname == nil || *machineRuntimeInstance.Hostname == "") {
 		requeue, err := reconcileProviderInstance(r, machineRuntimeInstance, log)
@@ -116,16 +115,12 @@ func v0MachineRuntimeInstanceCreated(
 		}
 	}
 
-	// defer the ssh dial until the machine has a hostname. an imported machine
-	// with no definition, or a provider machine still being provisioned, may
-	// reach this point before the hostname is populated; requeue without
-	// erroring and leave Reconciled unset until the hostname is set
+	// requeue until hostname is populated
 	if machineRuntimeInstance.Hostname == nil || *machineRuntimeInstance.Hostname == "" {
 		return unpopulatedRequeueDelaySeconds, nil
 	}
 
-	// bound all ssh operations in this reconcile pass so a partitioned or
-	// hanging host cannot stall the reconciler indefinitely
+	// bound ssh operations for this pass
 	ctx, cancel := newReconcileContext()
 	defer cancel()
 
@@ -207,16 +202,14 @@ func v0MachineRuntimeInstanceCreated(
 	return 0, nil
 }
 
-// reconcileProviderInstance creates the married provider machine runtime
-// instance for a provider-provisioned machine. It returns a requeue delay once
-// the married object exists so the caller waits for the provider reconciler to
-// populate the hostname.
+// reconcileProviderInstance creates the GCE machine runtime instance for a
+// defined machine and returns a requeue delay once that instance exists.
 func reconcileProviderInstance(
 	r *controller.Reconciler,
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
-	// fetch the parent definition to learn the provider
+	// get machine runtime definition
 	def, err := client.GetMachineRuntimeDefinitionByID(
 		r.APIClient,
 		r.APIServer,
@@ -231,8 +224,7 @@ func reconcileProviderInstance(
 
 	switch *def.InfraProvider {
 	case v0.MachineRuntimeInfraProviderGCE:
-		// when the married provider instance already exists, wait for its
-		// hostname instead of creating a second one
+		// check for existing GCE machine runtime instance
 		existing, err := client.GetGcpGceMachineRuntimeInstancesByQueryString(
 			r.APIClient,
 			r.APIServer,
@@ -245,7 +237,7 @@ func reconcileProviderInstance(
 			return sshRetryDelaySeconds, nil
 		}
 
-		// look up the GCP provider by name or fall back to the default
+		// get GCP provider by name or default
 		var gcpProvider v0.GcpProvider
 		if def.InfraProviderAccountName != nil {
 			provider, err := client.GetGcpProviderByName(r.APIClient, r.APIServer, *def.InfraProviderAccountName)
@@ -261,16 +253,14 @@ func reconcileProviderInstance(
 			gcpProvider = *provider
 		}
 
-		// map the abstract location to a GCP region; a GCE VM is zonal, so
-		// derive a zone within that region. the mapping keys on the cloud
-		// provider token, not the machine runtime infra provider token
+		// map location with the GCP cloud token and hardcode zone a
 		region, err := mapping.GetProviderRegionForLocation(util.GcpProvider, *machineRuntimeInstance.Location)
 		if err != nil {
 			return 0, fmt.Errorf("failed to map threeport location to GCP region: %w", err)
 		}
 		zone := region + "-a"
 
-		// fetch the married provider definition
+		// get GCE machine runtime definition
 		gcpGceMachineRuntimeDefinitions, err := client.GetGcpGceMachineRuntimeDefinitionsByQueryString(
 			r.APIClient,
 			r.APIServer,
@@ -284,8 +274,7 @@ func reconcileProviderInstance(
 		}
 		gcpGceMachineRuntimeDefinition := (*gcpGceMachineRuntimeDefinitions)[0]
 
-		// create the married provider instance; leave Reconciled unset so the
-		// ssh path requeues until the provider reconciler writes back the host
+		// create GCE machine runtime instance on the default network
 		gcpGceMachineRuntimeInstance := v0.GcpGceMachineRuntimeInstance{
 			Instance: v0.Instance{
 				Name: machineRuntimeInstance.Name,
@@ -295,9 +284,7 @@ func reconcileProviderInstance(
 			Zone:                             &zone,
 			MachineRuntimeInstanceID:         machineRuntimeInstance.ID,
 			GcpGceMachineRuntimeDefinitionID: gcpGceMachineRuntimeDefinition.ID,
-			// default to the provider default network so the instance and its
-			// firewall have a network to attach to
-			NetworkID: util.Ptr("default"),
+			NetworkID:                        util.Ptr("default"),
 		}
 		if _, err := client.CreateGcpGceMachineRuntimeInstance(
 			r.APIClient,
@@ -324,13 +311,7 @@ func v0MachineRuntimeInstanceUpdated(
 }
 
 // v0MachineRuntimeInstanceDeleted performs reconciliation when a v0
-// MachineRuntimeInstance has been deleted.  Imported machines (no associated
-// definition) have no provisioned infrastructure, so deletion is a clean
-// no-op for them.  A provider-provisioned machine that still carries a
-// resource inventory has live provider resources that this control plane
-// cannot tear down on its own, so deletion records a warning instructing the
-// operator to reclaim them, then completes; the inventory is the record of
-// what to reclaim.
+// MachineRuntimeInstance has been deleted.
 func v0MachineRuntimeInstanceDeleted(
 	r *controller.Reconciler,
 	machineRuntimeInstance *v0.MachineRuntimeInstance,

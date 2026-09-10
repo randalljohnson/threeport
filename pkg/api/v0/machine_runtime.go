@@ -8,14 +8,13 @@ type MachineRuntimeDefinition struct {
 	Common     `swaggerignore:"true" mapstructure:",squash"`
 	Definition `mapstructure:",squash"`
 
-	// The infrastructure provider that provisions machines from this
-	// definition. Empty for imported machines that already exist.
+	// The infrastructure provider that provisions machines from this definition
 	InfraProvider *string `json:",omitempty" validate:"optional"`
 
-	// The provider-specific machine/instance type to provision.
+	// The provider-specific machine type to provision
 	MachineType *string `json:",omitempty" validate:"optional"`
 
-	// The provider image identifier used to boot the machine.
+	// The provider image identifier used to boot the machine
 	ImageID *string `json:",omitempty" validate:"optional"`
 
 	// The associated machine runtime instances that are deployed from this
@@ -29,23 +28,10 @@ type MachineRuntimeInstance struct {
 	Instance       `mapstructure:",squash"`
 	Reconciliation `mapstructure:",squash"`
 
-	// The hostname or IP address used to reach the machine. Optional at
-	// create so the abstract instance can exist before the machine is
-	// provisioned; populated once the machine is reachable.
-	//
-	// idx_machine_runtime_instance_hostname is a partial unique index that
-	// allows at most one live instance per hostname, so a single machine
-	// cannot be represented by two records that each drive their own
-	// reconciliation against it. The deleted_at predicate keeps
-	// soft-deleted rows out of the unique slot, so the hostname of a
-	// deleted instance is available to a new one right away. CockroachDB
-	// treats every NULL as distinct in a unique index, so any number of
-	// instances may hold no hostname while they wait on provisioning.
+	// The hostname or IP address used to reach the machine
 	Hostname *string `validate:"optional" gorm:"uniqueIndex:idx_machine_runtime_instance_hostname,where:deleted_at IS NULL"`
 
-	// The SSH username for authenticating to the machine. Optional at create
-	// for the same reason as the hostname; populated once the machine is
-	// provisioned.
+	// The SSH username for authenticating to the machine
 	SSHUser *string `validate:"optional"`
 
 	// The SSH private key for authenticating to the machine.
@@ -61,19 +47,16 @@ type MachineRuntimeInstance struct {
 	// connection. If not provided, captured on first connection.
 	HostKey *string `validate:"optional"`
 
-	// The provider region in which the machine is provisioned.
+	// The provider region in which the machine is provisioned
 	Region *string `json:",omitempty" validate:"optional"`
 
-	// The provider network identifier the machine attaches to.
+	// The provider network identifier the machine attaches to
 	NetworkID *string `json:",omitempty" validate:"optional"`
 
-	// The provider-specific subnet identifier the VM should attach to.
-	// Required in custom-mode shared VPCs where multiple subnets share a
-	// region.
+	// The provider subnet identifier the machine attaches to
 	SubnetID *string `json:",omitempty" gorm:"type:text" validate:"optional"`
 
-	// An inventory of all provider resources backing this machine, used for
-	// crash recovery and deprovisioning.
+	// An inventory of all provider resources backing this machine
 	ResourceInventory *datatypes.JSON `json:",omitempty" validate:"optional"`
 
 	// The machine runtime definition for this instance.  Optional because

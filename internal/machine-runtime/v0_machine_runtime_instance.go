@@ -141,10 +141,7 @@ func v0MachineRuntimeInstanceCreated(
 		}
 	}
 
-	// defer the ssh dial until the machine has a hostname. an imported machine
-	// with no definition, or a provider machine still being provisioned, may
-	// reach this point before the hostname is populated; requeue without
-	// erroring and leave Reconciled unset until the hostname is set
+	// requeue until hostname is populated
 	if machineRuntimeInstance.Hostname == nil || *machineRuntimeInstance.Hostname == "" {
 		return unpopulatedRequeueDelaySeconds, nil
 	}
@@ -225,10 +222,8 @@ func v0MachineRuntimeInstanceCreated(
 	return controller.Done, nil
 }
 
-// reconcileProviderInstance creates the married provider machine runtime
-// instance for a provider-provisioned machine. It returns a requeue delay once
-// the married object exists so the caller waits for the provider reconciler to
-// populate the hostname.
+// reconcileProviderInstance creates the GCE machine runtime instance for a
+// defined machine and returns a requeue delay once that instance exists.
 func reconcileProviderInstance(
 	r *controller.Reconciler,
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
@@ -242,8 +237,7 @@ func reconcileProviderInstance(
 
 	switch *def.InfraProvider {
 	case v0.MachineRuntimeInfraProviderGCE:
-		// when the married provider instance already exists, wait for its
-		// hostname instead of creating a second one
+		// check for existing GCE machine runtime instance
 		existing, err := client.GetGcpGceMachineRuntimeInstancesByQueryString(
 			r.APIClient,
 			r.APIServer,
@@ -259,7 +253,7 @@ func reconcileProviderInstance(
 			return controller.Requeue30s, nil
 		}
 
-		// look up the GCP provider by name or fall back to the default
+		// get GCP provider by name or default
 		var gcpProvider v0.GcpProvider
 		if def.InfraProviderAccountName != nil {
 			provider, err := client.GetGcpProviderByName(r.APIClient, r.APIServer, *def.InfraProviderAccountName)
@@ -275,16 +269,14 @@ func reconcileProviderInstance(
 			gcpProvider = *provider
 		}
 
-		// map the abstract location to a GCP region; a GCE VM is zonal, so
-		// derive a zone within that region. the mapping keys on the cloud
-		// provider token, not the machine runtime infra provider token
+		// map location with the GCP cloud token and hardcode zone a
 		region, err := mapping.GetProviderRegionForLocation(util.GcpProvider, *machineRuntimeInstance.Location)
 		if err != nil {
 			return 0, fmt.Errorf("failed to map threeport location to GCP region: %w", err)
 		}
 		zone := region + "-a"
 
-		// fetch the married provider definition
+		// get GCE machine runtime definition
 		gcpGceMachineRuntimeDefinitions, err := client.GetGcpGceMachineRuntimeDefinitionsByQueryString(
 			r.APIClient,
 			r.APIServer,
@@ -298,8 +290,7 @@ func reconcileProviderInstance(
 		}
 		gcpGceMachineRuntimeDefinition := (*gcpGceMachineRuntimeDefinitions)[0]
 
-		// create the married provider instance; leave Reconciled unset so the
-		// ssh path requeues until the provider reconciler writes back the host
+		// create GCE machine runtime instance on the default network
 		gcpGceMachineRuntimeInstance := v0.GcpGceMachineRuntimeInstance{
 			Instance: v0.Instance{
 				Name: machineRuntimeInstance.Name,

@@ -41,8 +41,8 @@ const gceTestDefinitionID uint = 11
 // referenced by test instances.
 const gceTestMachineRuntimeInstanceID uint = 19
 
-// gceAPIStub wraps an httptest.Server with the http.Client and base address the
-// threeport client helpers expect, and records every PATCH body keyed by path.
+// gceAPIStub is an httptest.Server plus the client and address threeport
+// client helpers expect. PATCH bodies are recorded keyed by path.
 type gceAPIStub struct {
 	server        *httptest.Server
 	mux           *http.ServeMux
@@ -53,10 +53,8 @@ type gceAPIStub struct {
 	encryptionKey string
 }
 
-// gceNewAPIStub returns a gceAPIStub with an empty mux. The addr has the
-// "http://" scheme stripped because the threeport client helpers prepend a
-// scheme themselves, and the bare *http.Client keeps the scheme check resolving
-// to "http://" against this plain HTTP server.
+// gceNewAPIStub returns a gceAPIStub with an empty mux. Addr drops the
+// http:// scheme because the threeport client prepends one.
 func gceNewAPIStub(t *testing.T) *gceAPIStub {
 	t.Helper()
 	mux := http.NewServeMux()
@@ -83,7 +81,7 @@ func (s *gceAPIStub) gceReconciler() *controller.Reconciler {
 	}
 }
 
-// gceRecordPatch stores a captured PATCH body for the given path.
+// gceRecordPatch appends a captured PATCH body under path.
 func (s *gceAPIStub) gceRecordPatch(path string, body []byte) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -120,7 +118,7 @@ func (s *gceAPIStub) gceLastPatch(t *testing.T, path string) v0.GcpGceMachineRun
 }
 
 // gceWriteResponse marshals data into an apiserver_lib.Response envelope and
-// writes it with the given status; the threeport client expects this shape.
+// writes it with status.
 func gceWriteResponse(t *testing.T, w http.ResponseWriter, status int, data []apiserver_lib.Object) {
 	t.Helper()
 	body, err := json.Marshal(apiserver_lib.Response{Data: data})
@@ -140,8 +138,8 @@ func gceProviderPath(id uint) string {
 	return fmt.Sprintf("%s/%d", v0.PathGcpProviders, id)
 }
 
-// gceHandleInstance registers a handler for an instance path that returns the
-// supplied object on GET and records the body on PATCH (echoing it back).
+// gceHandleInstance registers a handler that returns get on GET and records
+// the body on PATCH.
 func (s *gceAPIStub) gceHandleInstance(t *testing.T, id uint, get *v0.GcpGceMachineRuntimeInstance) {
 	t.Helper()
 	path := gceInstancePath(id)
@@ -192,7 +190,7 @@ func gcePtr[T any](v T) *T {
 }
 
 // gceBaseInstance returns a minimal valid instance referencing the test
-// provider and definition, with the given ID and name.
+// provider and definition.
 func gceBaseInstance(id uint, name string) *v0.GcpGceMachineRuntimeInstance {
 	return &v0.GcpGceMachineRuntimeInstance{
 		Common:                           v0.Common{ID: gcePtr(id)},
@@ -202,8 +200,8 @@ func gceBaseInstance(id uint, name string) *v0.GcpGceMachineRuntimeInstance {
 	}
 }
 
-// gceBaseDefinition returns a GCE definition carrying the provisioning
-// template fields read by buildGceMachineInfra.
+// gceBaseDefinition returns a GCE definition carrying the fields
+// buildGceMachineInfra copies onto infra.
 func gceBaseDefinition() *v0.GcpGceMachineRuntimeDefinition {
 	return &v0.GcpGceMachineRuntimeDefinition{
 		Common:      v0.Common{ID: gcePtr(gceTestDefinitionID)},
@@ -234,15 +232,14 @@ func (s *gceAPIStub) gceHandleDefinition500(t *testing.T, id uint) {
 	})
 }
 
-// gceMachineRuntimeInstancePath returns the GET/PATCH path for a machine runtime
-// instance ID.
+// gceMachineRuntimeInstancePath returns the GET/PATCH path for a machine
+// runtime instance ID.
 func gceMachineRuntimeInstancePath(id uint) string {
 	return fmt.Sprintf("%s/%d", v0.PathMachineRuntimeInstances, id)
 }
 
-// gceHandleMachineRuntimeInstance registers a handler for a machine runtime
-// instance path that returns the supplied object on GET and records the body on
-// PATCH (echoing it back).
+// gceHandleMachineRuntimeInstance registers a handler that returns get on GET
+// and records the body on PATCH.
 func (s *gceAPIStub) gceHandleMachineRuntimeInstance(t *testing.T, id uint, get *v0.MachineRuntimeInstance) {
 	t.Helper()
 	path := gceMachineRuntimeInstancePath(id)
@@ -276,8 +273,7 @@ func (s *gceAPIStub) gceLastMachineRuntimeInstancePatch(t *testing.T, path strin
 	return updated
 }
 
-// gceBaseMachineRuntimeInstance returns a married machine runtime instance with
-// the given ID and name.
+// gceBaseMachineRuntimeInstance returns a married machine runtime instance.
 func gceBaseMachineRuntimeInstance(id uint, name string) *v0.MachineRuntimeInstance {
 	return &v0.MachineRuntimeInstance{
 		Common:   v0.Common{ID: gcePtr(id)},
@@ -295,8 +291,7 @@ func gceBaseProvider() *v0.GcpProvider {
 	}
 }
 
-// gceFakeInfra is a provider.InfraProvider that is NOT *machine.GceMachineInfra,
-// used to exercise the wrong-concrete-type branch of SaveCreateOutputs.
+// gceFakeInfra is a provider.InfraProvider that is not *machine.GceMachineInfra.
 type gceFakeInfra struct{}
 
 func (gceFakeInfra) DeployInfra() error                      { return nil }
@@ -304,13 +299,10 @@ func (gceFakeInfra) DestroyInfra() error                     { return nil }
 func (gceFakeInfra) SetStackState(_ *datatypes.JSON) error   { return nil }
 func (gceFakeInfra) GetStackState() (*datatypes.JSON, error) { return nil, nil }
 
-// gceFakeInfra satisfies provider.InfraProvider so SaveCreateOutputs accepts it
-// at the call site and exercises the wrong-concrete-type branch.
 var _ provider.InfraProvider = gceFakeInfra{}
 
-// gceFakeJetStream embeds nats.JetStreamContext and overrides Publish so tests
-// can drive both the publish-success and publish-error paths. All other
-// interface methods are inherited from the embedded nil and must not be called.
+// gceFakeJetStream is a nats.JetStreamContext that records Publish subjects
+// and returns a configured error. Other methods on the embedded nil must not be called.
 type gceFakeJetStream struct {
 	nats.JetStreamContext
 	err      error
@@ -332,6 +324,8 @@ func gceNewLifecycle(s *gceAPIStub, instance *v0.GcpGceMachineRuntimeInstance) *
 	return newGceMachineLifecycleProvider(s.gceReconciler(), instance, &log)
 }
 
+// TestGceLifecycleGetReconciliation covers GetReconciliation snapshot mapping,
+// a nil CreationFailed as false, and a wrapped GET 500.
 func TestGceLifecycleGetReconciliation(t *testing.T) {
 	t.Run("happy mapping", func(t *testing.T) {
 		s := gceNewAPIStub(t)
@@ -383,6 +377,8 @@ func TestGceLifecycleGetReconciliation(t *testing.T) {
 	})
 }
 
+// TestGceLifecycleBuildInfra covers BuildInfra field copy, decrypt, and GET
+// failures for instance, provider, and definition.
 func TestGceLifecycleBuildInfra(t *testing.T) {
 	t.Run("happy path populates fields", func(t *testing.T) {
 		s := gceNewAPIStub(t)
@@ -476,6 +472,8 @@ func TestGceLifecycleBuildInfra(t *testing.T) {
 	})
 }
 
+// TestGceBuildInfraNilRequiredFields covers buildGceMachineInfra errors for
+// nil GcpProviderID, ProjectID, and GcpGceMachineRuntimeDefinitionID.
 func TestGceBuildInfraNilRequiredFields(t *testing.T) {
 	t.Run("nil GcpProviderID returns clean error", func(t *testing.T) {
 		s := gceNewAPIStub(t)
@@ -516,12 +514,11 @@ func gceDiscardLog() *logr.Logger {
 	return &log
 }
 
+// TestGceLifecycleIsCreateComplete covers IsCreateComplete inventory cases
+// and a wrapped GET error.
 func TestGceLifecycleIsCreateComplete(t *testing.T) {
-	// NOTE: every inventory below must be valid JSON because it round-trips
-	// through the API stub's response marshalling (datatypes.JSON refuses to
-	// marshal invalid bytes). The empty-string and whitespace-only raw-DB
-	// states cannot arrive as a JSON API response, so they are covered by the
-	// nil case and the trimmed-empty cases here.
+	// inventory bytes must be valid JSON: the stub marshals them through
+	// datatypes.JSON, which refuses invalid bytes
 	cases := []struct {
 		name      string
 		inventory *datatypes.JSON
@@ -561,12 +558,14 @@ func TestGceLifecycleIsCreateComplete(t *testing.T) {
 	})
 }
 
-// gceJSON returns a pointer to a datatypes.JSON from the given string.
+// gceJSON returns a pointer to a datatypes.JSON from s.
 func gceJSON(s string) *datatypes.JSON {
 	j := datatypes.JSON([]byte(s))
 	return &j
 }
 
+// TestGceSaveCreateOutputsWritesHostnameIPKey covers SaveCreateOutputs writing
+// hostname, external IP, SSH key, and inventory onto the instance PATCH.
 func TestGceSaveCreateOutputsWritesHostnameIPKey(t *testing.T) {
 	s := gceNewAPIStub(t)
 	s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
@@ -589,6 +588,8 @@ func TestGceSaveCreateOutputsWritesHostnameIPKey(t *testing.T) {
 	assert.JSONEq(t, `{"checkpoint":{}}`, string(*patch.ResourceInventory))
 }
 
+// TestGceSaveCreateOutputsUpdateErrorWraps covers SaveCreateOutputs wrapping a
+// PATCH 500.
 func TestGceSaveCreateOutputsUpdateErrorWraps(t *testing.T) {
 	s := gceNewAPIStub(t)
 	s.gceHandleInstance500(t, gceTestInstanceID)
@@ -603,6 +604,8 @@ func TestGceSaveCreateOutputsUpdateErrorWraps(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to update GCE instance with create outputs")
 }
 
+// TestGceSaveCreateOutputsWrongConcreteTypeReturnsError covers SaveCreateOutputs
+// rejecting a provider.InfraProvider that is not *machine.GceMachineInfra.
 func TestGceSaveCreateOutputsWrongConcreteTypeReturnsError(t *testing.T) {
 	s := gceNewAPIStub(t)
 	g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
@@ -613,6 +616,8 @@ func TestGceSaveCreateOutputsWrongConcreteTypeReturnsError(t *testing.T) {
 	assert.Contains(t, err.Error(), "expected *machine.GceMachineInfra")
 }
 
+// TestGceLifecycleAckCreation covers AckCreation setting CreationAcknowledged
+// and clearing CreationFailed, and a PATCH error.
 func TestGceLifecycleAckCreation(t *testing.T) {
 	t.Run("sets acknowledged and clears failed", func(t *testing.T) {
 		s := gceNewAPIStub(t)
@@ -637,6 +642,8 @@ func TestGceLifecycleAckCreation(t *testing.T) {
 	})
 }
 
+// TestGceLifecycleRefreshCreationAck covers RefreshCreationAck writing
+// CreationAcknowledged and a PATCH error.
 func TestGceLifecycleRefreshCreationAck(t *testing.T) {
 	s := gceNewAPIStub(t)
 	s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
@@ -652,6 +659,8 @@ func TestGceLifecycleRefreshCreationAck(t *testing.T) {
 	require.Error(t, g500.RefreshCreationAck())
 }
 
+// TestGceLifecycleSetCreationFailed covers SetCreationFailed writing
+// CreationFailed true and a PATCH error.
 func TestGceLifecycleSetCreationFailed(t *testing.T) {
 	s := gceNewAPIStub(t)
 	s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
@@ -668,6 +677,8 @@ func TestGceLifecycleSetCreationFailed(t *testing.T) {
 	require.Error(t, g500.SetCreationFailed())
 }
 
+// TestGceLifecycleConfirmCreation covers ConfirmCreation writing Reconciled
+// and CreationConfirmed, and a PATCH error.
 func TestGceLifecycleConfirmCreation(t *testing.T) {
 	s := gceNewAPIStub(t)
 	s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
@@ -685,6 +696,8 @@ func TestGceLifecycleConfirmCreation(t *testing.T) {
 	require.Error(t, g500.ConfirmCreation())
 }
 
+// TestGceLifecycleAckDeletion covers AckDeletion writing DeletionAcknowledged
+// and a PATCH error.
 func TestGceLifecycleAckDeletion(t *testing.T) {
 	s := gceNewAPIStub(t)
 	s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
@@ -700,6 +713,8 @@ func TestGceLifecycleAckDeletion(t *testing.T) {
 	require.Error(t, g500.AckDeletion())
 }
 
+// TestGceLifecycleRefreshDeletionAck covers RefreshDeletionAck writing
+// DeletionAcknowledged and a PATCH error.
 func TestGceLifecycleRefreshDeletionAck(t *testing.T) {
 	s := gceNewAPIStub(t)
 	s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
@@ -715,6 +730,8 @@ func TestGceLifecycleRefreshDeletionAck(t *testing.T) {
 	require.Error(t, g500.RefreshDeletionAck())
 }
 
+// TestGceLifecycleConfirmDeletion covers ConfirmDeletion writing
+// DeletionConfirmed and a PATCH error.
 func TestGceLifecycleConfirmDeletion(t *testing.T) {
 	s := gceNewAPIStub(t)
 	s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
@@ -730,6 +747,8 @@ func TestGceLifecycleConfirmDeletion(t *testing.T) {
 	require.Error(t, g500.ConfirmDeletion())
 }
 
+// TestGceLifecycleSaveState covers SaveState writing ResourceInventory and a
+// PATCH error.
 func TestGceLifecycleSaveState(t *testing.T) {
 	s := gceNewAPIStub(t)
 	s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
@@ -747,6 +766,8 @@ func TestGceLifecycleSaveState(t *testing.T) {
 	require.Error(t, g500.SaveState(&state))
 }
 
+// TestGceLifecycleClearInventory covers ClearInventory writing "{}" as
+// ResourceInventory and a PATCH error.
 func TestGceLifecycleClearInventory(t *testing.T) {
 	s := gceNewAPIStub(t)
 	s.gceHandleInstance(t, gceTestInstanceID, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
@@ -907,9 +928,9 @@ func TestReclaimOrphansRejectsProbeFailure(t *testing.T) {
 	assert.Equal(t, 0, cloud.instanceDeletes)
 }
 
+// TestGceLifecycleOnCreateConfirmedWritesHostnameSSHOntoMarriedInstance covers
+// OnCreateConfirmed writing ExternalIP onto Hostname with SSHUser, SSHKey, and Reconciled false.
 func TestGceLifecycleOnCreateConfirmedWritesHostnameSSHOntoMarriedInstance(t *testing.T) {
-	// stub a fully provisioned GCE instance carrying the married runtime instance
-	// ID and the connection fields persisted earlier from the VM
 	s := gceNewAPIStub(t)
 	latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
 	latest.MachineRuntimeInstanceID = gcePtr(gceTestMachineRuntimeInstanceID)
@@ -917,57 +938,51 @@ func TestGceLifecycleOnCreateConfirmedWritesHostnameSSHOntoMarriedInstance(t *te
 	latest.SSHUser = gcePtr("threeport")
 	latest.SSHKey = gcePtr("PRIVATE-KEY")
 	s.gceHandleInstance(t, gceTestInstanceID, latest)
-	// stub the married machine runtime instance the connection fields copy onto
 	s.gceHandleMachineRuntimeInstance(t, gceTestMachineRuntimeInstanceID, gceBaseMachineRuntimeInstance(gceTestMachineRuntimeInstanceID, gceTestInstanceName))
 
-	// run post-create confirmation against the stubbed instance
 	g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
 	require.NoError(t, g.OnCreateConfirmed(nil))
 
 	// inspect the PATCH sent to the married machine runtime instance
 	patch := s.gceLastMachineRuntimeInstancePatch(t, gceMachineRuntimeInstancePath(gceTestMachineRuntimeInstanceID))
-	// confirm the external IP lands on the hostname
 	require.NotNil(t, patch.Hostname)
 	assert.Equal(t, "203.0.113.7", *patch.Hostname)
-	// confirm the ssh user carries across
 	require.NotNil(t, patch.SSHUser)
 	assert.Equal(t, "threeport", *patch.SSHUser)
-	// confirm the ssh key carries across
 	require.NotNil(t, patch.SSHKey)
 	assert.Equal(t, "PRIVATE-KEY", *patch.SSHKey)
-	// confirm reconciled is cleared so the workload ssh install runs next
 	require.NotNil(t, patch.Reconciled)
 	assert.False(t, *patch.Reconciled)
 }
 
+// TestGceLifecycleOnCreateConfirmedNilMarriedIDReturnsError covers
+// OnCreateConfirmed rejecting a nil MachineRuntimeInstanceID.
 func TestGceLifecycleOnCreateConfirmedNilMarriedIDReturnsError(t *testing.T) {
-	// stub a GCE instance with no married machine runtime instance ID
 	s := gceNewAPIStub(t)
 	latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
 	latest.MachineRuntimeInstanceID = nil
 	s.gceHandleInstance(t, gceTestInstanceID, latest)
 
-	// run post-create confirmation against the unmarried instance
 	g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
 	err := g.OnCreateConfirmed(nil)
-	// confirm the missing married ID surfaces as an error naming the absent field
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "MachineRuntimeInstanceID")
 }
 
+// TestGceLifecycleOnCreateConfirmedInstanceGETErrorWraps covers
+// OnCreateConfirmed wrapping a GCE instance GET 500.
 func TestGceLifecycleOnCreateConfirmedInstanceGETErrorWraps(t *testing.T) {
-	// stub the GCE instance GET to fail
 	s := gceNewAPIStub(t)
 	s.gceHandleInstance500(t, gceTestInstanceID)
 
-	// run post-create confirmation while the instance fetch is failing
 	g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
 	err := g.OnCreateConfirmed(nil)
-	// confirm the fetch failure is wrapped with context naming the failed lookup
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get GCE instance for machine runtime update")
 }
 
+// TestGceLifecyclePublishCreateNotification covers PublishCreateNotification
+// publishing gcpGceMachineRuntimeInstance.create and wrapping a NATS error.
 func TestGceLifecyclePublishCreateNotification(t *testing.T) {
 	t.Run("publish success", func(t *testing.T) {
 		s := gceNewAPIStub(t)
@@ -995,6 +1010,8 @@ func TestGceLifecyclePublishCreateNotification(t *testing.T) {
 	})
 }
 
+// TestGceLifecyclePublishDeleteNotification covers PublishDeleteNotification
+// publishing gcpGceMachineRuntimeInstance.delete and wrapping a NATS error.
 func TestGceLifecyclePublishDeleteNotification(t *testing.T) {
 	t.Run("publish success", func(t *testing.T) {
 		s := gceNewAPIStub(t)
@@ -1022,6 +1039,8 @@ func TestGceLifecyclePublishDeleteNotification(t *testing.T) {
 	})
 }
 
+// TestGceInstanceCreatedConfirmedNoop covers v0GcpGceMachineRuntimeInstanceCreated
+// returning delay 0 when CreationConfirmed is already set.
 func TestGceInstanceCreatedConfirmedNoop(t *testing.T) {
 	s := gceNewAPIStub(t)
 	latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
@@ -1038,13 +1057,14 @@ func TestGceInstanceCreatedConfirmedNoop(t *testing.T) {
 	assert.Equal(t, int64(0), delay)
 }
 
+// TestGceInstanceCreatedRequeuesWhenAckedNotStale covers
+// v0GcpGceMachineRuntimeInstanceCreated returning delay 120 for a fresh ack.
 func TestGceInstanceCreatedRequeuesWhenAckedNotStale(t *testing.T) {
 	s := gceNewAPIStub(t)
 	latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
 	latest.CreationConfirmed = nil
 	latest.CreationFailed = gcePtr(false)
 	latest.CreationAcknowledged = gcePtr(time.Now().UTC())
-	// inventory nil so IsCreateComplete is false; reaches the non-stale requeue.
 	latest.ResourceInventory = nil
 	s.gceHandleInstance(t, gceTestInstanceID, latest)
 
@@ -1245,6 +1265,8 @@ func TestGceInstanceUpdatedAbortsWhenDeletionScheduled(t *testing.T) {
 	assert.Equal(t, int64(0), delay, "a scheduled deletion aborts the update up")
 }
 
+// TestGceInstanceDeletedConfirmedNoop covers v0GcpGceMachineRuntimeInstanceDeleted
+// returning delay 0 when DeletionConfirmed is already set.
 func TestGceInstanceDeletedConfirmedNoop(t *testing.T) {
 	s := gceNewAPIStub(t)
 	latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
@@ -1262,6 +1284,8 @@ func TestGceInstanceDeletedConfirmedNoop(t *testing.T) {
 	assert.Equal(t, int64(0), delay)
 }
 
+// TestGceInstanceDeletedRequeuesWhenCreateInProgress covers
+// v0GcpGceMachineRuntimeInstanceDeleted returning delay 60 while create is acked.
 func TestGceInstanceDeletedRequeuesWhenCreateInProgress(t *testing.T) {
 	s := gceNewAPIStub(t)
 	latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
@@ -1281,6 +1305,8 @@ func TestGceInstanceDeletedRequeuesWhenCreateInProgress(t *testing.T) {
 	assert.Equal(t, int64(60), delay)
 }
 
+// TestGceInstanceDeletedNotScheduled covers v0GcpGceMachineRuntimeInstanceDeleted
+// erroring when DeletionScheduled is nil.
 func TestGceInstanceDeletedNotScheduled(t *testing.T) {
 	s := gceNewAPIStub(t)
 	latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
@@ -1297,17 +1323,12 @@ func TestGceInstanceDeletedNotScheduled(t *testing.T) {
 	assert.Contains(t, err.Error(), "deletion notification received but not scheduled")
 }
 
-// TestGceLifecycleConcurrentInstancesNoRace constructs N adapters for distinct
-// instance IDs and drives their stateless methods concurrently. The adapter
-// holds no shared mutable state: there is no data race under -race and no
-// cross-instance bleed (each goroutine's PATCH carries its own ID). Semaphore-
-// cap, goroutine-leak, and stale-ack behavior live in the shared handler and
-// are not asserted here.
+// TestGceLifecycleConcurrentInstancesNoRace covers concurrent adapters for
+// distinct instance IDs with no cross-instance PATCH bleed.
 func TestGceLifecycleConcurrentInstancesNoRace(t *testing.T) {
 	const n = 200
 	s := gceNewAPIStub(t)
-	// register a handler per distinct instance ID, returning that ID on GET and
-	// recording PATCH bodies under its own path.
+	// register a GET/PATCH handler per instance ID
 	for i := 0; i < n; i++ {
 		id := uint(1000 + i)
 		s.gceHandleInstance(t, id, gceBaseInstance(id, fmt.Sprintf("gce-%d", id)))
@@ -1315,6 +1336,7 @@ func TestGceLifecycleConcurrentInstancesNoRace(t *testing.T) {
 
 	var wg sync.WaitGroup
 	errCh := make(chan error, n)
+	// run GetReconciliation, AckCreation, SaveState, ConfirmCreation per ID
 	for i := 0; i < n; i++ {
 		id := uint(1000 + i)
 		wg.Add(1)
@@ -1346,15 +1368,12 @@ func TestGceLifecycleConcurrentInstancesNoRace(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// each instance path captured its own PATCHes; the client carries the ID in
-	// the URL (stripped from the body), so a recorded PATCH on every distinct
-	// path proves each goroutine targeted its own instance with no bleed.
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	// check each path recorded AckCreation, SaveState, and ConfirmCreation
 	for i := 0; i < n; i++ {
 		id := uint(1000 + i)
 		bodies := s.patches[gceInstancePath(id)]
-		// AckCreation, SaveState, ConfirmCreation each issue one PATCH.
 		assert.Len(t, bodies, 3, "instance %d should have exactly its own 3 PATCHes", id)
 	}
 }

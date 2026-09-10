@@ -489,7 +489,7 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 					strings.TrimSpace(i.sshPublicKeyAuthorized),
 				)),
 			},
-			// mark the instance as managed by threeport.
+			// label the instance as managed by threeport
 			Labels: pulumi.StringMap{
 				provider.ManagedByLabelKey: pulumi.String(provider.ManagedByLabelValue),
 			},
@@ -783,11 +783,8 @@ func (i *GceMachineInfra) SetCreateOutputs(hostname, externalIP, sshPrivateKey s
 	i.sshPrivateKeyPEM = sshPrivateKey
 }
 
-// SeedSSHKeyPair seeds a previously persisted private key onto the provider and
-// derives its authorized-keys public form, so a rebuilt provider reuses the
-// stored key on the next deploy instead of minting a fresh pair and rotating
-// the instance's authorized key away from it. The public key is derived rather
-// than persisted separately so no extra stored field is needed.
+// SeedSSHKeyPair loads a persisted private key onto the provider and derives
+// its authorized-keys public form so the next deploy reuses that key.
 func (i *GceMachineInfra) SeedSSHKeyPair(sshPrivateKeyPEM string) error {
 	if sshPrivateKeyPEM == "" {
 		return errors.New("cannot seed SSH key pair from empty private key")

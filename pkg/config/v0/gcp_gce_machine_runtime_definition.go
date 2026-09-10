@@ -87,9 +87,7 @@ func (g *GcpGceMachineRuntimeDefinitionConfig) Create(
 		return nil, fmt.Errorf("failed to validate values for gcp gce machine runtime definition with name %s: %w", *gcpGceMachineRuntimeDefinitionValues.Name, err)
 	}
 
-	// construct machine runtime definition that the GCE definition marries; the
-	// GCE provisioning template fields are duplicated onto it so generic machine
-	// tooling can read them without a GCE-specific lookup.
+	// construct machine runtime definition and copy MachineType and ImageID onto it
 	machineRuntimeDefinition := api_v0.MachineRuntimeDefinition{
 		Definition: api_v0.Definition{
 			Name: gcpGceMachineRuntimeDefinitionValues.Name,

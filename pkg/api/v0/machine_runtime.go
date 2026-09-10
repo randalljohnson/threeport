@@ -13,19 +13,16 @@ type MachineRuntimeDefinition struct {
 	InfraProvider *string `json:",omitempty" validate:"optional"`
 
 	// The provider account name that selects which account the machine is
-	// provisioned on. Empty falls back to the default provider account.
+	// provisioned on, empty falling back to the default provider account
 	InfraProviderAccountName *string `json:",omitempty" validate:"optional"`
 
-	// The compute capacity of the machine. Resolved server-side together with
-	// the machine profile to a provider machine type.
+	// The compute capacity of the machine
 	MachineSize *string `json:",omitempty" validate:"optional" gorm:"default:Medium"`
 
-	// The CPU-to-memory ratio of the machine. Resolved server-side together
-	// with the machine size to a provider machine type.
+	// The CPU-to-memory ratio of the machine
 	MachineProfile *string `json:",omitempty" validate:"optional" gorm:"default:Balanced"`
 
-	// The provider-specific machine type. Populated by the controller from the
-	// machine size and profile; not supplied for provider-provisioned machines.
+	// The provider-specific machine type
 	MachineType *string `json:",omitempty" validate:"optional"`
 
 	// The provider image identifier used to boot the machine
@@ -77,9 +74,7 @@ type MachineRuntimeInstance struct {
 	// The provider region in which the machine is provisioned
 	Region *string `json:",omitempty" validate:"optional"`
 
-	// The abstract threeport location for the machine. Mapped server-side to a
-	// provider region and zone. Optional so imported machines that supply a
-	// concrete region directly still validate.
+	// The abstract threeport location for the machine
 	Location *string `json:",omitempty" validate:"optional"`
 
 	// The provider network identifier the machine attaches to.

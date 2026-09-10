@@ -27,8 +27,7 @@ import (
 const defaultGceImageID = "debian-cloud/debian-12"
 
 // gceMachineLifecycle implements provider.InfraLifecycleProvider for GCP GCE
-// machine runtime instances. It wires the reusable GCE VM provider into the
-// shared create and delete state machines.
+// machine runtime instances.
 type gceMachineLifecycle struct {
 	r          *controller.Reconciler
 	instanceID uint
@@ -36,7 +35,6 @@ type gceMachineLifecycle struct {
 	log        *logr.Logger
 }
 
-// compile-time assertion that the adapter implements all interface methods.
 var _ provider.InfraLifecycleProvider = (*gceMachineLifecycle)(nil)
 
 // StackKey returns the runtime-instance name so the shared state machine
@@ -108,7 +106,8 @@ func (g *gceMachineLifecycle) BuildInfra() (provider.InfraProvider, error) {
 	return buildGceMachineInfra(g.r, latest, g.log)
 }
 
-// IsCreateComplete checks whether resource inventory has been persisted.
+// IsCreateComplete reports whether persisted resource inventory is non-empty
+// after trimming whitespace and rejecting placeholder values.
 func (g *gceMachineLifecycle) IsCreateComplete() (bool, error) {
 	latest, err := client.GetGcpGceMachineRuntimeInstanceByID(
 		g.r.APIClient,
@@ -121,9 +120,6 @@ func (g *gceMachineLifecycle) IsCreateComplete() (bool, error) {
 	if latest.ResourceInventory == nil {
 		return false, nil
 	}
-	// trim whitespace before the literal compares so a padded or array-shaped
-	// inventory does not read as complete, matching how the shared handler
-	// treats a cleared inventory.
 	inventory := strings.TrimSpace(string(*latest.ResourceInventory))
 	switch inventory {
 	case "", "{}", "[]", "null", `"null"`:
@@ -132,11 +128,8 @@ func (g *gceMachineLifecycle) IsCreateComplete() (bool, error) {
 	return true, nil
 }
 
-// OnCreateConfirmed populates the married machine runtime instance once the VM
-// is provisioned. By this point SaveCreateOutputs has persisted the external IP,
-// SSH user, and SSH key onto the GCE instance, so this fetches that record,
-// copies the connection fields onto the related machine runtime instance, and
-// clears its Reconciled flag so the machine workload SSH install can proceed.
+// OnCreateConfirmed copies connection info onto the related machine runtime
+// instance and clears its Reconciled flag.
 func (g *gceMachineLifecycle) OnCreateConfirmed(_ provider.InfraProvider) error {
 	latest, err := client.GetGcpGceMachineRuntimeInstanceByID(
 		g.r.APIClient,
@@ -150,6 +143,7 @@ func (g *gceMachineLifecycle) OnCreateConfirmed(_ provider.InfraProvider) error 
 		return errors.New("GCE instance missing required field MachineRuntimeInstanceID")
 	}
 
+	// get related machine runtime instance
 	machineRuntimeInstance, err := client.GetMachineRuntimeInstanceByID(
 		g.r.APIClient,
 		g.r.APIServer,
@@ -159,8 +153,7 @@ func (g *gceMachineLifecycle) OnCreateConfirmed(_ provider.InfraProvider) error 
 		return fmt.Errorf("failed to get machine runtime instance: %w", err)
 	}
 
-	// the machine is reached at its external IP; the machine runtime instance
-	// hostname carries that address so the workload SSH install can connect.
+	// copy SSH connection fields; MRI hostname is ExternalIP
 	machineRuntimeInstance.Hostname = latest.ExternalIP
 	machineRuntimeInstance.SSHUser = latest.SSHUser
 	machineRuntimeInstance.SSHKey = latest.SSHKey
@@ -175,10 +168,8 @@ func (g *gceMachineLifecycle) OnCreateConfirmed(_ provider.InfraProvider) error 
 	return nil
 }
 
-// SaveCreateOutputs persists the surfaced VM outputs and the final state. It
-// diverges from the GKE adapter: it type-asserts the concrete GCE provider and
-// writes its hostname, external IP, and generated SSH key onto the API object
-// alongside the resource inventory.
+// SaveCreateOutputs writes hostname, external IP, SSH key, and final state
+// onto the GCE machine runtime instance.
 func (g *gceMachineLifecycle) SaveCreateOutputs(infra provider.InfraProvider, state *datatypes.JSON) error {
 	gceInfra, ok := infra.(*machine.GceMachineInfra)
 	if !ok {
@@ -368,7 +359,7 @@ func (g *gceMachineLifecycle) ConfirmDeletion() error {
 	return err
 }
 
-// SaveState persists intermediate state to the API.
+// SaveState persists intermediate Pulumi state to the API.
 func (g *gceMachineLifecycle) SaveState(state *datatypes.JSON) error {
 	stateUpdate := v0.GcpGceMachineRuntimeInstance{
 		Common:            v0.Common{ID: &g.instanceID},
@@ -427,10 +418,7 @@ func (g *gceMachineLifecycle) PublishDeleteNotification() error {
 	return nil
 }
 
-// buildGceMachineInfra constructs a *machine.GceMachineInfra from API objects.
-// Every required pointer is nil-guarded before dereference so a malformed API
-// object returns a descriptive error rather than panicking the create
-// goroutine.
+// buildGceMachineInfra constructs a GceMachineInfra from API objects.
 func buildGceMachineInfra(
 	r *controller.Reconciler,
 	instance *v0.GcpGceMachineRuntimeInstance,
@@ -443,6 +431,7 @@ func buildGceMachineInfra(
 		return nil, errors.New("GCE instance missing required field GcpProviderID")
 	}
 
+	// get GCP provider
 	gcpProvider, err := client.GetGcpProviderByID(
 		r.APIClient,
 		r.APIServer,
@@ -455,21 +444,14 @@ func buildGceMachineInfra(
 		return nil, errors.New("GCP provider missing required field ProjectID")
 	}
 
-	// construct through the provider constructor so the embedded workspace and
-	// runtime instance name are set; the provider validates the name first and
-	// fails before any cloud call when it is empty.
 	infraGce := machine.NewGceMachineInfra(*instance.Name)
-	// route pulumi up, refresh, and destroy output through the structured
-	// logger so the engine streams events instead of raw stdout text.
 	infraGce.Logger = log
 	infraGce.ProjectID = *gcpProvider.ProjectID
 
-	// the machine type and image identifier live on the definition that
-	// configures this instance; fetch it and copy the provisioning template
-	// fields, nil-guarding both the foreign key and the fetched fields.
 	if instance.GcpGceMachineRuntimeDefinitionID == nil {
 		return nil, errors.New("GCE instance missing required field GcpGceMachineRuntimeDefinitionID")
 	}
+	// get GCE machine runtime definition
 	definition, err := client.GetGcpGceMachineRuntimeDefinitionByID(
 		r.APIClient,
 		r.APIServer,
@@ -578,6 +560,7 @@ func buildGceMachineInfra(
 	// is encrypted at rest, so decrypt it first; it is unset on a clean first
 	// create, in which case the provider generates a new pair.
 	if instance.SSHKey != nil && *instance.SSHKey != "" {
+		// decrypt and seed persisted SSH key
 		decryptedKey, err := encryption.Decrypt(r.EncryptionKey, *instance.SSHKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt persisted GCE SSH key: %w", err)

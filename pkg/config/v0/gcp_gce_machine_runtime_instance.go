@@ -16,14 +16,12 @@ import (
 
 // gcePendingHostname is the placeholder hostname stored on the married machine
 // runtime instance at create time. The GCE machine runtime reconciler overwrites
-// it with the VM external IP once provisioning completes; the machine runtime
-// instance hostname column is not-null, so a non-empty placeholder is required.
+// it with the VM external IP once provisioning completes.
 const gcePendingHostname = "pending"
 
 // gcePendingSSHKey is the placeholder SSH key stored on the married machine
-// runtime instance at create time, before any real key exists. The GCE machine
-// runtime reconciler overwrites it with the generated key once the VM is
-// provisioned.
+// runtime instance at create time. The GCE machine runtime reconciler overwrites
+// it with the generated key once the VM is provisioned.
 const gcePendingSSHKey = "pending"
 
 // GcpGceMachineRuntimeInstanceConfig is a config abstraction for the GcpGceMachineRuntimeInstance API object.

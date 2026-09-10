@@ -23,12 +23,15 @@ func (g *GcpProvider) beforeCreate(tx *gorm.DB) error {
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
 //     and PUT, handles the DB load internally
+//
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx): values being written
 //   - lib.IsFullReplace(tx): true on PUT (Save shape)
 //   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+//
 // Import:
-//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
+//
+//	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (g *GcpProvider) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -71,12 +74,15 @@ func (g *GcpGkeKubernetesRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
 //     and PUT, handles the DB load internally
+//
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx): values being written
 //   - lib.IsFullReplace(tx): true on PUT (Save shape)
 //   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+//
 // Import:
-//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
+//
+//	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (g *GcpGkeKubernetesRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
@@ -98,37 +104,40 @@ func (g *GcpGkeKubernetesRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
 //     and PUT, handles the DB load internally
+//
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx): values being written
 //   - lib.IsFullReplace(tx): true on PUT (Save shape)
 //   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+//
 // Import:
-//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
+//
+//	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 func (g *GcpGkeKubernetesRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeDelete validates the GcpGkeKubernetesRuntimeInstance before delete.
+// beforeDelete runs before the GcpGkeKubernetesRuntimeInstance is deleted.
 func (g *GcpGkeKubernetesRuntimeInstance) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeCreate validates the GcpGceMachineRuntimeDefinition before create.
+// beforeCreate runs before the GcpGceMachineRuntimeDefinition is created.
 func (g *GcpGceMachineRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeUpdate validates the GcpGceMachineRuntimeDefinition before update.
+// beforeUpdate runs before the GcpGceMachineRuntimeDefinition is updated.
 func (g *GcpGceMachineRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeDelete validates the GcpGceMachineRuntimeDefinition before delete.
+// beforeDelete runs before the GcpGceMachineRuntimeDefinition is deleted.
 func (g *GcpGceMachineRuntimeDefinition) beforeDelete(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeCreate validates the GcpGceMachineRuntimeInstance before create.
+// beforeCreate runs before the GcpGceMachineRuntimeInstance is created.
 func (g *GcpGceMachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
@@ -165,7 +174,7 @@ func (g *GcpGceMachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeDelete validates the GcpGceMachineRuntimeInstance before delete.
+// beforeDelete runs before the GcpGceMachineRuntimeInstance is deleted.
 func (g *GcpGceMachineRuntimeInstance) beforeDelete(tx *gorm.DB) error {
 	return nil
 }

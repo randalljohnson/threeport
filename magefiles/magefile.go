@@ -435,6 +435,14 @@ func (Test) ModuleGen() error {
 		return fmt.Errorf("failed to type-check the generated module: %w", err)
 	}
 
+	// run the generated plugin so cobra init panics on a redefined flag
+	if err := util.RunCommandStreamOutputInDir(
+		moduleTestPath,
+		"go", "run", "-buildvcs=false", "./cmd/test", "--help",
+	); err != nil {
+		return fmt.Errorf("failed to run the generated module plugin: %w", err)
+	}
+
 	// remove generated files after a successful type-check
 	if err := resetModuleTestDir(); err != nil {
 		return err

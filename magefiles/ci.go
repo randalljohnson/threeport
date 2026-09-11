@@ -21,20 +21,9 @@ func (Ci) Env() error {
 	return nil
 }
 
-// Teardown removes leftover kind clusters, containers, networks, and volumes
-// so the next integration job on the same node does not inherit this run's
-// dind state. It is a no-op unless CI=true, so a local run keeps the
-// developer's clusters, tptctl config, and registry. Leftover kind node
-// containers persist in the shared dind hostPath and come back when the next
-// dind starts, so they are removed by hand. It does not run docker system
-// prune -a, which would wipe the image layers the hostPath exists to preserve.
+// Teardown removes leftover kind clusters, containers, networks, and
+// volumes.
 func (Ci) Teardown() error {
-	// skip unless CI so prune and kind --all cannot hit a local environment
-	if os.Getenv("CI") != "true" {
-		fmt.Println("ci:teardown: not running in CI, skipping")
-		return nil
-	}
-
 	// take down the test control plane
 	teardownStep("./bin/tptctl", "down", "-n", testControlPlaneName)
 

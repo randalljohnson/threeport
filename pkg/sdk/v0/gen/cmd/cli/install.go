@@ -263,15 +263,6 @@ func GenPluginInstallCmd(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			),
 			Line(),
 		),
-		Id("installCmd").Dot("Flags").Call().Dot("StringVar").Call(
-			Line().Op("&").Id("imagePullSecretFile"),
-			Line().List(
-				Lit("image-pull-secret-file"),
-				Lit(""),
-				Lit("Path to a docker config JSON file. When set, a dockerconfigjson Secret is created and referenced from each component's imagePullSecrets so the kubelet can pull from a private registry."),
-			),
-			Line(),
-		),
 	)
 	f.Line()
 

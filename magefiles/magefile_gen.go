@@ -33,6 +33,9 @@ type Dev mg.Namespace
 // Package provides a type for methods that implement package targets.
 type Package mg.Namespace
 
+// Download provides a type for methods that implement download targets.
+type Download mg.Namespace
+
 // Unit runs the unit tests across the threeport packages.
 func (Test) Unit() error {
 	cmd := "go"
@@ -1534,81 +1537,6 @@ func (Build) AllBins() error {
 // runs). Set PARALLEL_IMAGE_BUILD >= 1 to cap packaging concurrency (e.g.
 // `PARALLEL_IMAGE_BUILD=4 mage build:allImages`).
 func (Build) AllImages() error {
-	workingDir, arch, err := getBuildVals()
-	if err != nil {
-		return fmt.Errorf("failed to get build values: %w", err)
-	}
-
-	// pre-compile every binary for every requested arch in one go build
-	// per arch (arches run in parallel) so dependency compilation is
-	// shared across components within an arch. Each per-image task
-	// below then only packages the pre-built binary.
-	arches := util.ParseArches(arch)
-
-	packageDirs := []string{
-		"cmd/rest-api",
-		"cmd/database-migrator",
-		"cmd/agent",
-		"cmd/secret-controller",
-		"cmd/aws-controller",
-		"cmd/oci-controller",
-		"cmd/gcp-controller",
-		"cmd/control-plane-controller",
-		"cmd/gateway-controller",
-		"cmd/helm-workload-controller",
-		"cmd/machine-runtime-controller",
-		"cmd/machine-workload-controller",
-		"cmd/kubernetes-runtime-controller",
-		"cmd/observability-controller",
-		"cmd/terraform-controller",
-		"cmd/kubernetes-workload-controller",
-	}
-
-	if err := util.BuildBinaries(
-		workingDir,
-		arches,
-		packageDirs,
-		false,
-	); err != nil {
-		return fmt.Errorf("failed to pre-build binaries: %w", err)
-	}
-
-	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
-	if err != nil {
-		return fmt.Errorf("failed to resolve image coordinates: %w", err)
-	}
-
-	build := Build{}
-	wrap := func(fn func(string, string, string, string) error) func() error {
-		return func() error {
-			return fn(workingDir, imageRepo, imageTag, arch)
-		}
-	}
-	tasks := []func() error{
-		wrap(build.restApiImagePackage),
-		wrap(build.dbMigratorImagePackage),
-		wrap(build.agentImagePackage),
-		wrap(build.secretControllerImagePackage),
-		wrap(build.awsControllerImagePackage),
-		wrap(build.ociControllerImagePackage),
-		wrap(build.gcpControllerImagePackage),
-		wrap(build.controlPlaneControllerImagePackage),
-		wrap(build.gatewayControllerImagePackage),
-		wrap(build.helmWorkloadControllerImagePackage),
-		wrap(build.machineRuntimeControllerImagePackage),
-		wrap(build.machineWorkloadControllerImagePackage),
-		wrap(build.kubernetesRuntimeControllerImagePackage),
-		wrap(build.observabilityControllerImagePackage),
-		wrap(build.terraformControllerImagePackage),
-		wrap(build.kubernetesWorkloadControllerImagePackage),
-	}
-	return util.RunParallel(parallelFromEnv(), tasks)
-}
-
-// AllImagesDev builds and pushes development images for all components.
-// Repo and tag derive the same way AllImages does so install can pull
-// the tag that was just pushed.
-func (Build) AllImagesDev() error {
 	workingDir, arch, err := getBuildVals()
 	if err != nil {
 		return fmt.Errorf("failed to get build values: %w", err)

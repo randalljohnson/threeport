@@ -321,6 +321,10 @@ func (h Handler) UpdateTerraformDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingTerraformDefinition.Reconciliation
+
 	// the read and the write retry together. Under SERIALIZABLE
 	// isolation CockroachDB answers a conflict with SQLSTATE 40001 and
 	// expects the client to re-run the transaction; a restart that
@@ -352,8 +356,8 @@ func (h Handler) UpdateTerraformDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingTerraformDefinition.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingTerraformDefinition.Reconciled != nil && !*existingTerraformDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingTerraformDefinition.Reconciliation) {
 		notifPayload, err := existingTerraformDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -901,6 +905,10 @@ func (h Handler) UpdateTerraformInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingTerraformInstance.Reconciliation
+
 	// the read and the write retry together. Under SERIALIZABLE
 	// isolation CockroachDB answers a conflict with SQLSTATE 40001 and
 	// expects the client to re-run the transaction; a restart that
@@ -932,8 +940,8 @@ func (h Handler) UpdateTerraformInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingTerraformInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingTerraformInstance.Reconciled != nil && !*existingTerraformInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingTerraformInstance.Reconciliation) {
 		notifPayload, err := existingTerraformInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,

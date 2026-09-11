@@ -79,14 +79,14 @@ type GCPServiceAccountWithKey struct {
 func (i *KubernetesRuntimeInfraGKE) createGCPServiceAccountAndCredentials() error {
 	ctx := context.Background()
 
-	// Create IAM service client
-	iamService, err := iam.NewService(ctx, option.WithScopes(iam.CloudPlatformScope))
+	// create IAM service client
+	iamService, err := iam.NewService(ctx, i.gcpClientOptions(option.WithScopes(iam.CloudPlatformScope))...)
 	if err != nil {
 		return fmt.Errorf("failed to create IAM service client: %w", err)
 	}
 
-	// Create Cloud Resource Manager service client for IAM bindings
-	crmService, err := cloudresourcemanager.NewService(ctx, option.WithScopes(cloudresourcemanager.CloudPlatformScope))
+	// create Cloud Resource Manager service client
+	crmService, err := cloudresourcemanager.NewService(ctx, i.gcpClientOptions(option.WithScopes(cloudresourcemanager.CloudPlatformScope))...)
 	if err != nil {
 		return fmt.Errorf("failed to create Cloud Resource Manager service client: %w", err)
 	}

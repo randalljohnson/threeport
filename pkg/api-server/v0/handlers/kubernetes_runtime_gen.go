@@ -321,6 +321,10 @@ func (h Handler) UpdateKubernetesRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingKubernetesRuntimeDefinition.Reconciliation
+
 	// the read and the write retry together. Under SERIALIZABLE
 	// isolation CockroachDB answers a conflict with SQLSTATE 40001 and
 	// expects the client to re-run the transaction; a restart that
@@ -352,8 +356,8 @@ func (h Handler) UpdateKubernetesRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingKubernetesRuntimeDefinition.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingKubernetesRuntimeDefinition.Reconciled != nil && !*existingKubernetesRuntimeDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingKubernetesRuntimeDefinition.Reconciliation) {
 		notifPayload, err := existingKubernetesRuntimeDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -901,6 +905,10 @@ func (h Handler) UpdateKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingKubernetesRuntimeInstance.Reconciliation
+
 	// the read and the write retry together. Under SERIALIZABLE
 	// isolation CockroachDB answers a conflict with SQLSTATE 40001 and
 	// expects the client to re-run the transaction; a restart that
@@ -932,8 +940,8 @@ func (h Handler) UpdateKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingKubernetesRuntimeInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingKubernetesRuntimeInstance.Reconciled != nil && !*existingKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingKubernetesRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingKubernetesRuntimeInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,

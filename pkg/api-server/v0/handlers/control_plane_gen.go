@@ -322,6 +322,10 @@ func (h Handler) UpdateControlPlaneDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingControlPlaneDefinition.Reconciliation
+
 	// the read and the write retry together. Under SERIALIZABLE
 	// isolation CockroachDB answers a conflict with SQLSTATE 40001 and
 	// expects the client to re-run the transaction; a restart that
@@ -353,8 +357,8 @@ func (h Handler) UpdateControlPlaneDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingControlPlaneDefinition.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingControlPlaneDefinition.Reconciled != nil && !*existingControlPlaneDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingControlPlaneDefinition.Reconciliation) {
 		notifPayload, err := existingControlPlaneDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -902,6 +906,10 @@ func (h Handler) UpdateControlPlaneInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingControlPlaneInstance.Reconciliation
+
 	// the read and the write retry together. Under SERIALIZABLE
 	// isolation CockroachDB answers a conflict with SQLSTATE 40001 and
 	// expects the client to re-run the transaction; a restart that
@@ -933,8 +941,8 @@ func (h Handler) UpdateControlPlaneInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingControlPlaneInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingControlPlaneInstance.Reconciled != nil && !*existingControlPlaneInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingControlPlaneInstance.Reconciliation) {
 		notifPayload, err := existingControlPlaneInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,

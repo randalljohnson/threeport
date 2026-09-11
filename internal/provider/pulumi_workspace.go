@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
@@ -21,6 +22,46 @@ import (
 
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
+
+// transientPulumiErrorMarkers are substrings of Pulumi and provider error
+// text that classify a failure as transient.
+var transientPulumiErrorMarkers = []string{
+	// match a Pulumi DIY backend lock held by another process
+	"stack is currently locked",
+
+	// match context.DeadlineExceeded
+	"context deadline exceeded",
+
+	// match a gRPC DeadlineExceeded status
+	"DeadlineExceeded",
+
+	// match Google JSON API error reasons
+	"quotaExceeded",
+	"rateLimitExceeded",
+	"backendError",
+	"internalError",
+
+	// match a dropped or stalled transport
+	"connection reset by peer",
+	"i/o timeout",
+	"TLS handshake timeout",
+}
+
+// isTransientPulumiError reports whether err's text contains a configured
+// transient marker. A nil error is not transient.
+func isTransientPulumiError(err error) bool {
+	// reject a nil error
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	for _, marker := range transientPulumiErrorMarkers {
+		if strings.Contains(msg, marker) {
+			return true
+		}
+	}
+	return false
+}
 
 // PulumiWorkspace encapsulates all Pulumi workspace, stack, and state management
 // logic that is provider-agnostic. Embed this struct in provider-specific infra

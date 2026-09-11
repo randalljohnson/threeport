@@ -138,9 +138,16 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					))
 
 					// update notifications
-					notifyControllersUpdateHandler = Comment("notify controller if reconciliation is required")
+					// skip the publish when already reconciled or the snapshot is unchanged
+					notifyControllersUpdateHandler = Comment("notify controller if reconciliation is required and reconciliation state changed")
 					notifyControllersUpdateHandler.Line()
-					notifyControllersUpdateHandler.If(Op("!*").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciled").Block(
+					notifyControllersUpdateHandler.If(Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciled").Op("!=").Nil().Op("&&").Op("!*").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciled").Op("&&").Qual(
+						"github.com/threeport/threeport/pkg/api/v0",
+						"ReconciliationStateChanged",
+					).Call(
+						Id("prevReconciliation"),
+						Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciliation"),
+					).Block(
 						Id("notifPayload").Op(",").Id("err").Op(":=").Id(
 							fmt.Sprintf("existing%s", apiObject.TypeName),
 						).Dot("NotificationPayload").Call(
@@ -1620,6 +1627,12 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							).Call(Id("c").Op(",").Nil().Op(",").Id("err").Op(",").Id("objectType")))
 						}),
 					)
+					if apiObject.Reconciler {
+						g.Line()
+						g.Comment("snapshot reconciliation state before update so the notify block")
+						g.Comment("can skip publishing when the update did not touch any state marker")
+						g.Id("prevReconciliation").Op(":=").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciliation")
+					}
 					g.Line()
 					g.Comment("the read and the write retry together. Under SERIALIZABLE")
 					g.Comment("isolation CockroachDB answers a conflict with SQLSTATE 40001 and")

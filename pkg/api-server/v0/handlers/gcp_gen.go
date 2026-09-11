@@ -817,6 +817,10 @@ func (h Handler) UpdateGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingGcpGkeKubernetesRuntimeInstance.Reconciliation
+
 	// the read and the write retry together. Under SERIALIZABLE
 	// isolation CockroachDB answers a conflict with SQLSTATE 40001 and
 	// expects the client to re-run the transaction; a restart that
@@ -848,8 +852,8 @@ func (h Handler) UpdateGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingGcpGkeKubernetesRuntimeInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingGcpGkeKubernetesRuntimeInstance.Reconciled != nil && !*existingGcpGkeKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingGcpGkeKubernetesRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingGcpGkeKubernetesRuntimeInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,

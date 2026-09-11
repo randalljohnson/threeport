@@ -321,6 +321,10 @@ func (h Handler) UpdateHelmWorkloadDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingHelmWorkloadDefinition.Reconciliation
+
 	// the read and the write retry together. Under SERIALIZABLE
 	// isolation CockroachDB answers a conflict with SQLSTATE 40001 and
 	// expects the client to re-run the transaction; a restart that
@@ -352,8 +356,8 @@ func (h Handler) UpdateHelmWorkloadDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingHelmWorkloadDefinition.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingHelmWorkloadDefinition.Reconciled != nil && !*existingHelmWorkloadDefinition.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingHelmWorkloadDefinition.Reconciliation) {
 		notifPayload, err := existingHelmWorkloadDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -901,6 +905,10 @@ func (h Handler) UpdateHelmWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingHelmWorkloadInstance.Reconciliation
+
 	// the read and the write retry together. Under SERIALIZABLE
 	// isolation CockroachDB answers a conflict with SQLSTATE 40001 and
 	// expects the client to re-run the transaction; a restart that
@@ -932,8 +940,8 @@ func (h Handler) UpdateHelmWorkloadInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingHelmWorkloadInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingHelmWorkloadInstance.Reconciled != nil && !*existingHelmWorkloadInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingHelmWorkloadInstance.Reconciliation) {
 		notifPayload, err := existingHelmWorkloadInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,

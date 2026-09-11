@@ -817,6 +817,10 @@ func (h Handler) UpdateAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, objectType)
 	}
 
+	// snapshot reconciliation state before update so the notify block
+	// can skip publishing when the update did not touch any state marker
+	prevReconciliation := existingAwsEksKubernetesRuntimeInstance.Reconciliation
+
 	// the read and the write retry together. Under SERIALIZABLE
 	// isolation CockroachDB answers a conflict with SQLSTATE 40001 and
 	// expects the client to re-run the transaction; a restart that
@@ -848,8 +852,8 @@ func (h Handler) UpdateAwsEksKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
-	// notify controller if reconciliation is required
-	if !*existingAwsEksKubernetesRuntimeInstance.Reconciled {
+	// notify controller if reconciliation is required and reconciliation state changed
+	if existingAwsEksKubernetesRuntimeInstance.Reconciled != nil && !*existingAwsEksKubernetesRuntimeInstance.Reconciled && api_v0.ReconciliationStateChanged(prevReconciliation, existingAwsEksKubernetesRuntimeInstance.Reconciliation) {
 		notifPayload, err := existingAwsEksKubernetesRuntimeInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,

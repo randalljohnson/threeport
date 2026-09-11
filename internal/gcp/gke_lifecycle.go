@@ -38,6 +38,15 @@ func newGkeLifecycleProvider(
 	}
 }
 
+// StackKey returns the runtime instance name used to serialize operations on one stack.
+// Threeport also uses that name for the Pulumi stack and the file-backend directory.
+func (g *gkeLifecycle) StackKey() string {
+	if g.instance == nil || g.instance.Name == nil {
+		return ""
+	}
+	return *g.instance.Name
+}
+
 // GetReconciliation fetches the latest reconciliation state from the API.
 func (g *gkeLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, error) {
 	latest, err := client.GetGcpGkeKubernetesRuntimeInstanceByID(
@@ -52,6 +61,10 @@ func (g *gkeLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, er
 	if latest.CreationFailed != nil {
 		creationFailed = *latest.CreationFailed
 	}
+	deletionFailed := false
+	if latest.DeletionFailed != nil {
+		deletionFailed = *latest.DeletionFailed
+	}
 	return &provider.ReconciliationSnapshot{
 		CreationAcknowledged: latest.CreationAcknowledged,
 		CreationConfirmed:    latest.CreationConfirmed,
@@ -59,6 +72,7 @@ func (g *gkeLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, er
 		DeletionScheduled:    latest.DeletionScheduled,
 		DeletionAcknowledged: latest.DeletionAcknowledged,
 		DeletionConfirmed:    latest.DeletionConfirmed,
+		DeletionFailed:       deletionFailed,
 		ResourceInventory:    latest.ResourceInventory,
 	}, nil
 }
@@ -219,13 +233,15 @@ func (g *gkeLifecycle) ConfirmCreation() error {
 	return err
 }
 
-// AckDeletion sets DeletionAcknowledged in the API.
+// AckDeletion sets DeletionAcknowledged and clears DeletionFailed.
 func (g *gkeLifecycle) AckDeletion() error {
 	timestamp := time.Now().UTC()
+	deletionFailed := false
 	ackUpdate := v0.GcpGkeKubernetesRuntimeInstance{
 		Common: v0.Common{ID: &g.instanceID},
 		Reconciliation: v0.Reconciliation{
 			DeletionAcknowledged: &timestamp,
+			DeletionFailed:       &deletionFailed,
 		},
 	}
 	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &ackUpdate)
@@ -242,6 +258,19 @@ func (g *gkeLifecycle) RefreshDeletionAck() error {
 		},
 	}
 	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &ackUpdate)
+	return err
+}
+
+// SetDeletionFailed marks DeletionFailed=true in the API.
+func (g *gkeLifecycle) SetDeletionFailed() error {
+	deletionFailed := true
+	failedUpdate := v0.GcpGkeKubernetesRuntimeInstance{
+		Common: v0.Common{ID: &g.instanceID},
+		Reconciliation: v0.Reconciliation{
+			DeletionFailed: &deletionFailed,
+		},
+	}
+	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &failedUpdate)
 	return err
 }
 

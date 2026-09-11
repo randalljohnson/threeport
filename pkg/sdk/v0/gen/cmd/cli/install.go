@@ -66,7 +66,7 @@ func GenPluginInstallCmd(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			Line(),
 
 			Comment("get Kubernetes runtime instance for control plane"),
-			Id("queryString").Op(":=").Lit("ThreeportControlPlaneHost=true"),
+			Id("queryString").Op(":=").Lit("threeportcontrolplanehost=true"),
 			Id("kubernetesRuntimeInstances").Op(",").Id("err").Op(":=").Qual(
 				"github.com/threeport/threeport/pkg/client/v0",
 				"GetKubernetesRuntimeInstancesByQueryString",

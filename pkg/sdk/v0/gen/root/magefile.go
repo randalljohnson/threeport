@@ -259,14 +259,23 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 
 	buildAllDevImagesFuncName := "AllImagesDev"
 	f.Comment(fmt.Sprintf("%s builds and pushes development images for all components.", buildAllDevImagesFuncName))
+	f.Comment("Repo and tag derive the same way AllImages does so install can pull")
+	f.Comment("the tag that was just pushed.")
 	f.Func().Params(Id("Build")).Id(buildAllDevImagesFuncName).Params().Error().BlockFunc(func(g *Group) {
 		emitPrebuildBlock(g, allComponents)
 
-		g.Id("build").Op(":=").Id("Build").Values()
-		emitWrapHelper(g,
+		g.List(Id("imageRepo"), Id("imageTag"), Id("err")).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageCoordinates").Call(
+			Id("workingDir"),
 			Qual(installerPkg, "DevImageNamespace"),
 			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
 		)
+		g.If(Id("err").Op("!=").Nil()).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to resolve image coordinates: %w"), Id("err"))),
+		)
+		g.Line()
+
+		g.Id("build").Op(":=").Id("Build").Values()
+		emitWrapHelper(g, Id("imageRepo"), Id("imageTag"))
 		g.Id("tasks").Op(":=").Index().Func().Params().Error().ValuesFunc(func(v *Group) {
 			for _, c := range allComponents {
 				v.Line().Id("wrap").Call(Id("build").Dot(c.PackageFuncName))

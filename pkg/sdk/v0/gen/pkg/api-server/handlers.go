@@ -530,7 +530,7 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							Return().Qual(
 								"github.com/threeport/threeport/pkg/api-server/lib/v0",
 								"ResponseStatus409",
-							).Call(Id("c").Op(",").Nil().Op(",").Id("err").Op(",").Id("objectType")),
+							).Call(Id("c").Op(",").Nil().Op(",").Id("err").Op(",").Id("fullyQualifiedType")),
 						),
 					)
 					deleteObjectChecks.Line()
@@ -1595,6 +1595,11 @@ func GenHandlers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						}),
 					)
 					g.Line()
+					if apiObject.Reconciler {
+						g.Comment("snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed")
+						g.Id("prevReconciliation").Op(":=").Id(fmt.Sprintf("existing%s", apiObject.TypeName)).Dot("Reconciliation")
+						g.Line()
+					}
 					g.Comment("update object in database")
 					g.If(
 						Id("result").Op(":=").Do(func(s *Statement) {

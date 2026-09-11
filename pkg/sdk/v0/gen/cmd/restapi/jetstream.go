@@ -63,7 +63,12 @@ func GenUtilJetstream(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						},
 					),
 				)
-				g.If(Id("err").Op("!=").Nil().Block(
+				g.If(
+					Id("err").Op("!=").Nil().Op("&&").Op("!").Qual("errors", "Is").Call(
+						Id("err"),
+						Qual("github.com/nats-io/nats.go", "ErrStreamNameAlreadyInUse"),
+					),
+				).Block(
 					Return(
 						Nil(),
 						Qual("fmt", "Errorf").Call(
@@ -74,7 +79,7 @@ func GenUtilJetstream(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							Err(),
 						),
 					),
-				))
+				)
 				g.Line()
 			}
 		}

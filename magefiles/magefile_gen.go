@@ -33,9 +33,6 @@ type Dev mg.Namespace
 // Package provides a type for methods that implement package targets.
 type Package mg.Namespace
 
-// Download provides a type for methods that implement download targets.
-type Download mg.Namespace
-
 // Unit runs the unit tests across the threeport packages.
 func (Test) Unit() error {
 	cmd := "go"

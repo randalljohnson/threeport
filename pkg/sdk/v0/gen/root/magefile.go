@@ -66,7 +66,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	buildDbMigratorImageFuncName := "DbMigratorImage"
 	buildAgentImageFuncName := "AgentImage"
 
-	namespaces := []string{"Build", "Test", "Install", "Dev", "Package"}
+	namespaces := []string{"Build", "Test", "Install", "Dev", "Package", "Download"}
 	for _, ns := range namespaces {
 		f.Comment(fmt.Sprintf(
 			"%s provides a type for methods that implement %s targets.", ns, strcase.ToLowerCamel(ns),
@@ -246,37 +246,6 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			v.Line()
 		})
 
-		g.Return().Qual("github.com/threeport/threeport/pkg/util/v0", "RunParallel").Call(
-			Id("parallelFromEnv").Call(),
-			Id("tasks"),
-		)
-	})
-
-	buildAllDevImagesFuncName := "AllImagesDev"
-	f.Comment(fmt.Sprintf("%s builds and pushes development images for all components.", buildAllDevImagesFuncName))
-	f.Comment("Repo and tag derive the same way AllImages does so install can pull")
-	f.Comment("the tag that was just pushed.")
-	f.Func().Params(Id("Build")).Id(buildAllDevImagesFuncName).Params().Error().BlockFunc(func(g *Group) {
-		emitPrebuildBlock(g, allComponents)
-
-		g.List(Id("imageRepo"), Id("imageTag"), Id("err")).Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageCoordinates").Call(
-			Id("workingDir"),
-			Qual(installerPkg, "DevImageNamespace"),
-			Qual(fmt.Sprintf("%s/internal/version", gen.ModulePath), "GetVersion").Call(),
-		)
-		g.If(Id("err").Op("!=").Nil()).Block(
-			Return(Qual("fmt", "Errorf").Call(Lit("failed to resolve image coordinates: %w"), Id("err"))),
-		)
-		g.Line()
-
-		g.Id("build").Op(":=").Id("Build").Values()
-		emitWrapHelper(g, Id("imageRepo"), Id("imageTag"))
-		g.Id("tasks").Op(":=").Index().Func().Params().Error().ValuesFunc(func(v *Group) {
-			for _, c := range allComponents {
-				v.Line().Id("wrap").Call(Id("build").Dot(c.PackageFuncName))
-			}
-			v.Line()
-		})
 		g.Return().Qual("github.com/threeport/threeport/pkg/util/v0", "RunParallel").Call(
 			Id("parallelFromEnv").Call(),
 			Id("tasks"),
@@ -1301,11 +1270,6 @@ func emitCiTeardownFunc(f *File) {
 		If(Err().Op(":=").Parens(Id("Dev").Values()).Dot("LocalRegistryDown").Call().Op(";").Err().Op("!=").Nil()).Block(
 			Qual("fmt", "Fprintf").Call(Qual("os", "Stderr"), Lit("ci:teardown: remove local registry: %v\n"), Err()),
 		),
-		Comment("remove leftover buildkit builders so prune can drop their volumes"),
-		Id("teardownStep").Call(Lit("sh"), Lit("-c"),
-			Lit(`docker ps -aq --filter "name=buildx_buildkit_" | xargs -r docker rm -f`)),
-		Comment("prune unused volumes, including the named volumes buildx leaves"),
-		Id("teardownStep").Call(Lit("docker"), Lit("volume"), Lit("prune"), Lit("-af")),
 		Comment("reclaim dangling images, stopped containers, and build cache"),
 		Id("teardownStep").Call(Lit("docker"), Lit("system"), Lit("prune"), Lit("-f")),
 		Return(Nil()),

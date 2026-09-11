@@ -59,8 +59,7 @@ func EnsureGCPAuth(serviceAccountCredentials string) error {
 		return nil
 	}
 
-	// THIRD: Fall back to browser-based OAuth flow (scenario 1 — CLI only).
-	// This only works for CLI usage (tptctl), not for controllers.
+	// fall back to browser OAuth; this path is for tptctl, not controllers
 	util.CliOutputInfo("GCP credentials not found or expired. Initiating authentication...")
 
 	if err := performGCPOAuthFlow(ctx); err != nil {

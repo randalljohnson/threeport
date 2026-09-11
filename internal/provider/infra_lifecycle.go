@@ -543,13 +543,25 @@ func HandleInfraDelete(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 		},
 	}
 
-	return launchInfraDelete(infraConfig{
+	requeue, err := launchInfraDelete(infraConfig{
 		StackKey:      p.StackKey(),
 		Infra:         infra,
 		ExistingState: snap.ResourceInventory,
 		Callbacks:     callbacks,
 		Log:           log,
 	})
+	if err != nil {
+		return 0, err
+	}
+
+	// AckDeletion cleared DeletionFailed; restore it when the goroutine did not start
+	if requeue == 30 {
+		if failErr := p.SetDeletionFailed(); failErr != nil {
+			return 0, fmt.Errorf("failed to restore deletion failed after a skipped launch: %w", failErr)
+		}
+	}
+
+	return requeue, nil
 }
 
 // infraCallbacks contains callback functions invoked at various points during
@@ -773,11 +785,10 @@ func executeInfraCreate(config infraConfig) {
 		return
 	}
 
-	// run the create success callback; persist failure if it errors
+	// run the create success callback; do not mark CreationFailed, which
+	// would re-launch deploy against infrastructure that already exists
 	if err := config.Callbacks.OnSuccess(stateJSON); err != nil {
 		config.Log.Error(err, "failed to execute success callback")
-		// mark failed so the next reconcile retries
-		persistFailure(config.Callbacks.PersistFailure, config.Log)
 	}
 }
 

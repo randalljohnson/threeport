@@ -667,7 +667,7 @@ func TestIsTransientPulumiError_PermanentRejected(t *testing.T) {
 	permanent := []string{
 		"gcp compute api rejected instance: invalid machine type",
 		"authentication required: no credentials found",
-		"resource not found: project sxalable-module",
+		"resource not found: project test-project",
 	}
 	for _, msg := range permanent {
 		require.False(t, isTransientPulumiError(errors.New(msg)), "permanent error %q should not classify as transient", msg)

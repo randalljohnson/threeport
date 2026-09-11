@@ -1609,6 +1609,8 @@ func (Build) AllImages() error {
 }
 
 // AllImagesDev builds and pushes development images for all components.
+// Repo and tag derive the same way AllImages does so install can pull
+// the tag that was just pushed.
 func (Build) AllImagesDev() error {
 	workingDir, arch, err := getBuildVals()
 	if err != nil {
@@ -1649,10 +1651,15 @@ func (Build) AllImagesDev() error {
 		return fmt.Errorf("failed to pre-build binaries: %w", err)
 	}
 
+	imageRepo, imageTag, err := util.ResolveImageCoordinates(workingDir, installer.DevImageNamespace, version.GetVersion())
+	if err != nil {
+		return fmt.Errorf("failed to resolve image coordinates: %w", err)
+	}
+
 	build := Build{}
 	wrap := func(fn func(string, string, string, string) error) func() error {
 		return func() error {
-			return fn(workingDir, installer.DevImageNamespace, version.GetVersion(), arch)
+			return fn(workingDir, imageRepo, imageTag, arch)
 		}
 	}
 	tasks := []func() error{

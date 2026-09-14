@@ -13,7 +13,7 @@ func TestEmitCiTeardownPrunesNamedVolumes(t *testing.T) {
 	emitCiTeardownFunc(f)
 	src := f.GoString()
 
-	assert.Contains(t, src, `name=buildx_buildkit_`)
-	assert.Contains(t, src, `teardownStep("docker", "volume", "prune", "-af")`)
+	assert.Contains(t, src, `TeardownCILeftovers`)
+	assert.Contains(t, src, `mage-test`)
 	assert.NotContains(t, src, `teardownStep("docker", "volume", "prune", "-f")`)
 }

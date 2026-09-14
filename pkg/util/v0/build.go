@@ -58,6 +58,22 @@ func BuildParallelism() int {
 	return clampWorkers(memBytes, cpus)
 }
 
+// ImageBuildParallelism returns PARALLEL_IMAGE_BUILD when it is a
+// positive integer. When unset it returns twice BuildParallelism(),
+// since packaging and pushing is lighter than compiling. A non-positive
+// parse falls back to 1.
+func ImageBuildParallelism() int {
+	v := strings.TrimSpace(os.Getenv("PARALLEL_IMAGE_BUILD"))
+	if v == "" {
+		return BuildParallelism() * 2
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 1 {
+		return 1
+	}
+	return n
+}
+
 // clampWorkers returns how many compile workers memBytes can hold at
 // 5 GiB each, floored at 1 and capped at cpus. Non-positive memBytes
 // falls back to cpus.
@@ -324,7 +340,10 @@ var multiArchBuilderMu sync.Mutex
 // dedicated multi-arch builder, 20GB. The docker-container driver
 // runs its own buildkit, so the docker daemon's builder garbage
 // collection never reaches it, and the default cap is 60% of disk
-// or 100GB.
+// or 100GB. ensureMultiArchBuilder creates this builder only when
+// a build lists more than one platform. GitHub-hosted ubuntu-24.04
+// image jobs are one arch per matrix cell, so they never create it
+// and never spend this 20GB against the runner's 14GB SSD.
 const multiArchBuilderMaxCacheSize = "20GB"
 
 // multiArchBuilderConfig is the buildkitd.toml written for the
@@ -467,8 +486,7 @@ func BuildImage(
 		return errors.New("--push and --load are mutually exclusive")
 	}
 
-	// prepare the multi-arch builder once before exec; the arg helper
-	// does not create it, so this side effect lives here in the caller
+	// create the docker-container builder before a multi-platform run
 	if len(platforms) > 1 {
 		if err := ensureMultiArchBuilder(); err != nil {
 			return fmt.Errorf("failed to prepare multi-arch builder: %w", err)
@@ -548,9 +566,9 @@ func BuildImage(
 
 // buildxBuildArgs assembles the docker buildx invocation argv, the full
 // image ref, and the short component name used for log prefixes. Reads
-// GIT_REVISION, GIT_TAG, and BUILD_CREATED for OCI image labels; an unset
-// GIT_TAG falls back to the image tag, the others to git probes and the
-// current time.
+// GIT_REVISION, GIT_TAG, and BUILD_CREATED for Open Container Initiative
+// (OCI) image labels; an unset GIT_TAG falls back to the image tag, the
+// others to git probes and the current time.
 func buildxBuildArgs(
 	threeportPath string,
 	dockerfilePath string,

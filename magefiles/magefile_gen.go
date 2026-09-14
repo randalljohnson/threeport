@@ -6,15 +6,13 @@ import (
 	"fmt"
 	mg "github.com/magefile/mage/mg"
 	version "github.com/threeport/threeport/internal/version"
+	cli "github.com/threeport/threeport/pkg/cli/v0"
 	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
 	tptdev "github.com/threeport/threeport/pkg/threeport-installer/v0/tptdev"
 	util "github.com/threeport/threeport/pkg/util/v0"
-	"go/build"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 )
 
@@ -35,6 +33,21 @@ type Package mg.Namespace
 
 // Download provides a type for methods that implement download targets.
 type Download mg.Namespace
+
+// Ci provides a type for methods that emit values for CI workflow steps.
+type Ci mg.Namespace
+
+// Env prints KEY=value lines for a workflow GITHUB_ENV file.
+func (Ci) Env() error {
+	return util.WriteCIEnv("")
+}
+
+// Teardown removes leftover kind clusters, containers, networks, and volumes.
+func (Ci) Teardown() error {
+	return util.TeardownCILeftovers("./bin/tptctl", "mage-test", func() error {
+		return (Dev{}).LocalRegistryDown()
+	})
+}
 
 // Unit runs the unit tests across the threeport packages.
 func (Test) Unit() error {
@@ -58,6 +71,9 @@ func (Test) Unit() error {
 
 // Integration runs integration tests against an existing Threeport control plane.
 func (Test) Integration() error {
+	if err := cli.UnmetPrerequisites("integration test", cli.ControlPlaneConfigProblems()); err != nil {
+		return err
+	}
 	cmd := "go"
 	args := []string{
 		"test",
@@ -73,14 +89,9 @@ func (Test) Integration() error {
 	return nil
 }
 
-// installDir returns the directory `go install` writes binaries to:
-// $GOBIN if set, otherwise $GOPATH/bin. build.Default.GOPATH falls back
-// to ~/go when $GOPATH is unset, so the result is always non-empty.
+// installDir returns the directory `go install` writes binaries to.
 func installDir() string {
-	if gobin := os.Getenv("GOBIN"); gobin != "" {
-		return gobin
-	}
-	return filepath.Join(build.Default.GOPATH, "bin")
+	return util.InstallDir()
 }
 
 // downloadThreeportBinary downloads the named binary from a threeport github
@@ -1605,7 +1616,7 @@ func (Build) AllImages() error {
 		wrap(build.terraformControllerImagePackage),
 		wrap(build.kubernetesWorkloadControllerImagePackage),
 	}
-	return util.RunParallel(parallelFromEnv(), tasks)
+	return util.RunParallel(util.ImageBuildParallelism(), tasks)
 }
 
 // Manifest stitches per-arch images for one component into a multi-arch
@@ -1633,13 +1644,12 @@ func (Package) Manifest(imageName string) error {
 }
 
 // AllManifests stitches multi-arch manifest lists for every component
-// in parallel, sourced from the installer's authoritative controller
-// list so adding a new controller automatically extends coverage. Repo
-// and tag derive from the CI context when GITHUB_ACTIONS is set, otherwise
-// the dev namespace and current version; IMAGE_REPO and IMAGE_TAG override
-// either way. Each component's arch set is discovered from the per-arch
-// tags already pushed to the registry. Set PARALLEL_IMAGE_BUILD >= 1 to
-// control worker concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage
+// in parallel. Repo and tag derive from the CI context when
+// GITHUB_ACTIONS is set, otherwise the dev namespace and current
+// version; IMAGE_REPO and IMAGE_TAG override either way. Each
+// component's arch set is discovered from the per-arch tags already
+// pushed to the registry. Set PARALLEL_IMAGE_BUILD >= 1 to control
+// worker concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage
 // package:allManifests`).
 func (Package) AllManifests() error {
 	imageRepo := util.ResolveImageRepo(installer.DevImageNamespace)
@@ -1671,30 +1681,7 @@ func (Package) AllManifests() error {
 		})
 	}
 
-	return util.RunParallel(parallelFromEnv(), tasks)
-}
-
-// parallelFromEnv returns the PARALLEL_IMAGE_BUILD env var as an int. When
-// unset or empty it self-computes twice the memory-derived build worker count,
-// since packaging and pushing images is lighter than compiling.
-func parallelFromEnv() int {
-	v := os.Getenv("PARALLEL_IMAGE_BUILD")
-	if v == "" {
-		return util.BuildParallelism() * 2
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil || n < 1 {
-		return 1
-	}
-	return n
-}
-
-// envOr returns the trimmed value of the named env var, or def if it is unset or empty.
-func envOr(key string, def string) string {
-	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
-		return v
-	}
-	return def
+	return util.RunParallel(util.ImageBuildParallelism(), tasks)
 }
 
 // LoadImage builds and loads an image to the provided kind cluster.
@@ -1808,7 +1795,10 @@ func getBuildVals() (string, string, error) {
 		return "", "", fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	arch := envOr("ARCH", runtime.GOARCH)
+	arch := os.Getenv("ARCH")
+	if arch == "" {
+		arch = runtime.GOARCH
+	}
 
 	return workingDir, arch, nil
 }

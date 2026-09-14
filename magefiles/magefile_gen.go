@@ -10,10 +10,8 @@ import (
 	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
 	tptdev "github.com/threeport/threeport/pkg/threeport-installer/v0/tptdev"
 	util "github.com/threeport/threeport/pkg/util/v0"
-	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -1787,19 +1785,7 @@ func (Dev) LocalRegistryDown() error {
 	return nil
 }
 
-// getBuildVals returns the working directory and the arch(es) to build for.
-// Arch comes from the ARCH env var (comma-separated for multi-arch) or
-// defaults to the local CPU architecture.
+// getBuildVals returns the working directory and the arch list to build for.
 func getBuildVals() (string, string, error) {
-	workingDir, err := os.Getwd()
-	if err != nil {
-		return "", "", fmt.Errorf("failed to get working directory: %w", err)
-	}
-
-	arch := os.Getenv("ARCH")
-	if arch == "" {
-		arch = runtime.GOARCH
-	}
-
-	return workingDir, arch, nil
+	return util.GetBuildVals()
 }

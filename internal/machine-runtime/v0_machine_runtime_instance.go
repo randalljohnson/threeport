@@ -24,37 +24,28 @@ import (
 // Package-level so tests can override it.
 var sshRetryDelaySeconds int64 = 30
 
-// unpopulatedRequeueDelaySeconds is the requeue delay (in seconds) returned
-// when the instance has no hostname yet, so the reconciler checks back
-// without erroring while the machine is still being provisioned.
-// Package-level so tests can override it.
+// unpopulatedRequeueDelaySeconds is the requeue delay when Hostname is still empty.
+// Returning no error leaves Reconciled unset while provisioning fills the field.
 var unpopulatedRequeueDelaySeconds int64 = 15
 
-// sshOperationTimeout bounds the SSH operations of one reconcile pass.
-// Package-level so tests can shrink it to exercise the timeout path.
+// sshOperationTimeout bounds GetClient and Ping so a hung handshake cannot hold the reconcile.
 var sshOperationTimeout = 30 * time.Second
 
-// newReconcileContext returns the context that bounds one reconcile pass's
-// SSH operations. Package-level so tests can swap in a context that is
-// already canceled or cancels mid-flight.
+// newReconcileContext builds the per-pass timeout. Tests replace it to inject cancellation.
 var newReconcileContext = func() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), sshOperationTimeout)
 }
 
-// getClientResult carries an SSH connect outcome across a goroutine
-// boundary.
+// getClientResult is the outcome of a GetClient call run in a goroutine.
+// It carries the client, any captured host key, and the connect error.
 type getClientResult struct {
 	client          *ssh.Client
 	capturedHostKey string
 	err             error
 }
 
-// getClientWithContext establishes the SSH connection in its own goroutine
-// so the caller returns promptly when ctx is canceled or times out, even
-// though the underlying connect cannot be interrupted. When the caller
-// abandons the attempt, a reaper goroutine waits for the connect to finish
-// and closes any connection it produced; the buffered channel lets the
-// connect goroutine exit without blocking either way.
+// getClientWithContext runs machine.GetClient until it returns or ctx ends.
+// ssh.Dial cannot be interrupted, so on abort a reaper closes a client that arrives later.
 func getClientWithContext(
 	ctx context.Context,
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
@@ -78,10 +69,8 @@ func getClientWithContext(
 	}
 }
 
-// pingWithContext verifies the connection is usable, returning early with
-// ctx's error when the context is canceled or times out before the ping
-// completes. The underlying call cannot be interrupted; an abandoned ping
-// unblocks and exits when the caller closes the SSH client.
+// pingWithContext runs machine.Ping until it returns or ctx ends.
+// An abandoned ping unblocks when the caller closes the SSH client.
 func pingWithContext(ctx context.Context, sshClient *ssh.Client) error {
 	done := make(chan error, 1)
 	go func() {
@@ -127,6 +116,7 @@ func v0MachineRuntimeInstanceCreated(
 	// establish an ssh connection to the machine
 	sshClient, capturedHostKey, err := getClientWithContext(ctx, machineRuntimeInstance, r.EncryptionKey)
 	if err != nil {
+		// record connect failure
 		if eventErr := r.EventsRecorder.RecordEvent(
 			&v0.Event{
 				Type:   util.Ptr(event.TypeWarning),
@@ -138,16 +128,12 @@ func v0MachineRuntimeInstanceCreated(
 		); eventErr != nil {
 			log.Error(eventErr, "failed to record event for ssh connect error")
 		}
-		// always retry ssh client failures, since a misconfigured credential
-		// or unreachable host may be fixed externally without any change
-		// to this object, so reconciliation should keep trying
+		// retry ssh client failures
 		return sshRetryDelaySeconds, fmt.Errorf("failed to connect to machine runtime instance via ssh: %w", err)
 	}
 	defer sshClient.Close()
 
-	// save captured host key if this is the first connection; set
-	// Reconciled=true on the update so the resulting update
-	// notification does not trigger another reconciliation pass
+	// persist captured host key and mark reconciled to skip the update notification
 	if capturedHostKey != "" {
 		if _, err := client.UpdateMachineRuntimeInstance(r.APIClient, r.APIServer, &v0.MachineRuntimeInstance{
 			Common:         v0.Common{ID: machineRuntimeInstance.ID},
@@ -156,6 +142,7 @@ func v0MachineRuntimeInstanceCreated(
 		}); err != nil {
 			return controller.RetryOnNetworkErr(err, "failed to save captured host key")
 		}
+		// record host key capture
 		if eventErr := r.EventsRecorder.RecordEvent(
 			&v0.Event{
 				Type:   util.Ptr(event.TypeNormal),
@@ -171,6 +158,7 @@ func v0MachineRuntimeInstanceCreated(
 
 	// verify the connection is usable
 	if err := pingWithContext(ctx, sshClient); err != nil {
+		// record ping failure
 		if eventErr := r.EventsRecorder.RecordEvent(
 			&v0.Event{
 				Type:   util.Ptr(event.TypeWarning),
@@ -182,7 +170,7 @@ func v0MachineRuntimeInstanceCreated(
 		); eventErr != nil {
 			log.Error(eventErr, "failed to record event for ssh ping error")
 		}
-		// always retry, same reasoning as the GetClient path above
+		// retry ssh ping failures
 		return sshRetryDelaySeconds, fmt.Errorf("failed to ping machine runtime instance: %w", err)
 	}
 
@@ -317,20 +305,17 @@ func v0MachineRuntimeInstanceDeleted(
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
-	// imported machines have no definition, so nothing to deprovision
+	// skip imported machines with no definition
 	if machineRuntimeInstance.MachineRuntimeDefinitionID == nil {
 		return 0, nil
 	}
 
-	// a provisioned machine with no recorded resources never had any backing
-	// infrastructure to reclaim, so deletion is clean
+	// skip when no inventory was recorded
 	if machineRuntimeInstance.ResourceInventory == nil {
 		return 0, nil
 	}
 
-	// the provider resources recorded in the inventory remain live; warn the
-	// operator to reclaim them so they are not silently abandoned, then let
-	// deletion proceed
+	// warn to reclaim live provider resources, then complete delete
 	if eventErr := r.EventsRecorder.RecordEvent(
 		&v0.Event{
 			Type:   util.Ptr(event.TypeWarning),

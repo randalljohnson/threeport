@@ -38,10 +38,14 @@ func (m *MachineRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 //
 //	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 //
-// The provisioning template fields are immutable: changing the infra
-// provider, machine type, or image after instances have been derived from
-// the definition would diverge the running machines from their template.
+// Import:
+//
+//	lib "github.com/threeport/threeport/pkg/api/lib/v0"
+//
+// InfraProvider, MachineType, and ImageID are immutable after create so
+// derived instances stay aligned with the definition template.
 func (m *MachineRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
+	// reject changes to infra provider, machine type, and image
 	immutableFields := []struct {
 		column string
 		name   string
@@ -72,6 +76,7 @@ func (m *MachineRuntimeDefinition) beforeDelete(tx *gorm.DB) error {
 // It requires an SSH credential, a live definition ID when one is set, and
 // a location or region when that definition has an infra provider.
 func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
+	// require an SSH credential
 	if m.SSHKey == nil && m.SSHPassword == nil {
 		return util.NewBadRequestError(
 			fmt.Sprintf(
@@ -81,6 +86,7 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 		)
 	}
 
+	// load referenced definition when present
 	if m.MachineRuntimeDefinitionID != nil {
 		var def MachineRuntimeDefinition
 		if err := tx.First(&def, *m.MachineRuntimeDefinitionID).Error; err != nil {
@@ -92,6 +98,7 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 				),
 			)
 		}
+		// require region when the definition has an infra provider
 		if def.InfraProvider != nil && *def.InfraProvider != "" {
 			locationEmpty := m.Location == nil || *m.Location == ""
 			regionEmpty := m.Region == nil || *m.Region == ""
@@ -127,10 +134,14 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 //
 //	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 //
-// The provisioning location fields are immutable: changing them after
-// creation would orphan the provisioned resources. The provider, machine
-// type, and image live on the definition and are guarded there.
+// Import:
+//
+//	lib "github.com/threeport/threeport/pkg/api/lib/v0"
+//
+// Region, NetworkID, and SubnetID are immutable after create. Infra
+// provider, machine type, and image are guarded on the definition.
 func (m *MachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
+	// reject changes to region, network, and subnet
 	immutableFields := []struct {
 		column string
 		name   string

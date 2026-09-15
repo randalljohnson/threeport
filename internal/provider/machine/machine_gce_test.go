@@ -878,12 +878,12 @@ func equalStringSlices(a, b []string) bool {
 	return true
 }
 
-// TestPulumiProgram_AssertsLabelableResourcesCarryManagedByLabel covers that
-// every registered resource is labeled managed-by=threeport or listed as exempt.
+// TestPulumiProgram_AssertsLabelableResourcesCarryProvisionedByLabel covers that
+// every registered resource is labeled provisioned-by=threeport or listed as exempt.
 // An unknown type fails so a new resource cannot ship unlabeled by default.
-func TestPulumiProgram_AssertsLabelableResourcesCarryManagedByLabel(t *testing.T) {
+func TestPulumiProgram_AssertsLabelableResourcesCarryProvisionedByLabel(t *testing.T) {
 	// build a configured provider and generate the SSH key pair the program requires
-	i := newTestInfra("label-audit")
+	i := newTestInfra("label-test")
 	if err := i.ensureSSHKeyPair(); err != nil {
 		t.Fatalf("ensureSSHKeyPair: %v", err)
 	}
@@ -896,19 +896,19 @@ func TestPulumiProgram_AssertsLabelableResourcesCarryManagedByLabel(t *testing.T
 
 	// fail fast when the program registered nothing
 	if len(mocks.resources) == 0 {
-		t.Fatal("program registered no resources; nothing to audit")
+		t.Fatal("program registered no resources; nothing to test")
 	}
 
 	type labelExpectation struct {
 		labelable    bool
 		exemptReason string
 	}
-	// classify each type as labelable or exempt; a missing type fails the audit
+	// classify each type as labelable or exempt; a missing type fails the test
 	allowlist := map[string]labelExpectation{
 		instanceTypeToken: {labelable: true},
 		firewallTypeToken: {
 			labelable:    false,
-			exemptReason: "firewall rules have no labels field, so the managed-by label cannot be applied",
+			exemptReason: "firewall rules have no labels field, so the provisioned-by label cannot be applied",
 		},
 		gcpProviderTypeToken: {
 			labelable:    false,
@@ -939,8 +939,11 @@ func TestPulumiProgram_AssertsLabelableResourcesCarryManagedByLabel(t *testing.T
 
 		sawLabelable = true
 		labels := instanceLabels(t, r)
-		if got := labels[provider.ManagedByLabelKey]; got != provider.ManagedByLabelValue {
-			t.Errorf("resource %q (%s) labels[%q] = %q, want %q", r.name, r.typeToken, provider.ManagedByLabelKey, got, provider.ManagedByLabelValue)
+		want := provider.GcpResourceLabels(i.RuntimeInstanceName)
+		for k, v := range want {
+			if got := labels[k]; got != v {
+				t.Errorf("resource %q (%s) labels[%q] = %q, want %q", r.name, r.typeToken, k, got, v)
+			}
 		}
 	}
 

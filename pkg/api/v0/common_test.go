@@ -148,12 +148,13 @@ func makeReconciliation(
 	creationAck, creationConfirmed, deletionScheduled, deletionAck, deletionConfirmed time.Time,
 ) Reconciliation {
 	return Reconciliation{
-		Reconciled:           ptrBool(reconciled),
-		CreationAcknowledged: ptrTime(creationAck),
-		CreationConfirmed:    ptrTime(creationConfirmed),
-		CreationFailed:       ptrBool(creationFailed),
-		DeletionScheduled:    ptrTime(deletionScheduled),
-		DeletionAcknowledged: ptrTime(deletionAck),
-		DeletionConfirmed:    ptrTime(deletionConfirmed),
-		DeletionFailed:       ptrBool(deletionFailed),	}
+		Reconciled:           util.Ptr(reconciled),
+		CreationAcknowledged: util.Ptr(creationAck),
+		CreationConfirmed:    util.Ptr(creationConfirmed),
+		CreationFailed:       util.Ptr(creationFailed),
+		DeletionScheduled:    util.Ptr(deletionScheduled),
+		DeletionAcknowledged: util.Ptr(deletionAck),
+		DeletionConfirmed:    util.Ptr(deletionConfirmed),
+		DeletionFailed:       util.Ptr(deletionFailed),
+	}
 }

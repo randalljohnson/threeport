@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // Reconciler update handlers publish only when Reconciled is false and
@@ -111,13 +113,13 @@ func TestChangeDetectionFuzz(t *testing.T) {
 
 	// setup CreationConfirmed unset vs set
 	noConfirm := Reconciliation{
-		Reconciled:           ptrBool(true),
-		CreationAcknowledged: ptrTime(instant),
+		Reconciled:           util.Ptr(true),
+		CreationAcknowledged: util.Ptr(instant),
 	}
 	withConfirm := Reconciliation{
-		Reconciled:           ptrBool(true),
-		CreationAcknowledged: ptrTime(instant),
-		CreationConfirmed:    ptrTime(instant),
+		Reconciled:           util.Ptr(true),
+		CreationAcknowledged: util.Ptr(instant),
+		CreationConfirmed:    util.Ptr(instant),
 	}
 	// check ReconciliationStateChanged when CreationConfirmed becomes set
 	if got := ReconciliationStateChanged(noConfirm, withConfirm); !got {
@@ -125,16 +127,16 @@ func TestChangeDetectionFuzz(t *testing.T) {
 	}
 
 	// setup a Reconciled false-to-true flip
-	unreconciled := Reconciliation{Reconciled: ptrBool(false)}
-	reconciled := Reconciliation{Reconciled: ptrBool(true)}
+	unreconciled := Reconciliation{Reconciled: util.Ptr(false)}
+	reconciled := Reconciliation{Reconciled: util.Ptr(true)}
 	// check ReconciliationStateChanged on a Reconciled flip
 	if got := ReconciliationStateChanged(unreconciled, reconciled); !got {
 		t.Errorf("ReconciliationStateChanged(Reconciled flip) = false, want true")
 	}
 
 	// setup a DeletionFailed false-to-true flip
-	deleteOk := Reconciliation{DeletionFailed: ptrBool(false)}
-	deleteFailed := Reconciliation{DeletionFailed: ptrBool(true)}
+	deleteOk := Reconciliation{DeletionFailed: util.Ptr(false)}
+	deleteFailed := Reconciliation{DeletionFailed: util.Ptr(true)}
 	// check ReconciliationStateChanged on a DeletionFailed flip
 	if got := ReconciliationStateChanged(deleteOk, deleteFailed); !got {
 		t.Errorf("ReconciliationStateChanged(DeletionFailed flip) = false, want true")

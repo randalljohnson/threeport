@@ -13,11 +13,11 @@ name: Test
 
 on:
   pull_request:
-    # `edited` covers title, body, and base-branch changes. Jobs skip
-    # unless the base changed, so a description edit does not run tests.
+    # Skip `edited`: it fires on title and body changes, which do not
+    # change code. Base-branch retargets also use `edited`; a later push
+    # still runs tests against the new base.
     types:
       - opened
-      - edited
       - synchronize
       - reopened
 
@@ -27,7 +27,6 @@ permissions:
 jobs:
   unit-tests:
     name: Unit Tests
-    if: github.event.action != 'edited' || github.event.changes.base.ref.from != ''
     runs-on: ubuntu-24.04
     env:
       GOPATH: /home/runner/go
@@ -74,7 +73,6 @@ jobs:
 
   integration-tests:
     name: Integration Tests
-    if: github.event.action != 'edited' || github.event.changes.base.ref.from != ''
     runs-on: ubuntu-24.04
     env:
       GOPATH: /home/runner/go

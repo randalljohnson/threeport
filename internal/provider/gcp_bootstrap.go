@@ -475,16 +475,19 @@ func CreateGCPServiceAccountWithKey(projectID, accountName string) (*GCPServiceA
 		return nil, fmt.Errorf("failed to create service account: %w", err)
 	}
 
-	// grant IAM roles to the service account
-	if err := grantServiceAccountRolesForProject(crmService, projectID, account.Email); err != nil {
-		return nil, fmt.Errorf("failed to grant IAM roles: %w", err)
+	// reject an existing account before granting roles
+	if existed {
+		return nil, fmt.Errorf("GCP service account %s already exists; pick a different provider name", account.Email)
 	}
 
-	if existed {
-		// prune user-managed keys so a new key stays under the 10-key limit
-		if err := pruneUserManagedServiceAccountKeys(iamService, projectID, account.Email); err != nil {
-			return nil, fmt.Errorf("failed to prune stale service account keys: %w", err)
-		}
+	rollbackCreated := func(opErr error) error {
+		rbErr := rollbackCreatedGCPServiceAccount(iamService, crmService, projectID, account.Email)
+		return wrapCreatedServiceAccountError(opErr, rbErr, account.Email)
+	}
+
+	// grant IAM roles to the service account
+	if err := grantServiceAccountRolesForProject(crmService, projectID, account.Email); err != nil {
+		return nil, rollbackCreated(fmt.Errorf("failed to grant IAM roles: %w", err))
 	}
 
 	// create JSON key for controllers running outside GCP
@@ -497,13 +500,13 @@ func CreateGCPServiceAccountWithKey(projectID, accountName string) (*GCPServiceA
 		keyRequest,
 	).Do()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create service account key: %w", err)
+		return nil, rollbackCreated(fmt.Errorf("failed to create service account key: %w", err))
 	}
 
 	// The key is base64 encoded, decode it
 	keyJSON, err := util.Base64Decode(key.PrivateKeyData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode service account key: %w", err)
+		return nil, rollbackCreated(fmt.Errorf("failed to decode service account key: %w", err))
 	}
 
 	util.CliOutputInfo("Created and exported GCP service account key")
@@ -559,6 +562,28 @@ func DeleteGCPServiceAccountWithKey(projectID, accountName string) error {
 	return nil
 }
 
+// rollbackCreatedGCPServiceAccount removes IAM bindings and deletes an account
+// this create added, so a retry can use the same provider name.
+func rollbackCreatedGCPServiceAccount(
+	iamService *iam.Service,
+	crmService *cloudresourcemanager.Service,
+	projectID string,
+	serviceAccountEmail string,
+) error {
+	roleErr := removeServiceAccountRolesForProject(crmService, projectID, serviceAccountEmail)
+	delErr := deleteServiceAccountForProject(iamService, projectID, serviceAccountEmail)
+	return errors.Join(roleErr, delErr)
+}
+
+// wrapCreatedServiceAccountError returns opErr, and names the rollback failure
+// when deleting the account this create added also failed.
+func wrapCreatedServiceAccountError(opErr, rollbackErr error, email string) error {
+	if rollbackErr == nil {
+		return opErr
+	}
+	return fmt.Errorf("%w; failed to delete newly created service account %s: %v", opErr, email, rollbackErr)
+}
+
 // createServiceAccountForProject returns the named service account, creating it
 // when Get reports not found. The bool is true when the account already existed.
 func createServiceAccountForProject(
@@ -571,10 +596,9 @@ func createServiceAccountForProject(
 	serviceAccountEmail := fmt.Sprintf("%s@%s.iam.gserviceaccount.com", serviceAccountID, projectID)
 	serviceAccountResource := fmt.Sprintf("projects/%s/serviceAccounts/%s", projectID, serviceAccountEmail)
 
-	// reuse the account when it already exists
+	// report an existing account; CreateGCPServiceAccountWithKey errors on that
 	existingAccount, err := iamService.Projects.ServiceAccounts.Get(serviceAccountResource).Do()
 	if err == nil {
-		fmt.Printf("Using existing GCP service account: %s\n", existingAccount.Email)
 		return existingAccount, true, nil
 	}
 
@@ -603,54 +627,6 @@ func createServiceAccountForProject(
 	fmt.Printf("Created GCP service account: %s\n", account.Email)
 
 	return account, false, nil
-}
-
-// pruneUserManagedServiceAccountKeys deletes USER_MANAGED keys on the account.
-// SYSTEM_MANAGED keys stay; Google rotates them and Delete rejects those names.
-func pruneUserManagedServiceAccountKeys(iamService *iam.Service, projectID, serviceAccountEmail string) error {
-	serviceAccountResource := fmt.Sprintf("projects/%s/serviceAccounts/%s", projectID, serviceAccountEmail)
-
-	// list user-managed keys
-	keys, err := iamService.Projects.ServiceAccounts.Keys.List(serviceAccountResource).
-		KeyTypes("USER_MANAGED").
-		Do()
-	if err != nil {
-		return fmt.Errorf("failed to list service account keys: %w", err)
-	}
-
-	if keys == nil {
-		return nil
-	}
-
-	// delete user-managed keys, skip system-managed
-	prunedIDs := make([]string, 0, len(keys.Keys))
-	for _, key := range keys.Keys {
-		if key.KeyType == "SYSTEM_MANAGED" {
-			continue
-		}
-
-		// delete the user-managed key
-		if _, err := iamService.Projects.ServiceAccounts.Keys.Delete(key.Name).Do(); err != nil {
-			return fmt.Errorf("failed to delete service account key %s: %w", key.Name, err)
-		}
-
-		keyID := key.Name
-		if idx := strings.LastIndex(keyID, "/"); idx != -1 {
-			keyID = keyID[idx+1:]
-		}
-		prunedIDs = append(prunedIDs, keyID)
-	}
-
-	if len(prunedIDs) > 0 {
-		util.CliOutputInfo(fmt.Sprintf(
-			"Pruned %d user-managed key(s) from existing GCP service account %s: %s",
-			len(prunedIDs),
-			serviceAccountEmail,
-			strings.Join(prunedIDs, ", "),
-		))
-	}
-
-	return nil
 }
 
 // removeServiceAccountRolesForProject removes all IAM roles granted to a service account.

@@ -13,7 +13,7 @@ import (
 
 const (
 	// MachineRuntimeInfraProviderGCE selects Google Compute Engine as the
-	// machine runtime provider.
+	// machine runtime InfraProvider value.
 	MachineRuntimeInfraProviderGCE = "gce"
 )
 
@@ -35,6 +35,7 @@ func (m *MachineRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 // enforced under both PATCH and PUT; the infra provider, machine type, and
 // image must stay fixed once instances derive from the definition.
 func (m *MachineRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
+	// reject changes to infra provider, machine type, and image
 	immutableFields := []struct {
 		column string
 		name   string
@@ -66,15 +67,10 @@ func (m *MachineRuntimeDefinition) beforeDelete(tx *gorm.DB) error {
 }
 
 // beforeCreate validates the MachineRuntimeInstance before create.
-//
-// Two invariants are enforced:
-//   - at least one of SSHKey or SSHPassword must be provided so the
-//     reconciler has a credential to authenticate with the machine.
-//   - when the referenced machine runtime definition has an infra provider
-//     set, the instance must supply a location or a region so the provider
-//     knows where to provision the machine. The controller maps a location to
-//     a provider region and zone; a concrete region serves imported machines.
+// It requires an SSH credential, a live definition ID when one is set, and
+// a location or region when that definition has an infra provider.
 func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
+	// require an SSH credential
 	if m.SSHKey == nil && m.SSHPassword == nil {
 		return util.NewBadRequestError(
 			fmt.Sprintf(
@@ -84,6 +80,7 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 		)
 	}
 
+	// load referenced definition when present
 	if m.MachineRuntimeDefinitionID != nil {
 		var def MachineRuntimeDefinition
 		if err := tx.First(&def, *m.MachineRuntimeDefinitionID).Error; err != nil {
@@ -95,10 +92,12 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 				),
 			)
 		}
+		// require region when the definition has an infra provider
 		if def.InfraProvider != nil && *def.InfraProvider != "" {
 			locationEmpty := m.Location == nil || *m.Location == ""
 			regionEmpty := m.Region == nil || *m.Region == ""
 			if locationEmpty && regionEmpty {
+				// reject a provider-backed instance with neither location nor region
 				return util.NewBadRequestError(
 					fmt.Sprintf(
 						"machine runtime instance %s must have a location or region when the definition specifies an infra provider",
@@ -117,6 +116,7 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 // enforced under both PATCH and PUT; changing them after creation would
 // orphan the provisioned resources.
 func (m *MachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
+	// reject changes to region, network, and subnet
 	immutableFields := []struct {
 		column string
 		name   string

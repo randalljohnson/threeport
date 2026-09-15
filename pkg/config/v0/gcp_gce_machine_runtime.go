@@ -134,7 +134,7 @@ func (g *GcpGceMachineRuntimeConfig) Delete(
 	return nil, nil
 }
 
-// GetOperations returns a slice of operations used to get, create, replace or delete
+// GetOperations returns the operations used to get, create, replace or delete
 // a gcp gce machine runtime defined instance.
 func (g *GcpGceMachineRuntimeConfig) GetOperations(
 	apiClient *http.Client,
@@ -242,7 +242,7 @@ func (g *GcpGceMachineRuntimeConfig) GetOperations(
 }
 
 // mapToGcpGceMachineRuntimeDefinedInstances maps a slice of gcp gce machine runtime definition and instance configs
-// to a slice of gcp gce machine runtime config objects
+// to a slice of gcp gce machine runtime config objects.
 func mapToGcpGceMachineRuntimeDefinedInstances(
 	gcpGceMachineRuntimeDefinitions *[]GcpGceMachineRuntimeDefinitionConfig,
 	gcpGceMachineRuntimeInstances *[]GcpGceMachineRuntimeInstanceConfig,
@@ -271,7 +271,6 @@ func mapToGcpGceMachineRuntimeDefinedInstances(
 				}
 				gcpGceMachineRuntimeConfigs = append(gcpGceMachineRuntimeConfigs, gcpGceMachineRuntimeConfig)
 				// an instance can only have one matching definition for a defined instance
-				// we can break out of the loop after finding the first matching definition
 				break
 			}
 		}

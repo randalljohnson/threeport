@@ -9,27 +9,23 @@ type MachineRuntimeDefinition struct {
 	Definition     `mapstructure:",squash"`
 	Reconciliation `mapstructure:",squash"`
 
-	// The infrastructure provider that provisions machines from this
-	// definition. Empty for imported machines that already exist.
+	// The infrastructure provider that provisions machines from this definition
 	InfraProvider *string `json:",omitempty" validate:"optional"`
 
 	// The provider account name that selects which account the machine is
-	// provisioned on. Empty falls back to the default provider account.
+	// provisioned on, empty falling back to the default provider account
 	InfraProviderAccountName *string `json:",omitempty" validate:"optional"`
 
-	// The compute capacity of the machine. Resolved server-side together with
-	// the machine profile to a provider machine type.
+	// The compute capacity of the machine
 	MachineSize *string `json:",omitempty" validate:"optional" gorm:"default:Medium"`
 
-	// The CPU-to-memory ratio of the machine. Resolved server-side together
-	// with the machine size to a provider machine type.
+	// The CPU-to-memory ratio of the machine
 	MachineProfile *string `json:",omitempty" validate:"optional" gorm:"default:Balanced"`
 
-	// The provider-specific machine type. Populated by the controller from the
-	// machine size and profile; not supplied for provider-provisioned machines.
+	// The provider-specific machine type
 	MachineType *string `json:",omitempty" validate:"optional"`
 
-	// The provider image identifier used to boot the machine.
+	// The provider image identifier used to boot the machine
 	ImageID *string `json:",omitempty" validate:"optional"`
 
 	// The associated machine runtime instances that are deployed from this
@@ -46,7 +42,7 @@ type MachineRuntimeInstance struct {
 	// The hostname or IP address used to reach the machine. Optional at
 	// create so the abstract instance can exist before the machine is
 	// provisioned; populated once the machine is reachable.
-	Hostname *string `json:",omitempty" validate:"optional"`
+	Hostname *string `validate:"optional"`
 
 	// The SSH username for authenticating to the machine. Optional at create
 	// for the same reason as the hostname; populated once the machine is
@@ -66,20 +62,16 @@ type MachineRuntimeInstance struct {
 	// connection. If not provided, captured on first connection.
 	HostKey *string `validate:"optional"`
 
-	// The provider region in which the machine is provisioned.
+	// The provider region in which the machine is provisioned
 	Region *string `json:",omitempty" validate:"optional"`
 
-	// The abstract threeport location for the machine. Mapped server-side to a
-	// provider region and zone. Optional so imported machines that supply a
-	// concrete region directly still validate.
+	// The abstract threeport location for the machine
 	Location *string `json:",omitempty" validate:"optional"`
 
 	// The provider network identifier the machine attaches to.
 	NetworkID *string `json:",omitempty" validate:"optional"`
 
-	// The provider-specific subnet identifier the VM should attach to.
-	// Required in custom-mode shared VPCs where multiple subnets share a
-	// region.
+	// The provider subnet identifier the machine attaches to
 	SubnetID *string `json:",omitempty" gorm:"type:text" validate:"optional"`
 
 	// IngressRules are the firewall ingress rules applied to the machine.

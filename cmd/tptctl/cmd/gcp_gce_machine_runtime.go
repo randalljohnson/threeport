@@ -15,8 +15,7 @@ import (
 	yaml "sigs.k8s.io/yaml"
 )
 
-// gcpID carries the numeric ID value for --id flag lookups on gcp gce machine
-// runtime definition and instance get commands.
+// gcpID carries the numeric ID for --id lookups on definition and instance get.
 var gcpID int64
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -539,7 +538,7 @@ var GetGcpGceMachineRuntimeInstancesCmd = &cobra.Command{
 					os.Exit(1)
 				}
 
-				// resolve related object names so tabular output matches the by-name shape
+				// fill related names on the config object
 				var gcpProviderName *string
 				if fetched.GcpProviderID != nil {
 					gcpProvider, err := client_v0.GetGcpProviderByID(

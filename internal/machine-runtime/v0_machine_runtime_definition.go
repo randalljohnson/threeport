@@ -38,13 +38,12 @@ func v0MachineRuntimeDefinitionCreated(
 	machineRuntimeDefinition *v0.MachineRuntimeDefinition,
 	log *logr.Logger,
 ) (int64, error) {
-	// a definition registered externally with Reconciled already set needs no
-	// resolution, so return without error
+	// skip when already reconciled
 	if machineRuntimeDefinition.Reconciled != nil && *machineRuntimeDefinition.Reconciled {
 		return controller.Done, nil
 	}
 
-	// imported machines have no infra provider, so there is nothing to resolve
+	// skip when no infra provider is set (imported machines)
 	if machineRuntimeDefinition.InfraProvider == nil || *machineRuntimeDefinition.InfraProvider == "" {
 		return controller.Done, nil
 	}
@@ -132,8 +131,7 @@ func v0MachineRuntimeDefinitionCreated(
 		return 0, fmt.Errorf("infra provider %s not supported", *machineRuntimeDefinition.InfraProvider)
 	}
 
-	// mark reconciled so the resulting update notification does not trigger
-	// another pass
+	// mark reconciled so the update notification does not retrigger this pass
 	machineRuntimeDefinition.Reconciled = util.Ptr(true)
 	if _, err := client.UpdateMachineRuntimeDefinition(
 		r.APIClient,
@@ -202,7 +200,7 @@ func v0MachineRuntimeDefinitionDeleted(
 		return 0, errors.New("deletion notification received but not scheduled")
 	}
 
-	// nothing to do once deletion is already confirmed
+	// skip when deletion is already confirmed
 	if machineRuntimeDefinition.DeletionConfirmed != nil {
 		return controller.Done, nil
 	}

@@ -719,6 +719,24 @@ func (i *GceMachineInfra) ensureSSHKeyPair() error {
 	return nil
 }
 
+// publicKeyFromPrivatePEM returns the authorized_keys form of a PKCS1 PEM private key.
+func publicKeyFromPrivatePEM(privPEM string) (string, error) {
+	// decode PKCS1 PEM and marshal the public half
+	block, _ := pem.Decode([]byte(privPEM))
+	if block == nil {
+		return "", errors.New("failed to decode private key PEM")
+	}
+	key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse private key: %w", err)
+	}
+	pub, err := ssh.NewPublicKey(&key.PublicKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to build SSH public key: %w", err)
+	}
+	return string(ssh.MarshalAuthorizedKey(pub)), nil
+}
+
 // captureOutputs maps the hostname and externalIP entries from the Pulumi up
 // outputs onto the receiver, tolerating missing keys rather than panicking.
 // The internalIP, attachedVPC, and attachedSubnet outputs feed the resource

@@ -451,6 +451,7 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 				Network:      networkRef,
 				Allows:       compute.FirewallAllowArray{allowArgs},
 				SourceRanges: pulumi.ToStringArray(ranges),
+				TargetTags:   pulumi.StringArray{pulumi.String(i.RuntimeInstanceName)},
 			}
 			if rule.Description != "" {
 				firewallArgs.Description = pulumi.String(rule.Description)
@@ -506,6 +507,7 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 			Labels: pulumi.StringMap{
 				provider.ManagedByLabelKey: pulumi.String(provider.ManagedByLabelValue),
 			},
+			Tags: pulumi.StringArray{pulumi.String(i.RuntimeInstanceName)},
 		}, i.resourceOptions(gcpProvider, i.instanceLogicalName())...)
 		if err != nil {
 			return fmt.Errorf("failed to create GCE instance: %w", err)

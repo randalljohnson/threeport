@@ -83,13 +83,14 @@ func newTestInfra(name string) *GceMachineInfra {
 			RuntimeInstanceName: name,
 			ProjectName:         "gce",
 		},
-		ProjectID:   "test-project",
-		Region:      "us-central1",
-		Zone:        "us-central1-a",
-		MachineType: "e2-medium",
-		ImageID:     "debian-cloud/debian-12",
-		NetworkID:   "default",
-		SSHUser:     "threeport",
+		ProjectID:       "test-project",
+		Region:          "us-central1",
+		Zone:            "us-central1-a",
+		MachineType:     "e2-medium",
+		ImageID:         "debian-cloud/debian-12",
+		NetworkID:       "default",
+		SSHUser:         "threeport",
+		SSHSourceRanges: []string{"10.0.0.0/8"},
 	}
 }
 
@@ -208,6 +209,19 @@ func TestPulumiProgram_CreatesInstanceAndFirewall(t *testing.T) {
 	}
 	if !firewallAllowsTCP22(t, firewalls[0]) {
 		t.Errorf("firewall does not allow tcp/22: %v", firewalls[0].inputs["allows"])
+	}
+	if got := stringSliceInput(t, firewalls[0].inputs["targetTags"]); !equalStringSlices(got, []string{i.RuntimeInstanceName}) {
+		t.Errorf("firewall targetTags = %v, want [%s]", got, i.RuntimeInstanceName)
+	}
+	if got := stringSliceInput(t, inst.inputs["tags"]); !equalStringSlices(got, []string{i.RuntimeInstanceName}) {
+		t.Errorf("instance tags = %v, want [%s]", got, i.RuntimeInstanceName)
+	}
+	wantLabels := provider.GcpResourceLabels(i.RuntimeInstanceName)
+	if got := stringMapInput(t, inst.inputs["labels"]); !equalStringMaps(got, wantLabels) {
+		t.Errorf("instance labels = %v, want %v", got, wantLabels)
+	}
+	if got, ok := firewalls[0].inputs["description"].(string); !ok || got != provider.GcpOwnershipDescription(i.RuntimeInstanceName) {
+		t.Errorf("firewall description = %v, want ownership pair", firewalls[0].inputs["description"])
 	}
 }
 
@@ -410,28 +424,22 @@ func TestStackStateRoundTrip_CheckpointFormat(t *testing.T) {
 	}
 }
 
-// TestSSHSourceRanges_DefaultAndOverride covers the 0.0.0.0/0 default and a firewall that uses an override.
-func TestSSHSourceRanges_DefaultAndOverride(t *testing.T) {
-	def := newTestInfra("default-ranges")
-	if got := def.sshSourceRanges(); !equalStringSlices(got, []string{"0.0.0.0/0"}) {
-		t.Errorf("default sshSourceRanges = %v, want [0.0.0.0/0]", got)
+// TestSSHSourceRanges_Required covers empty SSHSourceRanges failing validation.
+func TestSSHSourceRanges_Required(t *testing.T) {
+	i := newTestInfra("no-ranges")
+	i.SSHSourceRanges = nil
+	err := i.validateRequiredFields()
+	if err == nil || !strings.Contains(err.Error(), "SSHSourceRanges") {
+		t.Errorf("validateRequiredFields = %v, want SSHSourceRanges missing", err)
 	}
+}
 
-	override := newTestInfra("override-ranges")
-	override.SSHSourceRanges = []string{"10.0.0.0/8"}
-	if err := override.ensureSSHKeyPair(); err != nil {
-		t.Fatalf("ensureSSHKeyPair: %v", err)
-	}
-	mocks := &recordingMocks{}
-	if err := pulumi.RunErr(override.pulumiProgram(), pulumi.WithMocks("gce", "test-stack", mocks)); err != nil {
-		t.Fatalf("RunErr: %v", err)
-	}
-	firewalls := mocks.byType(firewallTypeToken)
-	if len(firewalls) != 1 {
-		t.Fatalf("expected exactly 1 firewall, got %d", len(firewalls))
-	}
-	if got := firewallSourceRanges(t, firewalls[0]); !equalStringSlices(got, []string{"10.0.0.0/8"}) {
-		t.Errorf("firewall sourceRanges = %v, want [10.0.0.0/8]", got)
+// TestValidateRequiredFields_InvalidName covers a GCE name that GCP would reject.
+func TestValidateRequiredFields_InvalidName(t *testing.T) {
+	i := newTestInfra("Bad_Name")
+	err := i.validateRequiredFields()
+	if err == nil || !strings.Contains(err.Error(), "not a valid GCE instance name") {
+		t.Errorf("validateRequiredFields = %v, want invalid GCE instance name", err)
 	}
 }
 
@@ -446,6 +454,7 @@ func TestDeployInfra_MissingRequiredFields(t *testing.T) {
 			ImageID:         "img",
 			SSHUser:         "u",
 			NetworkID:       "default",
+			SSHSourceRanges: []string{"10.0.0.0/8"},
 		}
 	}
 	cases := []struct {
@@ -460,6 +469,7 @@ func TestDeployInfra_MissingRequiredFields(t *testing.T) {
 		{"missing image id", func(i *GceMachineInfra) { i.ImageID = "" }, "ImageID"},
 		{"missing ssh user", func(i *GceMachineInfra) { i.SSHUser = "" }, "SSHUser"},
 		{"missing network id", func(i *GceMachineInfra) { i.NetworkID = "" }, "NetworkID"},
+		{"missing ssh source ranges", func(i *GceMachineInfra) { i.SSHSourceRanges = nil }, "SSHSourceRanges"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -487,10 +497,37 @@ func TestDeployInfra_ReportsAllMissingFields(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for multiple missing fields, got nil")
 	}
-	for _, field := range []string{"Zone", "MachineType", "SSHUser", "NetworkID"} {
+	for _, field := range []string{"Zone", "MachineType", "SSHUser", "NetworkID", "SSHSourceRanges"} {
 		if !strings.Contains(err.Error(), field) {
 			t.Errorf("error %q does not name missing field %q", err.Error(), field)
 		}
+	}
+}
+
+// TestEnsureSSHKeyPair_RestoredPrivateKey covers deriving the public key from a stored PEM.
+func TestEnsureSSHKeyPair_RestoredPrivateKey(t *testing.T) {
+	priv, pub, err := generateSSHKeyPair()
+	if err != nil {
+		t.Fatalf("generateSSHKeyPair: %v", err)
+	}
+	i := &GceMachineInfra{sshPrivateKeyPEM: priv}
+	if err := i.ensureSSHKeyPair(); err != nil {
+		t.Fatalf("ensureSSHKeyPair: %v", err)
+	}
+	if i.sshPrivateKeyPEM != priv {
+		t.Error("ensureSSHKeyPair replaced the restored private key")
+	}
+	if i.sshPublicKeyAuthorized != pub {
+		t.Errorf("derived public key = %q, want %q", i.sshPublicKeyAuthorized, pub)
+	}
+}
+
+// TestSyncStackConfigs_RegionFromZone covers filling gcp:region from Zone.
+func TestSyncStackConfigs_RegionFromZone(t *testing.T) {
+	i := &GceMachineInfra{ProjectID: "p", Zone: "us-central1-a"}
+	i.syncStackConfigs()
+	if got := i.StackConfigs["gcp:region"]; got != "us-central1" {
+		t.Errorf("gcp:region = %q, want us-central1", got)
 	}
 }
 
@@ -507,15 +544,50 @@ func firewallSourceRanges(t *testing.T, r recordedResource) []string {
 	if !ok {
 		t.Fatal("firewall has no sourceRanges input")
 	}
+	return stringSliceInput(t, raw)
+}
+
+// stringSliceInput converts a Pulumi string-array input to []string.
+func stringMapInput(t *testing.T, raw any) map[string]string {
+	t.Helper()
+	items, ok := raw.(map[string]any)
+	if !ok {
+		t.Fatalf("input is not a map: %T", raw)
+	}
+	out := make(map[string]string, len(items))
+	for k, v := range items {
+		s, ok := v.(string)
+		if !ok {
+			t.Fatalf("map value is not a string: %T", v)
+		}
+		out[k] = s
+	}
+	return out
+}
+
+func equalStringMaps(a, b map[string]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, v := range a {
+		if b[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
+func stringSliceInput(t *testing.T, raw any) []string {
+	t.Helper()
 	items, ok := raw.([]any)
 	if !ok {
-		t.Fatalf("sourceRanges is not a slice: %T", raw)
+		t.Fatalf("input is not a slice: %T", raw)
 	}
 	out := make([]string, 0, len(items))
 	for _, it := range items {
 		s, ok := it.(string)
 		if !ok {
-			t.Fatalf("sourceRanges entry is not a string: %T", it)
+			t.Fatalf("slice entry is not a string: %T", it)
 		}
 		out = append(out, s)
 	}
@@ -615,12 +687,12 @@ func equalStringSlices(a, b []string) bool {
 	return true
 }
 
-// TestPulumiProgram_AssertsLabelableResourcesCarryManagedByLabel covers that
-// every registered resource is labeled managed-by=threeport or listed as exempt.
+// TestPulumiProgram_AssertsLabelableResourcesCarryProvisionedByLabel covers that
+// every registered resource is labeled provisioned-by=threeport or listed as exempt.
 // An unknown type fails so a new resource cannot ship unlabeled by default.
-func TestPulumiProgram_AssertsLabelableResourcesCarryManagedByLabel(t *testing.T) {
+func TestPulumiProgram_AssertsLabelableResourcesCarryProvisionedByLabel(t *testing.T) {
 	// build a configured provider and generate the SSH key pair the program requires
-	i := newTestInfra("label-audit")
+	i := newTestInfra("label-test")
 	if err := i.ensureSSHKeyPair(); err != nil {
 		t.Fatalf("ensureSSHKeyPair: %v", err)
 	}
@@ -633,19 +705,19 @@ func TestPulumiProgram_AssertsLabelableResourcesCarryManagedByLabel(t *testing.T
 
 	// fail fast when the program registered nothing
 	if len(mocks.resources) == 0 {
-		t.Fatal("program registered no resources; nothing to audit")
+		t.Fatal("program registered no resources; nothing to test")
 	}
 
 	type labelExpectation struct {
 		labelable    bool
 		exemptReason string
 	}
-	// classify each type as labelable or exempt; a missing type fails the audit
+	// classify each type as labelable or exempt; a missing type fails the test
 	allowlist := map[string]labelExpectation{
 		instanceTypeToken: {labelable: true},
 		firewallTypeToken: {
 			labelable:    false,
-			exemptReason: "firewall rules have no labels field, so the managed-by label cannot be applied",
+			exemptReason: "firewall rules have no labels field, so the provisioned-by label cannot be applied",
 		},
 		gcpProviderTypeToken: {
 			labelable:    false,
@@ -676,8 +748,11 @@ func TestPulumiProgram_AssertsLabelableResourcesCarryManagedByLabel(t *testing.T
 
 		sawLabelable = true
 		labels := instanceLabels(t, r)
-		if got := labels[provider.ManagedByLabelKey]; got != provider.ManagedByLabelValue {
-			t.Errorf("resource %q (%s) labels[%q] = %q, want %q", r.name, r.typeToken, provider.ManagedByLabelKey, got, provider.ManagedByLabelValue)
+		want := provider.GcpResourceLabels(i.RuntimeInstanceName)
+		for k, v := range want {
+			if got := labels[k]; got != v {
+				t.Errorf("resource %q (%s) labels[%q] = %q, want %q", r.name, r.typeToken, k, got, v)
+			}
 		}
 	}
 

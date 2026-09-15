@@ -209,7 +209,7 @@ func v0MachineWorkloadInstanceDeleted(
 	// dial SSH before the delete script so a connect failure is distinct from a script failure
 	probeClient, _, err := machine.GetClient(mri, r.EncryptionKey)
 	if err != nil {
-		if deletionScheduledExceeds(machineWorkloadInstance.DeletionScheduled, unreachableDeleteGracePeriod) {
+		if sshDialFailed(err) && deletionScheduledExceeds(machineWorkloadInstance.DeletionScheduled, unreachableDeleteGracePeriod) {
 			if eventErr := r.EventsRecorder.RecordEvent(
 				&v0.Event{
 					Type:   util.Ptr(event.TypeWarning),
@@ -279,6 +279,12 @@ func deletionScheduledExceeds(deletionScheduled *time.Time, grace time.Duration)
 		return false
 	}
 	return time.Since(*deletionScheduled) > grace
+}
+
+// sshDialFailed reports whether err is a failed SSH dial, not a missing
+// credential or decrypt error.
+func sshDialFailed(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "failed to dial ssh")
 }
 
 // runScript connects over ssh, runs script, and returns the derived workload status.

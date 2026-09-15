@@ -13,11 +13,9 @@ name: Test
 
 on:
   pull_request:
-    # Skip `edited`: it fires on title and body changes, which do not
-    # change code. Base-branch retargets also use `edited`; a later push
-    # still runs tests against the new base.
     types:
       - opened
+      - edited
       - synchronize
       - reopened
 

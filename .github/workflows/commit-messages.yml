@@ -31,7 +31,7 @@ jobs:
   check-commits:
     name: Check Commit Messages
     runs-on: ubuntu-24.04
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.action != 'edited'
     steps:
     - name: Checkout Code
       uses: actions/checkout@v6.0.3

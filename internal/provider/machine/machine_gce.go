@@ -449,6 +449,7 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 			firewallArgs := &compute.FirewallArgs{
 				Name:         pulumi.String(name),
 				Network:      networkRef,
+				Description:  pulumi.String(provider.GcpOwnershipDescription(i.RuntimeInstanceName)),
 				Allows:       compute.FirewallAllowArray{allowArgs},
 				SourceRanges: pulumi.ToStringArray(ranges),
 				TargetTags:   pulumi.StringArray{pulumi.String(i.RuntimeInstanceName)},
@@ -503,11 +504,8 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 					strings.TrimSpace(i.sshPublicKeyAuthorized),
 				)),
 			},
-			// label the instance as managed by threeport
-			Labels: pulumi.StringMap{
-				provider.ManagedByLabelKey: pulumi.String(provider.ManagedByLabelValue),
-			},
-			Tags: pulumi.StringArray{pulumi.String(i.RuntimeInstanceName)},
+			Labels: gcpLabelsInput(i.RuntimeInstanceName),
+			Tags:   pulumi.StringArray{pulumi.String(i.RuntimeInstanceName)},
 		}, i.resourceOptions(gcpProvider, i.instanceLogicalName())...)
 		if err != nil {
 			return fmt.Errorf("failed to create GCE instance: %w", err)
@@ -855,4 +853,14 @@ func (i *GceMachineInfra) GcpClientOptions(base ...option.ClientOption) []option
 		return base
 	}
 	return append(base, option.WithCredentialsJSON([]byte(i.ServiceAccountCredentials)))
+}
+
+// gcpLabelsInput maps GcpResourceLabels onto a Pulumi string map.
+func gcpLabelsInput(ownerName string) pulumi.StringMap {
+	labels := provider.GcpResourceLabels(ownerName)
+	out := make(pulumi.StringMap, len(labels))
+	for k, v := range labels {
+		out[k] = pulumi.String(v)
+	}
+	return out
 }

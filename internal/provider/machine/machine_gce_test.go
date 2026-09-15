@@ -19,9 +19,8 @@ import (
 	"github.com/threeport/threeport/internal/provider"
 )
 
-// requirePulumi skips the calling test when the pulumi CLI is not on PATH.
-// SetStackState and GetStackState shell out via auto.NewLocalWorkspace and
-// auto.UpsertStack, so the real state-write path cannot run without the CLI.
+// requirePulumi skips the test when the pulumi CLI is not on PATH.
+// SetStackState shells out through the local workspace, so that path cannot run without it.
 func requirePulumi(t *testing.T) {
 	t.Helper()
 	if _, err := exec.LookPath("pulumi"); err != nil {
@@ -29,21 +28,21 @@ func requirePulumi(t *testing.T) {
 	}
 }
 
-// recordedResource captures the type token, logical name, and inputs of one
-// resource registered during a mocked Pulumi program run.
+// recordedResource is one NewResource call captured by recordingMocks.
+// It holds the type token, name, and mapped inputs.
 type recordedResource struct {
 	typeToken string
 	name      string
 	inputs    map[string]any
 }
 
-// recordingMocks is a MockResourceMonitor that records every NewResource call
-// so tests can assert on the resources a pulumiProgram registers.
+// recordingMocks is a pulumi mock that records each NewResource call.
 type recordingMocks struct {
 	mu        sync.Mutex
 	resources []recordedResource
 }
 
+// NewResource records the resource and returns name-id plus args.Inputs.
 func (m *recordingMocks) NewResource(args pulumi.MockResourceArgs) (string, resource.PropertyMap, error) {
 	m.mu.Lock()
 	m.resources = append(m.resources, recordedResource{
@@ -55,11 +54,12 @@ func (m *recordingMocks) NewResource(args pulumi.MockResourceArgs) (string, reso
 	return args.Name + "-id", args.Inputs, nil
 }
 
+// Call returns an empty property map.
 func (m *recordingMocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	return resource.PropertyMap{}, nil
 }
 
-// byType returns the recorded resources whose type token equals the argument.
+// byType returns recorded resources whose type token matches.
 func (m *recordingMocks) byType(typeToken string) []recordedResource {
 	var out []recordedResource
 	for _, r := range m.resources {
@@ -75,7 +75,7 @@ const (
 	firewallTypeToken = "gcp:compute/firewall:Firewall"
 )
 
-// newTestInfra builds a fully-configured provider for program-level tests.
+// newTestInfra returns a GceMachineInfra with test project, zone, and image fields set.
 func newTestInfra(name string) *GceMachineInfra {
 	return &GceMachineInfra{
 		PulumiWorkspace: provider.PulumiWorkspace{
@@ -92,6 +92,7 @@ func newTestInfra(name string) *GceMachineInfra {
 	}
 }
 
+// TestGenerateSSHKeyPair_ValidFormats covers PEM PKCS1 private and authorized-key public material that sign and verify.
 func TestGenerateSSHKeyPair_ValidFormats(t *testing.T) {
 	priv, pub, err := generateSSHKeyPair()
 	if err != nil {
@@ -101,7 +102,7 @@ func TestGenerateSSHKeyPair_ValidFormats(t *testing.T) {
 		t.Fatalf("expected non-empty key material, got priv=%q pub=%q", priv, pub)
 	}
 
-	// private key parses as PKCS1 PEM
+	// parse private key as PEM PKCS1
 	block, _ := pem.Decode([]byte(priv))
 	if block == nil {
 		t.Fatal("private key did not decode as PEM")
@@ -111,14 +112,13 @@ func TestGenerateSSHKeyPair_ValidFormats(t *testing.T) {
 		t.Fatalf("private key did not parse as PKCS1: %v", err)
 	}
 
-	// public key parses via authorized-keys
+	// parse public key as authorized-key
 	pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pub))
 	if err != nil {
 		t.Fatalf("public key did not parse as authorized key: %v", err)
 	}
 
-	// a signer built from the private key round-trips sign/verify against the
-	// parsed public key
+	// sign with private key and verify with public key
 	signer, err := ssh.NewSignerFromKey(rsaKey)
 	if err != nil {
 		t.Fatalf("failed to build signer from private key: %v", err)
@@ -133,9 +133,11 @@ func TestGenerateSSHKeyPair_ValidFormats(t *testing.T) {
 	}
 }
 
+// TestEnsureSSHKeyPair_IdempotentAcrossCalls asserts a second call keeps the first pair and a seeded public key is left alone.
 func TestEnsureSSHKeyPair_IdempotentAcrossCalls(t *testing.T) {
 	i := newTestInfra("idempotent")
 
+	// generate on first call
 	if err := i.ensureSSHKeyPair(); err != nil {
 		t.Fatalf("first ensureSSHKeyPair: %v", err)
 	}
@@ -145,6 +147,7 @@ func TestEnsureSSHKeyPair_IdempotentAcrossCalls(t *testing.T) {
 		t.Fatal("expected key material after first call")
 	}
 
+	// keep the same pair on a second call
 	if err := i.ensureSSHKeyPair(); err != nil {
 		t.Fatalf("second ensureSSHKeyPair: %v", err)
 	}
@@ -152,7 +155,7 @@ func TestEnsureSSHKeyPair_IdempotentAcrossCalls(t *testing.T) {
 		t.Fatal("second ensureSSHKeyPair overwrote existing key material")
 	}
 
-	// a pre-seeded public key is never overwritten
+	// skip generation when a public key is already set
 	seeded := newTestInfra("seeded")
 	seeded.sshPublicKeyAuthorized = "ssh-rsa AAAAseeded threeport"
 	if err := seeded.ensureSSHKeyPair(); err != nil {
@@ -166,17 +169,20 @@ func TestEnsureSSHKeyPair_IdempotentAcrossCalls(t *testing.T) {
 	}
 }
 
+// TestPulumiProgram_CreatesInstanceAndFirewall covers one instance and one SSH firewall from the program.
 func TestPulumiProgram_CreatesInstanceAndFirewall(t *testing.T) {
 	i := newTestInfra("create-test")
 	if err := i.ensureSSHKeyPair(); err != nil {
 		t.Fatalf("ensureSSHKeyPair: %v", err)
 	}
 
+	// run the program against recording mocks
 	mocks := &recordingMocks{}
 	if err := pulumi.RunErr(i.pulumiProgram(), pulumi.WithMocks("gce", "test-stack", mocks)); err != nil {
 		t.Fatalf("RunErr: %v", err)
 	}
 
+	// assert one instance and one firewall
 	instances := mocks.byType(instanceTypeToken)
 	if len(instances) != 1 {
 		t.Fatalf("expected exactly 1 instance, got %d", len(instances))
@@ -186,6 +192,7 @@ func TestPulumiProgram_CreatesInstanceAndFirewall(t *testing.T) {
 		t.Fatalf("expected exactly 1 firewall, got %d", len(firewalls))
 	}
 
+	// check instance machine type and zone
 	inst := instances[0]
 	if got := inst.inputs["machineType"]; got != "e2-medium" {
 		t.Errorf("instance machineType = %v, want e2-medium", got)
@@ -194,16 +201,16 @@ func TestPulumiProgram_CreatesInstanceAndFirewall(t *testing.T) {
 		t.Errorf("instance zone = %v, want us-central1-a", got)
 	}
 
-	// firewall source ranges match the (defaulted) SSHSourceRanges
+	// check firewall source ranges and tcp/22
 	if got := firewallSourceRanges(t, firewalls[0]); !equalStringSlices(got, i.sshSourceRanges()) {
 		t.Errorf("firewall sourceRanges = %v, want %v", got, i.sshSourceRanges())
 	}
-	// firewall allows tcp/22
 	if !firewallAllowsTCP22(t, firewalls[0]) {
 		t.Errorf("firewall does not allow tcp/22: %v", firewalls[0].inputs["allows"])
 	}
 }
 
+// TestPulumiProgram_InjectsSSHKeyMetadata asserts ssh-keys metadata is user:pubkey and holds no private key.
 func TestPulumiProgram_InjectsSSHKeyMetadata(t *testing.T) {
 	i := newTestInfra("metadata-test")
 	if err := i.ensureSSHKeyPair(); err != nil {
@@ -220,6 +227,7 @@ func TestPulumiProgram_InjectsSSHKeyMetadata(t *testing.T) {
 		t.Fatalf("expected exactly 1 instance, got %d", len(instances))
 	}
 
+	// check ssh-keys prefix, public key, and no private key
 	sshKeys := instanceSSHKeysMetadata(t, instances[0])
 	wantPrefix := i.SSHUser + ":"
 	if !strings.HasPrefix(sshKeys, wantPrefix) {
@@ -228,12 +236,12 @@ func TestPulumiProgram_InjectsSSHKeyMetadata(t *testing.T) {
 	if !strings.Contains(sshKeys, strings.TrimSpace(i.sshPublicKeyAuthorized)) {
 		t.Errorf("ssh-keys metadata does not contain the generated public key")
 	}
-	// metadata must carry the PUBLIC key only, never the private PEM
 	if strings.Contains(sshKeys, "PRIVATE KEY") {
 		t.Errorf("ssh-keys metadata contains a private key: %q", sshKeys)
 	}
 }
 
+// TestPulumiProgram_DoesNotExportPrivateKey rejects a private key in any mocked resource input.
 func TestPulumiProgram_DoesNotExportPrivateKey(t *testing.T) {
 	i := newTestInfra("no-export-test")
 	if err := i.ensureSSHKeyPair(); err != nil {
@@ -248,9 +256,6 @@ func TestPulumiProgram_DoesNotExportPrivateKey(t *testing.T) {
 		t.Fatalf("RunErr: %v", err)
 	}
 
-	// the private key must never enter the Pulumi graph: scan every input of
-	// every registered resource for the PEM marker. This is strictly stronger
-	// than "not exported" because exports are derived from resource outputs.
 	for _, r := range mocks.resources {
 		if containsPrivateKey(r.inputs, i.sshPrivateKeyPEM) {
 			t.Fatalf("resource %s (%s) inputs contain the private key", r.name, r.typeToken)
@@ -258,6 +263,7 @@ func TestPulumiProgram_DoesNotExportPrivateKey(t *testing.T) {
 	}
 }
 
+// TestCaptureOutputs_MapsHostnameAndIP covers hostname and externalIP from stack outputs and empty maps.
 func TestCaptureOutputs_MapsHostnameAndIP(t *testing.T) {
 	i := newTestInfra("capture-test")
 
@@ -273,7 +279,7 @@ func TestCaptureOutputs_MapsHostnameAndIP(t *testing.T) {
 		t.Errorf("externalIP = %q, want 203.0.113.7", i.externalIP)
 	}
 
-	// missing keys leave fields empty without panic
+	// leave fields empty when the output map is empty
 	empty := newTestInfra("capture-empty")
 	empty.captureOutputs(auto.OutputMap{})
 	if empty.hostname != "" || empty.externalIP != "" {
@@ -281,6 +287,7 @@ func TestCaptureOutputs_MapsHostnameAndIP(t *testing.T) {
 	}
 }
 
+// TestCreateOutputs_SurfacesHostnameIPKey covers hostname, external IP, and PEM private key from CreateOutputs.
 func TestCreateOutputs_SurfacesHostnameIPKey(t *testing.T) {
 	i := newTestInfra("outputs-test")
 	if err := i.ensureSSHKeyPair(); err != nil {
@@ -306,6 +313,7 @@ func TestCreateOutputs_SurfacesHostnameIPKey(t *testing.T) {
 	}
 }
 
+// TestGceInfra_SatisfiesStreamableRefreshable asserts the state file path under the injected root.
 func TestGceInfra_SatisfiesStreamableRefreshable(t *testing.T) {
 	root := t.TempDir()
 	i := NewGceMachineInfra("x", provider.WithStateDirRoot(root))
@@ -323,6 +331,7 @@ func TestGceInfra_SatisfiesStreamableRefreshable(t *testing.T) {
 	}
 }
 
+// TestNewGceMachineInfra_BuildsWorkspaceWithStateDirRoot covers distinct state paths under one root for two names.
 func TestNewGceMachineInfra_BuildsWorkspaceWithStateDirRoot(t *testing.T) {
 	root := t.TempDir()
 	a := NewGceMachineInfra("alpha", provider.WithStateDirRoot(root))
@@ -344,16 +353,15 @@ func TestNewGceMachineInfra_BuildsWorkspaceWithStateDirRoot(t *testing.T) {
 	}
 }
 
+// TestSetStackState_AppliesProjectDefaults covers SetStackState filling the gce project name on a literal workspace.
 func TestSetStackState_AppliesProjectDefaults(t *testing.T) {
 	requirePulumi(t)
 	root := t.TempDir()
-	// construct with an EMPTY ProjectName to prove the wrapper applies defaults
 	i := &GceMachineInfra{
 		PulumiWorkspace: provider.PulumiWorkspace{
 			RuntimeInstanceName: "defaults",
 		},
 	}
-	// inject the state-dir root onto the embedded workspace
 	provider.WithStateDirRoot(root)(&i.PulumiWorkspace)
 
 	blob := datatypes.JSON([]byte(`{"version":3,"checkpoint":{"stack":"gce/defaults"}}`))
@@ -361,7 +369,6 @@ func TestSetStackState_AppliesProjectDefaults(t *testing.T) {
 		t.Fatalf("SetStackState: %v", err)
 	}
 
-	// after defaults ran the path resolves under stacks/gce, not a malformed stacks//
 	path, err := i.GetStateFilePath()
 	if err != nil {
 		t.Fatalf("GetStateFilePath: %v", err)
@@ -371,13 +378,12 @@ func TestSetStackState_AppliesProjectDefaults(t *testing.T) {
 	}
 }
 
+// TestStackStateRoundTrip_CheckpointFormat asserts checkpoint JSON writes and reads back unchanged with no leftover temp file.
 func TestStackStateRoundTrip_CheckpointFormat(t *testing.T) {
 	requirePulumi(t)
 	root := t.TempDir()
 	i := NewGceMachineInfra("roundtrip", provider.WithStateDirRoot(root))
 
-	// checkpoint-format blob: no top-level "deployment" key, so SetStackState
-	// takes the direct atomic-write branch rather than stack.Import
 	blob := datatypes.JSON([]byte(`{"version":3,"checkpoint":{"stack":"gce/roundtrip","latest":{}}}`))
 	if err := i.SetStackState(&blob); err != nil {
 		t.Fatalf("SetStackState: %v", err)
@@ -394,7 +400,6 @@ func TestStackStateRoundTrip_CheckpointFormat(t *testing.T) {
 		t.Errorf("read-back state != written state\n got: %s\nwant: %s", *readBack, blob)
 	}
 
-	// the .tmp file from the atomic write must be gone
 	path, err := i.GetStateFilePath()
 	if err != nil {
 		t.Fatalf("GetStateFilePath: %v", err)
@@ -404,14 +409,13 @@ func TestStackStateRoundTrip_CheckpointFormat(t *testing.T) {
 	}
 }
 
+// TestSSHSourceRanges_DefaultAndOverride covers the 0.0.0.0/0 default and a firewall that uses an override.
 func TestSSHSourceRanges_DefaultAndOverride(t *testing.T) {
-	// empty field defaults to the world-open range
 	def := newTestInfra("default-ranges")
 	if got := def.sshSourceRanges(); !equalStringSlices(got, []string{"0.0.0.0/0"}) {
 		t.Errorf("default sshSourceRanges = %v, want [0.0.0.0/0]", got)
 	}
 
-	// an explicit override reaches the firewall args under mocks
 	override := newTestInfra("override-ranges")
 	override.SSHSourceRanges = []string{"10.0.0.0/8"}
 	if err := override.ensureSSHKeyPair(); err != nil {
@@ -430,6 +434,7 @@ func TestSSHSourceRanges_DefaultAndOverride(t *testing.T) {
 	}
 }
 
+// TestDeployInfra_MissingRequiredFields rejects each required field when it is empty.
 func TestDeployInfra_MissingRequiredFields(t *testing.T) {
 	base := func() *GceMachineInfra {
 		return &GceMachineInfra{
@@ -470,21 +475,17 @@ func TestDeployInfra_MissingRequiredFields(t *testing.T) {
 	}
 }
 
-// TestDeployInfra_ReportsAllMissingFields asserts the validation collects every
-// missing required field into one error rather than stopping at the first.
+// TestDeployInfra_ReportsAllMissingFields asserts one error names every empty required field.
 func TestDeployInfra_ReportsAllMissingFields(t *testing.T) {
-	// build an infra missing several required fields at once
 	i := &GceMachineInfra{
 		PulumiWorkspace: provider.PulumiWorkspace{RuntimeInstanceName: "validate"},
 		ProjectID:       "p",
 		ImageID:         "img",
 	}
-	// validation runs before any cloud call and returns a single error
 	err := i.DeployInfra()
 	if err == nil {
 		t.Fatal("expected error for multiple missing fields, got nil")
 	}
-	// the one error names every field left empty, not just the first
 	for _, field := range []string{"Zone", "MachineType", "SSHUser", "NetworkID"} {
 		if !strings.Contains(err.Error(), field) {
 			t.Errorf("error %q does not name missing field %q", err.Error(), field)
@@ -492,14 +493,13 @@ func TestDeployInfra_ReportsAllMissingFields(t *testing.T) {
 	}
 }
 
-// ---- test helpers ----
-
+// exists reports whether path is present on disk.
 func exists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
 }
 
-// firewallSourceRanges extracts the sourceRanges input as a []string.
+// firewallSourceRanges returns the firewall sourceRanges input as strings.
 func firewallSourceRanges(t *testing.T, r recordedResource) []string {
 	t.Helper()
 	raw, ok := r.inputs["sourceRanges"]
@@ -521,7 +521,7 @@ func firewallSourceRanges(t *testing.T, r recordedResource) []string {
 	return out
 }
 
-// firewallAllowsTCP22 reports whether the firewall allows tcp on port 22.
+// firewallAllowsTCP22 reports whether the firewall allows tcp port 22.
 func firewallAllowsTCP22(t *testing.T, r recordedResource) bool {
 	t.Helper()
 	raw, ok := r.inputs["allows"]
@@ -553,7 +553,7 @@ func firewallAllowsTCP22(t *testing.T, r recordedResource) bool {
 	return false
 }
 
-// instanceSSHKeysMetadata extracts metadata["ssh-keys"] from an instance input.
+// instanceSSHKeysMetadata returns the instance ssh-keys metadata string.
 func instanceSSHKeysMetadata(t *testing.T, r recordedResource) string {
 	t.Helper()
 	metaRaw, ok := r.inputs["metadata"]
@@ -575,13 +575,12 @@ func instanceSSHKeysMetadata(t *testing.T, r recordedResource) string {
 	return s
 }
 
-// containsPrivateKey reports whether any value in the nested input map contains
-// the private key PEM or the PEM marker.
+// containsPrivateKey reports whether inputs hold the PEM or a PRIVATE KEY marker.
 func containsPrivateKey(inputs map[string]any, privPEM string) bool {
 	return valueContains(inputs, privPEM) || valueContains(inputs, "PRIVATE KEY")
 }
 
-// valueContains recursively searches a JSON-like value for a substring.
+// valueContains walks strings, maps, and slices for needle.
 func valueContains(v any, needle string) bool {
 	switch t := v.(type) {
 	case string:
@@ -602,6 +601,7 @@ func valueContains(v any, needle string) bool {
 	return false
 }
 
+// equalStringSlices reports whether a and b have the same strings in the same order.
 func equalStringSlices(a, b []string) bool {
 	if len(a) != len(b) {
 		return false

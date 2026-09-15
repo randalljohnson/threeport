@@ -1,11 +1,8 @@
-// Package machine provides a generic, reusable Google Compute Engine (GCE) VM
-// infrastructure provider. It implements the threeport infra provider lifecycle
-// contract by embedding the core Pulumi workspace and provisioning a single VM
-// with an SSH-allow firewall rule and an injected SSH public key.
-//
-// This package only depends on the core provider package; the API type,
-// lifecycle adapter, codegen, and controller wiring that consume these outputs
-// live elsewhere.
+// Package machine provisions a Google Compute Engine VM for a Threeport
+// machine runtime through Pulumi. The stack creates an SSH firewall rule
+// and an instance with an ephemeral public IP, then captures hostname and
+// NAT IP as outputs. SSH keys are generated in process. The public key is
+// written to instance metadata. The private key is not a stack output.
 package machine
 
 import (
@@ -28,90 +25,70 @@ import (
 	gcpauth "github.com/threeport/threeport/pkg/auth/v0"
 )
 
-// compile-time guarantees that GceMachineInfra satisfies the infra provider
-// lifecycle contract plus the optional streaming and refresh seams. The three
-// optional methods (GetStateFilePath, ReadStateFile, RefreshStack) come from
-// the embedded PulumiWorkspace for free.
+// compile-time check that GceMachineInfra satisfies InfraProvider.
+// StreamableProvider and RefreshableProvider come from the embedded workspace.
 var (
 	_ provider.InfraProvider       = (*GceMachineInfra)(nil)
 	_ provider.StreamableProvider  = (*GceMachineInfra)(nil)
 	_ provider.RefreshableProvider = (*GceMachineInfra)(nil)
 )
 
-// defaultSSHSourceRange is the initial default ingress range for the SSH
-// firewall rule when SSHSourceRanges is left empty. It is world-open; callers
-// should narrow it for production by setting SSHSourceRanges explicitly.
+// defaultSSHSourceRange is the firewall source CIDR when SSHSourceRanges is empty.
 const defaultSSHSourceRange = "0.0.0.0/0"
 
-// GceMachineInfra provisions a single Google Compute Engine VM via Pulumi and
-// implements the threeport infra provider lifecycle contract. It embeds the
-// core PulumiWorkspace by value, mirroring the bare embed in the GKE provider,
-// so the workspace, stack, and state-management helpers are inherited directly.
+// GceMachineInfra is the Google Compute Engine backend for a machine runtime.
+// It embeds PulumiWorkspace for stack, state, and automation API helpers.
 type GceMachineInfra struct {
-	// PulumiWorkspace provides workspace, stack, state, and automation API
-	// helpers. Embedded by value so RuntimeInstanceName/ProjectName and the
-	// inherited methods are reachable on the receiver.
 	provider.PulumiWorkspace
 
-	// ProjectID is the Google Cloud project where the VM is provisioned.
+	// The Google Cloud project ID where the VM is provisioned
 	ProjectID string
 
-	// Region is the Google Cloud region where the VM is provisioned.
+	// The Google Cloud region written to Pulumi stack config
 	Region string
 
-	// Zone is the Google Cloud zone where the VM is placed.
+	// The Google Cloud zone where the VM is created
 	Zone string
 
-	// MachineType is the GCE machine type for the VM (e.g. e2-medium).
+	// The GCE machine type, e.g. e2-medium
 	MachineType string
 
-	// ImageID is the boot image the VM disk is initialized from.
+	// The boot disk image, e.g. debian-cloud/debian-12
 	ImageID string
 
-	// NetworkID is the network or selfLink the VM and firewall attach to.
+	// The VPC network self-link or name the instance attaches to
 	NetworkID string
 
-	// ServiceAccountCredentials contains the JSON key for a GCP service
-	// account, used when running outside GCP where Workload Identity is
-	// not available.
+	// The JSON key for a GCP service account when ADC is not already valid
 	ServiceAccountCredentials string
 
-	// SSHUser is the username the generated public key is authorized for in
-	// the instance ssh-keys metadata.
+	// The Linux user that receives the generated SSH public key
 	SSHUser string
 
-	// SSHSourceRanges scopes the SSH firewall ingress. When empty it defaults
-	// to the world-open range; callers should narrow it for production.
+	// The CIDR ranges allowed to reach TCP 22; empty uses 0.0.0.0/0
 	SSHSourceRanges []string
 
-	// sshPrivateKeyPEM holds the generated RSA private key in PKCS1 PEM form.
-	// It is surfaced only through CreateOutputs and is never exported into
-	// Pulumi state nor written into instance metadata.
+	// The generated RSA private key in PEM form
 	sshPrivateKeyPEM string
 
-	// sshPublicKeyAuthorized holds the generated public key in authorized-keys
-	// form. This is the only key material injected into instance metadata.
+	// The generated SSH public key in authorized_keys form
 	sshPublicKeyAuthorized string
 
-	// hostname is captured from the Pulumi up outputs after a successful deploy.
+	// The instance name exported from the stack
 	hostname string
 
-	// externalIP is captured from the Pulumi up outputs after a successful deploy.
+	// The ephemeral public IPv4 exported from the stack
 	externalIP string
 }
 
-// NewGceMachineInfra builds a GCE machine provider for the named runtime
-// instance, constructing the embedded workspace under the fixed "gce" pulumi
-// project. Tests pass provider.WithStateDirRoot(t.TempDir()) to isolate state;
-// production callers pass no options and get the default runtime state root.
+// NewGceMachineInfra returns a GCE machine provider for the named runtime instance.
 func NewGceMachineInfra(name string, opts ...provider.PulumiWorkspaceOption) *GceMachineInfra {
 	return &GceMachineInfra{
 		PulumiWorkspace: *provider.NewPulumiWorkspace(name, "gce", opts...),
 	}
 }
 
-// ensurePulumiProjectDefaults sets Pulumi project metadata when not provided by
-// callers, mirroring the GKE provider's defaults shape.
+// ensurePulumiProjectDefaults sets Pulumi project metadata when not provided by callers.
 func (i *GceMachineInfra) ensurePulumiProjectDefaults() {
 	if i.ProjectName == "" {
 		i.ProjectName = "gce"
@@ -121,7 +98,7 @@ func (i *GceMachineInfra) ensurePulumiProjectDefaults() {
 	}
 }
 
-// syncStackConfigs updates the stack config keys from the current ProjectID and Region.
+// syncStackConfigs updates stack config keys from the current ProjectID and Region.
 func (i *GceMachineInfra) syncStackConfigs() {
 	i.StackConfigs = map[string]string{
 		"gcp:project": i.ProjectID,
@@ -129,8 +106,7 @@ func (i *GceMachineInfra) syncStackConfigs() {
 	}
 }
 
-// sshSourceRanges returns the configured SSH ingress ranges, falling back to the
-// world-open default when the field is empty.
+// sshSourceRanges returns SSHSourceRanges, or the open CIDR when that slice is empty.
 func (i *GceMachineInfra) sshSourceRanges() []string {
 	if len(i.SSHSourceRanges) == 0 {
 		return []string{defaultSSHSourceRange}
@@ -138,12 +114,8 @@ func (i *GceMachineInfra) sshSourceRanges() []string {
 	return i.SSHSourceRanges
 }
 
-// validateRequiredFields returns a descriptive error naming the first required
-// field that is empty, so a misconfigured provider fails fast before any auth
-// or cloud call rather than mid-deploy inside the Pulumi engine.
+// validateRequiredFields reports every empty required field in one error.
 func (i *GceMachineInfra) validateRequiredFields() error {
-	// collect every missing field so the caller fixes them in one pass rather
-	// than rediscovering them one failed deploy at a time
 	var missing []string
 	if i.RuntimeInstanceName == "" {
 		missing = append(missing, "RuntimeInstanceName")
@@ -172,58 +144,62 @@ func (i *GceMachineInfra) validateRequiredFields() error {
 	return nil
 }
 
-// DeployInfra creates the GCE VM infrastructure. It satisfies InfraProvider.
+// DeployInfra creates the GCE VM and SSH firewall. It satisfies InfraProvider.
 func (i *GceMachineInfra) DeployInfra() error {
 	return i.createInfra()
 }
 
-// createInfra validates configuration, ensures auth and an SSH key pair, then
-// drives the Pulumi up and captures the resulting outputs onto the receiver.
+// createInfra validates config, authenticates to GCP, generates SSH keys, and runs the stack.
 func (i *GceMachineInfra) createInfra() error {
-	// validate required fields first so a misconfigured provider fails before
-	// any auth or cloud call, with an error naming the missing field
+	// validate required fields
 	if err := i.validateRequiredFields(); err != nil {
 		return fmt.Errorf("invalid GCE machine configuration: %w", err)
 	}
 
+	// ensure GCP authentication is in place
 	if err := gcpauth.EnsureGCPAuth(i.ServiceAccountCredentials); err != nil {
 		return fmt.Errorf("failed to ensure GCP authentication: %w", err)
 	}
 
-	// generate the SSH key pair outside the Pulumi program so the same key
-	// material is used across preview and update, avoiding nondeterministic
-	// diffs and metadata churn on every requeue
+	// generate SSH keys outside the Pulumi program so the program is deterministic
 	if err := i.ensureSSHKeyPair(); err != nil {
 		return fmt.Errorf("failed to ensure SSH key pair: %w", err)
 	}
 
+	// set Pulumi project defaults and stack config
 	i.ensurePulumiProjectDefaults()
 	i.syncStackConfigs()
 
+	// set up Pulumi workspace and get stack
 	stack, err := i.SetupStack(i.pulumiProgram())
 	if err != nil {
 		return fmt.Errorf("failed to set up Pulumi workspace: %w", err)
 	}
 
+	// deploy the stack
 	upResult, err := i.RunUp(context.Background(), stack)
 	if err != nil {
 		return fmt.Errorf("failed to deploy stack: %w", err)
 	}
 
+	// capture hostname and external IP from stack outputs
 	i.captureOutputs(upResult.Outputs)
 
 	return nil
 }
 
-// DestroyInfra tears down the GCE VM infrastructure. It satisfies InfraProvider.
+// DestroyInfra tears down the GCE VM and SSH firewall. It satisfies InfraProvider.
 func (i *GceMachineInfra) DestroyInfra() error {
+	// ensure GCP authentication is in place
 	if err := gcpauth.EnsureGCPAuth(i.ServiceAccountCredentials); err != nil {
 		return fmt.Errorf("failed to ensure GCP authentication: %w", err)
 	}
 
+	// set Pulumi project defaults and stack config
 	i.ensurePulumiProjectDefaults()
 	i.syncStackConfigs()
 
+	// destroy the Pulumi stack
 	if err := i.DestroyStack(); err != nil {
 		return fmt.Errorf("failed to destroy Pulumi stack: %w", err)
 	}
@@ -231,27 +207,24 @@ func (i *GceMachineInfra) DestroyInfra() error {
 	return nil
 }
 
-// GetStackState returns the state of the GCE stack as a JSON object, applying
-// project defaults and stack configs before delegating to the embedded method.
+// GetStackState returns the current stack state. It fills project defaults first.
 func (i *GceMachineInfra) GetStackState() (*datatypes.JSON, error) {
 	i.ensurePulumiProjectDefaults()
 	i.syncStackConfigs()
 	return i.PulumiWorkspace.GetStackState()
 }
 
-// SetStackState restores Pulumi state from a JSON object, applying project
-// defaults and stack configs before delegating to the embedded method.
+// SetStackState restores stack state from JSON. It fills project defaults first.
 func (i *GceMachineInfra) SetStackState(state *datatypes.JSON) error {
 	i.ensurePulumiProjectDefaults()
 	i.syncStackConfigs()
 	return i.PulumiWorkspace.SetStackState(state)
 }
 
-// pulumiProgram defines the Pulumi resources for the GCE VM stack: a firewall
-// rule allowing SSH ingress and the VM instance itself, with the generated
-// public key injected into the instance ssh-keys metadata.
+// pulumiProgram defines the Pulumi resources for the GCE VM stack.
 func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 	return func(pctx *pulumi.Context) error {
+		// create GCP provider
 		gcpProvider, err := gcp.NewProvider(pctx, "gcp-provider", &gcp.ProviderArgs{
 			Project: pulumi.String(i.ProjectID),
 			Region:  pulumi.String(i.Region),
@@ -260,7 +233,7 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 			return fmt.Errorf("failed to create GCP provider: %w", err)
 		}
 
-		// SSH-allow firewall rule scoped to the configured source ranges
+		// create SSH firewall rule
 		sourceRanges := pulumi.ToStringArray(i.sshSourceRanges())
 		_, err = compute.NewFirewall(pctx, fmt.Sprintf("%s-ssh", i.RuntimeInstanceName), &compute.FirewallArgs{
 			Name:    pulumi.String(fmt.Sprintf("%s-ssh", i.RuntimeInstanceName)),
@@ -277,9 +250,7 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 			return fmt.Errorf("failed to create SSH firewall rule: %w", err)
 		}
 
-		// VM instance with an ephemeral external IP (empty access config) and
-		// the generated PUBLIC key injected into ssh-keys metadata. The
-		// authorized-key marshal ends with a newline, so trim it.
+		// create GCE instance with an ephemeral public IP
 		instance, err := compute.NewInstance(pctx, i.RuntimeInstanceName, &compute.InstanceArgs{
 			Name:        pulumi.String(i.RuntimeInstanceName),
 			MachineType: pulumi.String(i.MachineType),
@@ -301,6 +272,7 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 				"ssh-keys": pulumi.String(fmt.Sprintf(
 					"%s:%s",
 					i.SSHUser,
+					// strip trailing newline from authorized_keys marshal
 					strings.TrimSpace(i.sshPublicKeyAuthorized),
 				)),
 			},
@@ -309,8 +281,7 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 			return fmt.Errorf("failed to create GCE instance: %w", err)
 		}
 
-		// export only the hostname and external IP. The private key must NEVER
-		// be exported: exports land in the streamed and persisted state file.
+		// export hostname and NAT IP; keep the private key off stack outputs
 		pctx.Export("hostname", instance.Name)
 		pctx.Export("externalIP", instance.NetworkInterfaces.
 			Index(pulumi.Int(0)).
@@ -322,14 +293,15 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 	}
 }
 
-// generateSSHKeyPair generates a 2048-bit RSA key pair, returning the private
-// key in PKCS1 PEM form and the public key in authorized-keys form.
+// generateSSHKeyPair returns a PKCS1 PEM private key and an authorized_keys public key.
 func generateSSHKeyPair() (privPEM, pubAuthorized string, err error) {
+	// generate RSA key
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate RSA key: %w", err)
 	}
 
+	// encode private key to PEM
 	privDER := x509.MarshalPKCS1PrivateKey(key)
 	privPEMBytes := pem.EncodeToMemory(&pem.Block{
 		Type:  "RSA PRIVATE KEY",
@@ -339,6 +311,7 @@ func generateSSHKeyPair() (privPEM, pubAuthorized string, err error) {
 		return "", "", fmt.Errorf("failed to encode private key to PEM")
 	}
 
+	// marshal SSH public key
 	pub, err := ssh.NewPublicKey(&key.PublicKey)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to build SSH public key: %w", err)
@@ -348,8 +321,7 @@ func generateSSHKeyPair() (privPEM, pubAuthorized string, err error) {
 	return string(privPEMBytes), string(pubAuthorizedBytes), nil
 }
 
-// ensureSSHKeyPair generates a key pair only when the public key is empty, so
-// re-deploys driven by requeue reuse the stored key material idempotently.
+// ensureSSHKeyPair generates an SSH key pair when sshPublicKeyAuthorized is empty.
 func (i *GceMachineInfra) ensureSSHKeyPair() error {
 	if i.sshPublicKeyAuthorized != "" {
 		return nil
@@ -365,8 +337,7 @@ func (i *GceMachineInfra) ensureSSHKeyPair() error {
 	return nil
 }
 
-// captureOutputs maps the hostname and externalIP entries from the Pulumi up
-// outputs onto the receiver, tolerating missing keys rather than panicking.
+// captureOutputs copies hostname and externalIP from a Pulumi up result.
 func (i *GceMachineInfra) captureOutputs(outputs auto.OutputMap) {
 	if v, ok := outputs["hostname"]; ok {
 		if s, ok := v.Value.(string); ok {
@@ -380,17 +351,13 @@ func (i *GceMachineInfra) captureOutputs(outputs auto.OutputMap) {
 	}
 }
 
-// CreateOutputs returns the captured hostname and external IP together with the
-// generated SSH private key. It is the exported accessor a downstream adapter
-// uses to persist create outputs, and the sole surface that exposes the private
-// key, which is never exported into Pulumi state.
+// CreateOutputs returns the instance hostname, public IP, and SSH private key.
+// The private key is never written to Pulumi state.
 func (i *GceMachineInfra) CreateOutputs() (hostname, externalIP, sshPrivateKey string) {
 	return i.hostname, i.externalIP, i.sshPrivateKeyPEM
 }
 
-// SetCreateOutputs sets the values that CreateOutputs() returns. Use it to
-// populate a provider with previously persisted outputs, or to supply known
-// values in tests that exercise callers of CreateOutputs().
+// SetCreateOutputs stores hostname, public IP, and SSH private key on the provider.
 func (i *GceMachineInfra) SetCreateOutputs(hostname, externalIP, sshPrivateKey string) {
 	i.hostname = hostname
 	i.externalIP = externalIP

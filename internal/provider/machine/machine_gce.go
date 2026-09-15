@@ -192,6 +192,7 @@ func NewGceMachineInfra(name string, opts ...provider.PulumiWorkspaceOption) *Gc
 
 // ensurePulumiProjectDefaults sets Pulumi project metadata when not provided by callers.
 func (i *GceMachineInfra) ensurePulumiProjectDefaults() {
+	// set project name and description when callers left them empty
 	if i.ProjectName == "" {
 		i.ProjectName = "gce"
 	}
@@ -202,9 +203,16 @@ func (i *GceMachineInfra) ensurePulumiProjectDefaults() {
 
 // syncStackConfigs updates stack config keys from the current ProjectID and Region.
 func (i *GceMachineInfra) syncStackConfigs() {
+	// fill gcp:region from the zone when Region is empty
+	region := i.Region
+	if region == "" {
+		if idx := strings.LastIndex(i.Zone, "-"); idx > 0 {
+			region = i.Zone[:idx]
+		}
+	}
 	i.StackConfigs = map[string]string{
 		"gcp:project": i.ProjectID,
-		"gcp:region":  i.Region,
+		"gcp:region":  region,
 	}
 }
 
@@ -214,6 +222,7 @@ func (i *GceMachineInfra) syncStackConfigs() {
 // NetworkCIDR are mutually exclusive: exactly one must be set so the program
 // either attaches to a pre-existing network or creates a new one, never both.
 func (i *GceMachineInfra) validateRequiredFields() error {
+	// collect every empty required field
 	var missing []string
 	if i.RuntimeInstanceName == "" {
 		missing = append(missing, "RuntimeInstanceName")
@@ -285,6 +294,9 @@ func (i *GceMachineInfra) createInfra() error {
 
 	// capture hostname and external IP from stack outputs
 	i.captureOutputs(upResult.Outputs)
+	if i.hostname == "" || i.externalIP == "" {
+		return errors.New("pulumi stack outputs missing hostname or externalIP")
+	}
 
 	// assert the VM actually exists in GCP so a pulumi program that skipped
 	// instance creation cannot leak an unbacked create-success up to the
@@ -338,6 +350,7 @@ func (i *GceMachineInfra) DestroyInfra() error {
 
 // GetStackState returns the current stack state. It fills project defaults first.
 func (i *GceMachineInfra) GetStackState() (*datatypes.JSON, error) {
+	// fill project defaults and stack config before reading state
 	i.ensurePulumiProjectDefaults()
 	i.syncStackConfigs()
 	return i.PulumiWorkspace.GetStackState()
@@ -345,6 +358,7 @@ func (i *GceMachineInfra) GetStackState() (*datatypes.JSON, error) {
 
 // SetStackState restores stack state from JSON. It fills project defaults first.
 func (i *GceMachineInfra) SetStackState(state *datatypes.JSON) error {
+	// fill project defaults and stack config before writing state
 	i.ensurePulumiProjectDefaults()
 	i.syncStackConfigs()
 	return i.PulumiWorkspace.SetStackState(state)
@@ -677,12 +691,24 @@ func generateSSHKeyPair() (privPEM, pubAuthorized string, err error) {
 	return string(privPEMBytes), string(pubAuthorizedBytes), nil
 }
 
-// ensureSSHKeyPair generates an SSH key pair when sshPublicKeyAuthorized is empty.
+// ensureSSHKeyPair keeps a restored private key or generates a new pair.
 func (i *GceMachineInfra) ensureSSHKeyPair() error {
+	// keep a restored private key; derive the public key when metadata is empty
+	if i.sshPrivateKeyPEM != "" {
+		if i.sshPublicKeyAuthorized == "" {
+			pub, err := publicKeyFromPrivatePEM(i.sshPrivateKeyPEM)
+			if err != nil {
+				return err
+			}
+			i.sshPublicKeyAuthorized = pub
+		}
+		return nil
+	}
 	if i.sshPublicKeyAuthorized != "" {
 		return nil
 	}
 
+	// generate a new pair
 	priv, pub, err := generateSSHKeyPair()
 	if err != nil {
 		return err
@@ -700,6 +726,7 @@ func (i *GceMachineInfra) ensureSSHKeyPair() error {
 // instance; each is wrapped in a single-entry slice so the inventory shape
 // generalizes to a future multi-interface program without changing the JSON.
 func (i *GceMachineInfra) captureOutputs(outputs auto.OutputMap) {
+	// copy hostname and NAT IP when the output values are strings
 	if v, ok := outputs["hostname"]; ok {
 		if s, ok := v.Value.(string); ok {
 			i.hostname = s
@@ -777,6 +804,7 @@ func (i *GceMachineInfra) CreateOutputs() (hostname, externalIP, sshPrivateKey s
 
 // SetCreateOutputs stores hostname, public IP, and SSH private key on the provider.
 func (i *GceMachineInfra) SetCreateOutputs(hostname, externalIP, sshPrivateKey string) {
+	// store hostname, public IP, and private key for a later deploy
 	i.hostname = hostname
 	i.externalIP = externalIP
 	i.sshPrivateKeyPEM = sshPrivateKey

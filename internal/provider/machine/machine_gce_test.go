@@ -226,6 +226,12 @@ func TestPulumiProgram_CreatesInstanceAndFirewall(t *testing.T) {
 	if !firewallAllowsTCP22(t, firewalls[0]) {
 		t.Errorf("firewall does not allow tcp/22: %v", firewalls[0].inputs["allows"])
 	}
+	if got := stringSliceInput(t, firewalls[0].inputs["targetTags"]); !equalStringSlices(got, []string{i.RuntimeInstanceName}) {
+		t.Errorf("firewall targetTags = %v, want [%s]", got, i.RuntimeInstanceName)
+	}
+	if got := stringSliceInput(t, inst.inputs["tags"]); !equalStringSlices(got, []string{i.RuntimeInstanceName}) {
+		t.Errorf("instance tags = %v, want [%s]", got, i.RuntimeInstanceName)
+	}
 }
 
 // TestPulumiProgram_InjectsSSHKeyMetadata asserts ssh-keys metadata is user:pubkey and holds no private key.
@@ -722,15 +728,21 @@ func firewallSourceRanges(t *testing.T, r recordedResource) []string {
 	if !ok {
 		t.Fatal("firewall has no sourceRanges input")
 	}
+	return stringSliceInput(t, raw)
+}
+
+// stringSliceInput converts a Pulumi string-array input to []string.
+func stringSliceInput(t *testing.T, raw any) []string {
+	t.Helper()
 	items, ok := raw.([]any)
 	if !ok {
-		t.Fatalf("sourceRanges is not a slice: %T", raw)
+		t.Fatalf("input is not a slice: %T", raw)
 	}
 	out := make([]string, 0, len(items))
 	for _, it := range items {
 		s, ok := it.(string)
 		if !ok {
-			t.Fatalf("sourceRanges entry is not a string: %T", it)
+			t.Fatalf("slice entry is not a string: %T", it)
 		}
 		out = append(out, s)
 	}

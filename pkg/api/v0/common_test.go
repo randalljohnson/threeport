@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // TestReconciliationUpdateNotifiable covers when an update notifies the controller.
@@ -120,21 +122,21 @@ func TestChangeDetection(t *testing.T) {
 
 	// check unset to set CreationConfirmed
 	noConfirm := Reconciliation{
-		Reconciled:           ptrBool(true),
-		CreationAcknowledged: ptrTime(instant),
+		Reconciled:           util.Ptr(true),
+		CreationAcknowledged: util.Ptr(instant),
 	}
 	withConfirm := Reconciliation{
-		Reconciled:           ptrBool(true),
-		CreationAcknowledged: ptrTime(instant),
-		CreationConfirmed:    ptrTime(instant),
+		Reconciled:           util.Ptr(true),
+		CreationAcknowledged: util.Ptr(instant),
+		CreationConfirmed:    util.Ptr(instant),
 	}
 	if got := ReconciliationStateChanged(noConfirm, withConfirm); !got {
 		t.Errorf("ReconciliationStateChanged(unset -> set CreationConfirmed) = false, want true")
 	}
 
 	// check a Reconciled flip
-	unreconciled := Reconciliation{Reconciled: ptrBool(false)}
-	reconciled := Reconciliation{Reconciled: ptrBool(true)}
+	unreconciled := Reconciliation{Reconciled: util.Ptr(false)}
+	reconciled := Reconciliation{Reconciled: util.Ptr(true)}
 	if got := ReconciliationStateChanged(unreconciled, reconciled); !got {
 		t.Errorf("ReconciliationStateChanged(Reconciled flip) = false, want true")
 	}
@@ -153,10 +155,5 @@ func makeReconciliation(
 		DeletionScheduled:    ptrTime(deletionScheduled),
 		DeletionAcknowledged: ptrTime(deletionAck),
 		DeletionConfirmed:    ptrTime(deletionConfirmed),
-		DeletionFailed:       ptrBool(deletionFailed),
-	}
+		DeletionFailed:       ptrBool(deletionFailed),	}
 }
-
-func ptrBool(b bool) *bool { return &b }
-
-func ptrTime(t time.Time) *time.Time { return &t }

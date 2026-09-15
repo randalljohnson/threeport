@@ -401,7 +401,7 @@ func TestMachineWorkloadInstanceCreated_ScriptFails(t *testing.T) {
 
 	reconciled := f.patchedReconciled()
 	require.Len(t, reconciled, 1)
-	assert.Nil(t, reconciled[0], "failed create must leave Reconciled unset in the patch")
+	assert.False(t, *reconciled[0], "failed create must patch Reconciled=false")
 
 	var errWithEvent *tp_errors.ErrWithEvent
 	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")
@@ -468,7 +468,7 @@ func TestMachineWorkloadInstanceUpdated_ScriptFails(t *testing.T) {
 
 	reconciled := f.patchedReconciled()
 	require.Len(t, reconciled, 1)
-	assert.Nil(t, reconciled[0], "failed update must leave Reconciled unset in the patch")
+	assert.False(t, *reconciled[0], "failed update must patch Reconciled=false")
 
 	var errWithEvent *tp_errors.ErrWithEvent
 	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")

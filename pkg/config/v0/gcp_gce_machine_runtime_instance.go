@@ -14,11 +14,6 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// gcePendingHostname is the placeholder hostname stored on the married machine
-// runtime instance at create time. The GCE machine runtime reconciler overwrites
-// it with the VM external IP once provisioning completes.
-const gcePendingHostname = "pending"
-
 // gcePendingSSHKey is the placeholder SSH key stored on the married machine
 // runtime instance at create time. The GCE machine runtime reconciler overwrites
 // it with the generated key once the VM is provisioned.
@@ -130,7 +125,8 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Get(
 				)
 			}
 			machineRuntimeInstance = &MachineRuntimeInstanceValues{
-				Name: machineRuntimeInstanceObj.Name,
+				Name:     machineRuntimeInstanceObj.Name,
+				Hostname: machineRuntimeInstanceObj.Hostname,
 			}
 			networkID = machineRuntimeInstanceObj.NetworkID
 		}
@@ -186,10 +182,6 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Create(
 		Instance: api_v0.Instance{
 			Name: gcpGceMachineRuntimeInstanceValues.Name,
 		},
-		Reconciliation: api_v0.Reconciliation{
-			Reconciled: util.Ptr(true),
-		},
-		Hostname:                   util.Ptr(gcePendingHostname),
 		SSHUser:                    gcpGceMachineRuntimeInstanceValues.SSHUser,
 		SSHKey:                     util.Ptr(gcePendingSSHKey),
 		Region:                     gcpGceMachineRuntimeInstanceValues.Region,

@@ -92,6 +92,9 @@ func (g *GcpGceMachineRuntimeDefinitionConfig) Create(
 		Definition: api_v0.Definition{
 			Name: gcpGceMachineRuntimeDefinitionValues.Name,
 		},
+		Reconciliation: api_v0.Reconciliation{
+			Reconciled: util.Ptr(true),
+		},
 		InfraProvider: util.Ptr("gce"),
 		MachineType:   gcpGceMachineRuntimeDefinitionValues.MachineType,
 		ImageID:       gcpGceMachineRuntimeDefinitionValues.ImageID,

@@ -10,7 +10,7 @@ type MachineRuntimeDefinition struct {
 	Reconciliation `mapstructure:",squash"`
 
 	// The infrastructure provider that provisions machines from this definition
-	InfraProvider *string `json:",omitempty" validate:"optional"`
+	InfraProvider *string `validate:"optional"`
 
 	// The provider account name that selects which account the machine is
 	// provisioned on, empty falling back to the default provider account
@@ -23,10 +23,10 @@ type MachineRuntimeDefinition struct {
 	MachineProfile *string `json:",omitempty" validate:"optional" gorm:"default:Balanced"`
 
 	// The provider-specific machine type
-	MachineType *string `json:",omitempty" validate:"optional"`
+	MachineType *string `validate:"optional"`
 
 	// The provider image identifier used to boot the machine
-	ImageID *string `json:",omitempty" validate:"optional"`
+	ImageID *string `validate:"optional"`
 
 	// The associated machine runtime instances that are deployed from this
 	// definition.
@@ -48,10 +48,10 @@ type MachineRuntimeInstance struct {
 	// cannot be represented by two records that each drive their own
 	// reconciliation against it. The deleted_at predicate keeps
 	// soft-deleted rows out of the unique slot, so the hostname of a
-	// deleted instance is available to a new one right away. CockroachDB
-	// treats every NULL as distinct in a unique index, so any number of
-	// instances may hold no hostname while they wait on provisioning.
-	Hostname *string `validate:"optional" gorm:"uniqueIndex:idx_machine_runtime_instance_hostname,where:deleted_at IS NULL"`
+	// deleted instance is available to a new one right away. Empty and
+	// null hostnames stay out of the unique slot so two unprovisioned
+	// instances can coexist.
+	Hostname *string `validate:"optional" gorm:"uniqueIndex:idx_machine_runtime_instance_hostname,where:deleted_at IS NULL AND hostname IS NOT NULL AND hostname <> ''"`
 
 	// The SSH username for authenticating to the machine. Optional at create
 	// for the same reason as the hostname; populated once the machine is
@@ -72,16 +72,16 @@ type MachineRuntimeInstance struct {
 	HostKey *string `validate:"optional"`
 
 	// The provider region in which the machine is provisioned
-	Region *string `json:",omitempty" validate:"optional"`
+	Region *string `validate:"optional"`
 
 	// The abstract threeport location for the machine
 	Location *string `json:",omitempty" validate:"optional"`
 
 	// The provider network identifier the machine attaches to.
-	NetworkID *string `json:",omitempty" validate:"optional"`
+	NetworkID *string `validate:"optional"`
 
 	// The provider subnet identifier the machine attaches to
-	SubnetID *string `json:",omitempty" gorm:"type:text" validate:"optional"`
+	SubnetID *string `validate:"optional" gorm:"type:text"`
 
 	// IngressRules are the firewall ingress rules applied to the machine.
 	// Rules are provider-agnostic; each provider reconciler translates them
@@ -106,7 +106,7 @@ type MachineRuntimeInstance struct {
 
 	// An inventory of all provider resources backing this machine, used for
 	// crash recovery and deprovisioning.
-	ResourceInventory *datatypes.JSON `json:",omitempty" validate:"optional"`
+	ResourceInventory *datatypes.JSON `validate:"optional"`
 
 	// The machine runtime definition for this instance.  Optional because
 	// imported machines may not have an associated definition.

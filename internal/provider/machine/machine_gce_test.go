@@ -236,8 +236,8 @@ func TestPulumiProgram_CreatesInstanceAndFirewall(t *testing.T) {
 	if got := stringMapInput(t, inst.inputs["labels"]); !equalStringMaps(got, wantLabels) {
 		t.Errorf("instance labels = %v, want %v", got, wantLabels)
 	}
-	if got, ok := firewalls[0].inputs["description"].(string); !ok || got != provider.GcpOwnershipDescription(i.RuntimeInstanceName) {
-		t.Errorf("firewall description = %v, want ownership pair", firewalls[0].inputs["description"])
+	if got, ok := firewalls[0].inputs["description"].(string); !ok || !strings.Contains(got, provider.GcpOwnershipDescription(i.RuntimeInstanceName)) {
+		t.Errorf("firewall description = %v, want it to contain ownership pair", firewalls[0].inputs["description"])
 	}
 }
 

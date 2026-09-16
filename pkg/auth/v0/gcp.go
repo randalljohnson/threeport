@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -43,10 +44,22 @@ type adcCredentials struct {
 	Type         string `json:"type"`
 }
 
-// EnsureGCPAuth parses non-empty service-account JSON without writing it
-// or setting GOOGLE_APPLICATION_CREDENTIALS, otherwise accepts ambient ADC
-// or runs browser OAuth.
+// EnsureGCPAuth prepares GCP credentials for a controller-side caller and
+// never falls back to the interactive browser OAuth flow.
 func EnsureGCPAuth(serviceAccountCredentials string) error {
+	return ensureGCPAuth(serviceAccountCredentials, false)
+}
+
+// EnsureGCPAuthWithBrowser prepares GCP credentials for an interactive CLI
+// caller and falls back to browser OAuth when no ambient or service-account
+// credentials are available.
+func EnsureGCPAuthWithBrowser(serviceAccountCredentials string) error {
+	return ensureGCPAuth(serviceAccountCredentials, true)
+}
+
+// ensureGCPAuth validates service-account JSON, then ambient ADC. Non-interactive
+// callers error instead of opening a browser.
+func ensureGCPAuth(serviceAccountCredentials string, interactive bool) error {
 	ctx := context.Background()
 
 	// validate supplied service account credentials
@@ -59,7 +72,11 @@ func EnsureGCPAuth(serviceAccountCredentials string) error {
 		return nil
 	}
 
-	// fall back to browser OAuth; this path is for tptctl, not controllers
+	if !interactive {
+		return errors.New("gcp authentication unavailable: no ambient application default credentials and no service account credentials configured")
+	}
+
+	// fall back to browser OAuth for tptctl
 	util.CliOutputInfo("GCP credentials not found or expired. Initiating authentication...")
 
 	if err := performGCPOAuthFlow(ctx); err != nil {

@@ -446,7 +446,7 @@ func CreateGCPServiceAccountWithKey(projectID, accountName string) (*GCPServiceA
 	ctx := context.Background()
 
 	// Ensure GCP authentication is in place (uses browser flow if needed for CLI)
-	if err := gcpauth.EnsureGCPAuth(""); err != nil {
+	if err := gcpauth.EnsureGCPAuthWithBrowser(""); err != nil {
 		return nil, fmt.Errorf("failed to ensure GCP authentication: %w", err)
 	}
 
@@ -515,7 +515,7 @@ func DeleteGCPServiceAccountWithKey(projectID, accountName string) error {
 	ctx := context.Background()
 
 	// Ensure GCP authentication is in place (uses browser flow if needed for CLI)
-	if err := gcpauth.EnsureGCPAuth(""); err != nil {
+	if err := gcpauth.EnsureGCPAuthWithBrowser(""); err != nil {
 		return fmt.Errorf("failed to ensure GCP authentication: %w", err)
 	}
 

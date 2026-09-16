@@ -42,7 +42,7 @@ type MachineRuntimeInstance struct {
 	// The hostname or IP address used to reach the machine. Optional at
 	// create so the abstract instance can exist before the machine is
 	// provisioned; populated once the machine is reachable.
-	Hostname *string `validate:"optional"`
+	Hostname *string `validate:"optional" gorm:"uniqueIndex:idx_machine_runtime_instance_hostname,where:deleted_at IS NULL"`
 
 	// The SSH username for authenticating to the machine. Optional at create
 	// for the same reason as the hostname; populated once the machine is

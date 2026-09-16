@@ -5,14 +5,33 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 // WriteCIEnv prints KEY=value lines for a workflow GITHUB_ENV file. It always
-// prints GOFLAGS and GORELEASER_PARALLELISM. When moduleVersion is non-empty
-// it also prints MODULE_IMAGE_TAG from ResolveImageTag.
+// prints GOFLAGS and GORELEASER_PARALLELISM. When go.mod has a versioned
+// threeport dependency it also prints THREEPORT_REPO, THREEPORT_IMAGE_TAG,
+// and THREEPORT_IMAGE_NAMESPACE so module CI can pull control-plane images
+// from that pin. When moduleVersion is non-empty it also prints
+// MODULE_IMAGE_TAG from ResolveImageTag.
 func WriteCIEnv(moduleVersion string) error {
 	fmt.Printf("GOFLAGS=-p=%d\n", BuildParallelism())
 	fmt.Printf("GORELEASER_PARALLELISM=%d\n", ReleaseParallelism())
+
+	// emit the threeport pin when go.mod names a versioned module; skip a
+	// local-path replace so mage ci:env still works in a paired checkout
+	if gomod, err := os.ReadFile("go.mod"); err == nil {
+		repo, version, found, err := ParseThreeportDependency(string(gomod))
+		if err == nil && found {
+			fmt.Printf("THREEPORT_REPO=%s\n", repo)
+			fmt.Printf("THREEPORT_IMAGE_TAG=%s\n", version)
+			slash := strings.IndexByte(repo, '/')
+			if slash > 0 {
+				fmt.Printf("THREEPORT_IMAGE_NAMESPACE=ghcr.io/%s\n", repo[:slash])
+			}
+		}
+	}
+
 	if moduleVersion == "" {
 		return nil
 	}

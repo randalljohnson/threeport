@@ -66,7 +66,7 @@ jobs:
       with:
         # share host network so buildx reaches the local registry started in
         # the next step.
-        driver-opts: network=host
+        driver-opts: network=host # buildx reaches the local registry
 
     - name: Create local container registry
       run: mage dev:localRegistryUp

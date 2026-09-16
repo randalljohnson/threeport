@@ -48,7 +48,8 @@ func (g *GcpProvider) beforeUpdate(tx *gorm.DB) error {
 // beforeDelete validates the GcpProvider before delete.
 //
 // Why: a GcpProvider may not be removed while any GKE runtime instance
-// still references it. Returns 400 with the count of dependents.
+// or GCE machine runtime instance still references it. Returns 400 with
+// the count of dependents.
 func (g *GcpProvider) beforeDelete(tx *gorm.DB) error {
 	var gcpGkeKubernetesRuntimeInstances []GcpGkeKubernetesRuntimeInstance
 	if result := tx.Where(
@@ -64,6 +65,24 @@ func (g *GcpProvider) beforeDelete(tx *gorm.DB) error {
 		return util.NewBadRequestError(
 			fmt.Sprintf(
 				"gcp provider %s has related gcp gke kubernetes runtime instances - cannot be deleted",
+				*g.Name,
+			),
+		)
+	}
+
+	var gcpGceMachineRuntimeInstances []GcpGceMachineRuntimeInstance
+	if result := tx.Where(
+		&GcpGceMachineRuntimeInstance{GcpProviderID: g.ID},
+	).Find(&gcpGceMachineRuntimeInstances); result.Error != nil {
+		return fmt.Errorf(
+			"failed to query gcp gce machine runtime instances for gcp provider %s",
+			*g.Name,
+		)
+	}
+	if len(gcpGceMachineRuntimeInstances) > 0 {
+		return util.NewBadRequestError(
+			fmt.Sprintf(
+				"gcp provider %s has related gcp gce machine runtime instances - cannot be deleted",
 				*g.Name,
 			),
 		)

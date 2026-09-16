@@ -241,10 +241,19 @@ func reconcileProviderInstance(
 			gcpProvider = *provider
 		}
 
-		// map location with the GCP cloud token and hardcode zone a
-		region, err := mapping.GetProviderRegionForLocation(util.GcpProvider, *machineRuntimeInstance.Location)
-		if err != nil {
-			return 0, fmt.Errorf("failed to map threeport location to GCP region: %w", err)
+		// map location with the GCP cloud token, or use an already-set region
+		var region string
+		switch {
+		case machineRuntimeInstance.Location != nil && *machineRuntimeInstance.Location != "":
+			mapped, err := mapping.GetProviderRegionForLocation(util.GcpProvider, *machineRuntimeInstance.Location)
+			if err != nil {
+				return 0, fmt.Errorf("failed to map threeport location to GCP region: %w", err)
+			}
+			region = mapped
+		case machineRuntimeInstance.Region != nil && *machineRuntimeInstance.Region != "":
+			region = *machineRuntimeInstance.Region
+		default:
+			return 0, fmt.Errorf("failed to resolve GCP region: machine runtime instance has neither location nor region")
 		}
 		zone := region + "-a"
 
@@ -262,6 +271,10 @@ func reconcileProviderInstance(
 		}
 		gcpGceMachineRuntimeDefinition := (*gcpGceMachineRuntimeDefinitions)[0]
 
+		if machineRuntimeInstance.SSHUser == nil || *machineRuntimeInstance.SSHUser == "" {
+			return 0, fmt.Errorf("failed to create GCE machine runtime instance: ssh user is empty")
+		}
+		sshSourceRanges := []string{"0.0.0.0/0"}
 		// create GCE machine runtime instance on the default network
 		gcpGceMachineRuntimeInstance := v0.GcpGceMachineRuntimeInstance{
 			Instance: v0.Instance{
@@ -273,6 +286,8 @@ func reconcileProviderInstance(
 			MachineRuntimeInstanceID:         machineRuntimeInstance.ID,
 			GcpGceMachineRuntimeDefinitionID: gcpGceMachineRuntimeDefinition.ID,
 			NetworkID:                        util.Ptr("default"),
+			SSHUser:                          machineRuntimeInstance.SSHUser,
+			SSHSourceRanges:                  &sshSourceRanges,
 		}
 		if _, err := client.CreateGcpGceMachineRuntimeInstance(
 			r.APIClient,

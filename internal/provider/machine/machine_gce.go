@@ -423,7 +423,7 @@ func (i *GceMachineInfra) SetCreateOutputs(hostname, externalIP, sshPrivateKey s
 // its authorized-keys public form so the next deploy reuses that key.
 func (i *GceMachineInfra) SeedSSHKeyPair(sshPrivateKeyPEM string) error {
 	if sshPrivateKeyPEM == "" {
-		return fmt.Errorf("cannot seed SSH key pair from empty private key")
+		return fmt.Errorf("failed to seed ssh key pair: private key is empty")
 	}
 	signer, err := ssh.ParsePrivateKey([]byte(sshPrivateKeyPEM))
 	if err != nil {

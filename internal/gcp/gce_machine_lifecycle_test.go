@@ -1252,7 +1252,11 @@ func TestGceInstanceUpdatedAbortsWhenDeletionScheduled(t *testing.T) {
 	latest.DeletionScheduled = gcePtr(now)
 	s.gceHandleInstance(t, gceTestInstanceID, latest)
 	// BuildInfra reads the provider and definition before the deletion re-check
-	s.gceHandleProvider(t, gceTestProviderID, gceBaseProvider())
+	prov := gceBaseProvider()
+	enc, encErr := encryption.Encrypt(s.encryptionKey, "creds-json")
+	require.NoError(t, encErr)
+	prov.ServiceAccountCredentials = gcePtr(enc)
+	s.gceHandleProvider(t, gceTestProviderID, prov)
 	s.gceHandleDefinition(t, gceTestDefinitionID, gceBaseDefinition())
 
 	log := logr.Discard()

@@ -3,7 +3,7 @@ package secret
 import (
 	"fmt"
 
-	runtime "github.com/threeport/threeport/internal/kubernetes-runtime"
+	v0 "github.com/threeport/threeport/pkg/api/v0"
 	mapping "github.com/threeport/threeport/pkg/mapping/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -42,7 +42,7 @@ func (c *SecretInstanceConfig) getExternalSecret() *unstructured.Unstructured {
 
 // getSecretStore returns a new SecretStore object
 func (c *SecretInstanceConfig) getSecretStore() (*unstructured.Unstructured, error) {
-	provider, err := runtime.GetCloudProviderForInfraProvider(*c.kubernetesRuntimeDefinition.InfraProvider)
+	provider, err := v0.CloudProviderForInfraProvider(*c.kubernetesRuntimeDefinition.InfraProvider)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cloud provider for infra provider: %w", err)
 	}

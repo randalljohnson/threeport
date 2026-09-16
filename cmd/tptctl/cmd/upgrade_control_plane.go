@@ -7,13 +7,13 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
 	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 	"k8s.io/apimachinery/pkg/api/meta"
 	kubemetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -236,8 +236,7 @@ func updateImageTagInDeployment(deployment *unstructured.Unstructured, imageTag 
 		}
 
 		currentImage := db_migrator["image"].(string)
-		imageSlice := strings.Split(currentImage, ":")
-		db_migrator["image"] = fmt.Sprintf("%s:%s", imageSlice[0], updateImageTag)
+		db_migrator["image"] = fmt.Sprintf("%s:%s", util.ImageWithoutTag(currentImage), updateImageTag)
 		initContainersList[1] = db_migrator
 		initContainerSpec = initContainersList
 	}
@@ -258,8 +257,7 @@ func updateImageTagInDeployment(deployment *unstructured.Unstructured, imageTag 
 	}
 
 	currentImage := container["image"].(string)
-	imageSlice := strings.Split(currentImage, ":")
-	container["image"] = fmt.Sprintf("%s:%s", imageSlice[0], updateImageTag)
+	container["image"] = fmt.Sprintf("%s:%s", util.ImageWithoutTag(currentImage), updateImageTag)
 	containerSpec[containerIndex] = container
 	templateSpec["containers"] = containerSpec
 	templateSpec["initContainers"] = initContainerSpec

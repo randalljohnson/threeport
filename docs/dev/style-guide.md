@@ -2,8 +2,9 @@
 
 The following style guide exists to promote consistency and readability in the
 Threeport codebase.  As with most rules, there are exceptions.  And there are
-legacy violations of this style guide that we hope to resolve over time.  Prioritize
-code simplicity, readability and useful commenting over any style guidance.
+legacy violations of this style guide that we hope to resolve over time.
+Prioritize code simplicity, readability and useful commenting over any style
+guidance.
 
 ## Imports
 
@@ -49,8 +50,7 @@ helpful.
 ## Naming
 
 Use the Go convention of camel case or lower camel case for naming types,
-functions, variables, etc.  Do not use all caps for acronyms, e.g. use
-`inputJson` instead of `inputJSON`.
+functions, variables, etc.
 
 ## Merges
 

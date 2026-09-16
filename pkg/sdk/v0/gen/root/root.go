@@ -19,5 +19,10 @@ func GenRoot(generator *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		return fmt.Errorf("failed to write Dockerfile at project root: %w", err)
 	}
 
+	// write the developer style guide if not already present
+	if err := GenStyleGuide(generator, sdkConfig); err != nil {
+		return fmt.Errorf("failed to write style guide under docs: %w", err)
+	}
+
 	return nil
 }

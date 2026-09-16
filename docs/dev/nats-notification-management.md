@@ -105,11 +105,11 @@ Item: awsStream#18 received 2023-11-14 15:14:32.829734966 +0000 UTC on Subject a
 {"Operation":"Created","CreationTime":1699974872,"Object":{"ID":917190976565575681,"CreatedAt":"2023-11-14T15:14:32.828335Z","UpdatedAt":"2023-11-14T15:14:32.828335Z","Name":"eks-remote-1","Reconciled":false,"CreationFailed":false,"InterruptReconciliation":false,"Region":"us-east-1","AwsEksKubernetesRuntimeDefinitionID":915740803044081665,"KubernetesRuntimeInstanceID":917190976499875841}}
 ```
 
-_Note_: When the Threeport API notifies a controller with a message, if the controller
-requeues the message for future re-reconciliation, that message is negatively
-acknowledged with a delay, telling NATs to redeliver the message after the
-prescribed delay.  This applies to the same message so the message ID doesn't
-change when it's requeued.
+_Note_: When the Threeport API notifies a controller with a message, if the
+controller requeues the message for future re-reconciliation, that message is
+negatively acknowledged with a delay, telling NATs to redeliver the message
+after the prescribed delay.  This applies to the same message so the message ID
+doesn't change when it's requeued.
 
 The NATS CLI does not seem to have a command to acknowledge a particular message
 by ID.  The only way to interrupt a controller from receiving a message that has

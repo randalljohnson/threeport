@@ -19,6 +19,22 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
+// Cockroach runs test/cockroach against a docker CockroachDB.
+func (Test) Cockroach() error {
+	cmd := "go"
+	args := []string{
+		"test",
+		"-v",
+		"-count=1",
+		"./test/cockroach",
+	}
+	if err := util.RunCommandStreamOutput(cmd, args...); err != nil {
+		return fmt.Errorf("failed to run cockroach tests: %w", err)
+	}
+
+	return nil
+}
+
 // E2e calls ginkgo to run the e2e tests suite.  Takes 2 args: 1. imageRepo -
 // either 'local' or the URL for an external image repo.  2. clean - if true
 // will remove the control plane and infra after completion.
@@ -220,6 +236,11 @@ func (Dev) Generate() error {
 		return fmt.Errorf("docs generation failed: %w", err)
 	}
 
+	err = dev.GenerateAgentsIndex()
+	if err != nil {
+		return fmt.Errorf("agents index generation failed: %w", err)
+	}
+
 	fmt.Println("code generated successfully")
 
 	return nil
@@ -412,6 +433,14 @@ func (Test) ModuleGen() error {
 		return fmt.Errorf("failed to type-check the generated module: %w", err)
 	}
 
+	// run the generated plugin so cobra init panics on a redefined flag
+	if err := util.RunCommandStreamOutputInDir(
+		moduleTestPath,
+		"go", "run", "-buildvcs=false", "./cmd/test", "--help",
+	); err != nil {
+		return fmt.Errorf("failed to run the generated module plugin: %w", err)
+	}
+
 	// remove generated files after a successful type-check
 	if err := resetModuleTestDir(); err != nil {
 		return err
@@ -425,16 +454,13 @@ func (Test) ModuleGen() error {
 // checkModuleInstallPrerequisites reports missing mage or a missing API
 // endpoint for the current control plane, not whether the cluster can pull images.
 func checkModuleInstallPrerequisites() error {
-	var problems []error
-
+	var mageErr error
 	// require mage on PATH for the build and install targets of the generated module
 	if _, err := exec.LookPath("mage"); err != nil {
-		problems = append(problems, errors.New("mage is not on PATH"))
+		mageErr = errors.New("mage is not on PATH")
 	}
-	// require an API endpoint for the current control plane
-	problems = append(problems, cli.ControlPlaneConfigProblems()...)
 
-	return cli.UnmetPrerequisites("module install", problems)
+	return errors.Join(mageErr, cli.ControlPlaneConfigProblems())
 }
 
 // ModuleInstall generates a Threeport module, builds its images, and installs

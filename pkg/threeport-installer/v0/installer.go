@@ -126,6 +126,10 @@ type Options struct {
 	// Port mappings for kind infra provider
 	KindPortMappings []string
 
+	// Host port to bind the threeport API to when using the kind provider.
+	// Overrides the default 443 host-side mapping to containerPort 30000.
+	ApiServerHostPort int
+
 	// If true, a cloud load balancer is provisioned for the threeport API.
 	RestApiLoadBalancer bool
 
@@ -144,6 +148,9 @@ type Options struct {
 	// Create and connect local container registry for local control plane
 	// clusters.
 	LocalRegistry bool
+
+	// The availability and data retention level stamped on the control plane namespace
+	Tier ControlPlaneTier
 
 	// PaginationMode sets the REST API server's pagination strategy through
 	// the `-pagination-mode` flag. Accepted values are `as-of-system-time`

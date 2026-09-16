@@ -5,6 +5,7 @@ package v0
 import (
 	"bytes"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -35,7 +36,18 @@ const (
 // it.  If HostKey is nil, the server's key is accepted and returned as the
 // second value so the caller can persist it for future verification.
 func GetClient(mri *v0.MachineRuntimeInstance, encryptionKey string) (*ssh.Client, string, error) {
-	// decrypt ssh credentials (at least one is guaranteed by BeforeCreate hook)
+	// check ssh user and hostname; they can be nil before the machine is provisioned
+	if mri == nil {
+		return nil, "", errors.New("failed to build ssh client: machine runtime instance is nil")
+	}
+	if mri.SSHUser == nil {
+		return nil, "", errors.New("failed to build ssh client: machine runtime instance has no ssh user")
+	}
+	if mri.Hostname == nil {
+		return nil, "", errors.New("failed to build ssh client: machine runtime instance has no hostname")
+	}
+
+	// decrypt ssh credentials when present
 	var decryptedKey, decryptedPassword string
 	if mri.SSHKey != nil {
 		dk, err := encryption.Decrypt(encryptionKey, *mri.SSHKey)

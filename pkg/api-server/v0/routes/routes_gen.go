@@ -22,6 +22,8 @@ func AddRoutes(e *echo.Echo, h *handlers.Handler) {
 	GatewayHttpPortRoutes(e, h)
 	GatewayInstanceRoutes(e, h)
 	GatewayTcpPortRoutes(e, h)
+	GcpGceMachineRuntimeDefinitionRoutes(e, h)
+	GcpGceMachineRuntimeInstanceRoutes(e, h)
 	GcpGkeKubernetesRuntimeDefinitionRoutes(e, h)
 	GcpGkeKubernetesRuntimeInstanceRoutes(e, h)
 	GcpProviderRoutes(e, h)

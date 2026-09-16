@@ -246,7 +246,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		})
 
 		g.Return().Qual("github.com/threeport/threeport/pkg/util/v0", "RunParallel").Call(
-			Id("parallelFromEnv").Call(),
+			Qual("github.com/threeport/threeport/pkg/util/v0", "ImageBuildParallelism").Call(),
 			Id("tasks"),
 		)
 	})
@@ -292,17 +292,14 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	f.Line()
 
 	// Package.AllManifests stitches multi-arch manifests for every
-	// component image in parallel, sourced from the installer's
-	// authoritative controller list so adding a new controller
-	// automatically extends coverage.
+	// component image in parallel.
 	f.Comment("AllManifests stitches multi-arch manifest lists for every component")
-	f.Comment("in parallel, sourced from the installer's authoritative controller")
-	f.Comment("list so adding a new controller automatically extends coverage. Repo")
-	f.Comment("and tag derive from the CI context when GITHUB_ACTIONS is set, otherwise")
-	f.Comment("the dev namespace and current version; IMAGE_REPO and IMAGE_TAG override")
-	f.Comment("either way. Each component's arch set is discovered from the per-arch")
-	f.Comment("tags already pushed to the registry. Set PARALLEL_IMAGE_BUILD >= 1 to")
-	f.Comment("control worker concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage")
+	f.Comment("in parallel. Repo and tag derive from the CI context when")
+	f.Comment("GITHUB_ACTIONS is set, otherwise the dev namespace and current")
+	f.Comment("version; IMAGE_REPO and IMAGE_TAG override either way. Each")
+	f.Comment("component's arch set is discovered from the per-arch tags already")
+	f.Comment("pushed to the registry. Set PARALLEL_IMAGE_BUILD >= 1 to control")
+	f.Comment("worker concurrency (e.g. `PARALLEL_IMAGE_BUILD=4 mage")
 	f.Comment("package:allManifests`).")
 	f.Func().Params(Id("Package")).Id("AllManifests").Params().Error().BlockFunc(func(g *Group) {
 		g.Id("imageRepo").Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "ResolveImageRepo").Call(
@@ -376,34 +373,8 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		g.Return().Qual(
 			"github.com/threeport/threeport/pkg/util/v0",
 			"RunParallel",
-		).Call(Id("parallelFromEnv").Call(), Id("tasks"))
+		).Call(Qual("github.com/threeport/threeport/pkg/util/v0", "ImageBuildParallelism").Call(), Id("tasks"))
 	})
-	f.Line()
-
-	// parse PARALLEL_IMAGE_BUILD, self-compute when unset
-	f.Comment("parallelFromEnv returns the PARALLEL_IMAGE_BUILD env var as an int. When")
-	f.Comment("unset or empty it self-computes twice the memory-derived build worker count,")
-	f.Comment("since packaging and pushing images is lighter than compiling.")
-	f.Func().Id("parallelFromEnv").Params().Int().BlockFunc(func(g *Group) {
-		g.Id("v").Op(":=").Qual("os", "Getenv").Call(Lit("PARALLEL_IMAGE_BUILD"))
-		g.If(Id("v").Op("==").Lit("")).Block(
-			Return(Qual("github.com/threeport/threeport/pkg/util/v0", "BuildParallelism").Call().Op("*").Lit(2)),
-		)
-		g.List(Id("n"), Err()).Op(":=").Qual("strconv", "Atoi").Call(Id("v"))
-		g.If(Err().Op("!=").Nil().Op("||").Id("n").Op("<").Lit(1)).Block(
-			Return(Lit(1)),
-		)
-		g.Return(Id("n"))
-	})
-
-	// look up an env var with a fallback default
-	f.Comment("envOr returns the trimmed value of the named env var, or def if it is unset or empty.")
-	f.Func().Id("envOr").Params(Id("key").String(), Id("def").String()).String().Block(
-		If(Id("v").Op(":=").Qual("strings", "TrimSpace").Call(Qual("os", "Getenv").Call(Id("key"))).Op(";").Id("v").Op("!=").Lit("")).Block(
-			Return(Id("v")),
-		),
-		Return(Id("def")),
-	)
 	f.Line()
 
 	// dev image loads to kind clusters
@@ -678,25 +649,10 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		Return().Nil(),
 	)
 
-	// build vals utility function
-	f.Comment("getBuildVals returns the working directory and the arch(es) to build for.")
-	f.Comment("Arch comes from the ARCH env var (comma-separated for multi-arch) or")
-	f.Comment("defaults to the local CPU architecture.")
-	f.Func().Id("getBuildVals").Params().Params(
-		String(),
-		String(),
-		Error(),
-	).Block(
-		List(Id("workingDir"), Err()).Op(":=").Qual("os", "Getwd").Call(),
-		If(Err().Op("!=").Nil()).Block(
-			Return(Lit(""), Lit(""), Qual("fmt", "Errorf").Call(Lit("failed to get working directory: %w"), Err())),
-		),
-		Line(),
-
-		Id("arch").Op(":=").Id("envOr").Call(Lit("ARCH"), Qual("runtime", "GOARCH")),
-		Line(),
-
-		Return(Id("workingDir"), Id("arch"), Nil()),
+	// emit `func getBuildVals() (string, string, error) { return util.GetBuildVals() }`
+	f.Comment("getBuildVals returns the working directory and the arch list to build for.")
+	f.Func().Id("getBuildVals").Params().Params(String(), String(), Error()).Block(
+		Return(Qual("github.com/threeport/threeport/pkg/util/v0", "GetBuildVals").Call()),
 	)
 
 	// write code to file if not excluded by SDK config
@@ -794,11 +750,8 @@ func emitTestIntegrationFunc(f *File) {
 	f.Comment("Integration runs integration tests against an existing Threeport control plane.")
 	f.Func().Params(Id("Test")).Id("Integration").Params().Error().Block(
 		If(Err().Op(":=").Qual(
-			"github.com/threeport/threeport/pkg/cli/v0", "UnmetPrerequisites",
-		).Call(
-			Lit("integration test"),
-			Qual("github.com/threeport/threeport/pkg/cli/v0", "ControlPlaneConfigProblems").Call(),
-		).Op(";").Err().Op("!=").Nil()).Block(
+			"github.com/threeport/threeport/pkg/cli/v0", "ControlPlaneConfigProblems",
+		).Call().Op(";").Err().Op("!=").Nil()).Block(
 			Return(Err()),
 		),
 		Id("cmd").Op(":=").Lit("go"),
@@ -839,23 +792,11 @@ func emitDownloadFunc(f *File, funcName, binary string) {
 	f.Line()
 }
 
-// emitInstallDirFunc writes installDir so generated install and
-// download targets have a destination function to call.
+// emitInstallDirFunc writes `func installDir() string { return util.InstallDir() }`.
 func emitInstallDirFunc(f *File) {
-	f.Comment("installDir returns the directory `go install` writes binaries to:")
-	f.Comment("$GOBIN if set, otherwise $GOPATH/bin. build.Default.GOPATH falls back")
-	f.Comment("to ~/go when $GOPATH is unset, so the result is always non-empty.")
+	f.Comment("installDir returns the directory `go install` writes binaries to.")
 	f.Func().Id("installDir").Params().String().Block(
-		If(
-			Id("gobin").Op(":=").Qual("os", "Getenv").Call(Lit("GOBIN")),
-			Id("gobin").Op("!=").Lit(""),
-		).Block(
-			Return(Id("gobin")),
-		),
-		Return(Qual("path/filepath", "Join").Call(
-			Qual("go/build", "Default").Dot("GOPATH"),
-			Lit("bin"),
-		)),
+		Return(Qual("github.com/threeport/threeport/pkg/util/v0", "InstallDir").Call()),
 	)
 	f.Line()
 }
@@ -1200,22 +1141,18 @@ func emitWrapHelper(g *Group, repo, tag Code) {
 	)
 }
 
-// emitCiEnvFunc writes Ci.Env as WriteCIEnv plus GORELEASER_PARALLELISM.
+// emitCiEnvFunc writes Ci.Env as a call to util.WriteCIEnv.
 func emitCiEnvFunc(f *File, versionPkg string) {
 	f.Comment("Env prints KEY=value lines for a workflow GITHUB_ENV file.")
-	verArg := Code(Lit(""))
-	if versionPkg != "" {
-		verArg = Qual(versionPkg, "GetVersion").Call()
-	}
 	f.Func().Params(Id("Ci")).Id("Env").Params().Error().Block(
-		If(Err().Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "WriteCIEnv").Call(verArg).Op(";").Err().Op("!=").Nil()).Block(
-			Return(Err()),
-		),
-		Qual("fmt", "Printf").Call(
-			Lit("GORELEASER_PARALLELISM=%d\n"),
-			Qual("github.com/threeport/threeport/pkg/util/v0", "ReleaseParallelism").Call(),
-		),
-		Return(Nil()),
+		func() Code {
+			if versionPkg == "" {
+				return Return(Qual("github.com/threeport/threeport/pkg/util/v0", "WriteCIEnv").Call(Lit("")))
+			}
+			return Return(Qual("github.com/threeport/threeport/pkg/util/v0", "WriteCIEnv").Call(
+				Qual(versionPkg, "GetVersion").Call(),
+			))
+		}(),
 	)
 	f.Line()
 }

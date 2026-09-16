@@ -13,6 +13,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	v1 "k8s.io/api/core/v1"
+	kubeerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -27,9 +28,7 @@ const (
 	registryPort  = "5001"
 )
 
-// CreateLocalRegistry starts a Docker container to serve as a local container
-// registry.  If a local registry already exists with the <registryName> name,
-// it will return without error
+// CreateLocalRegistry starts the local registry container, reusing a leftover one when it is already present.
 func CreateLocalRegistry() error {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -38,9 +37,15 @@ func CreateLocalRegistry() error {
 	}
 	defer cli.Close()
 
-	_, err = cli.ContainerInspect(ctx, registryName)
+	existing, err := cli.ContainerInspect(ctx, registryName)
 	if err == nil {
-		// registry already exists
+		// start a leftover registry that is created or exited
+		if registryNeedsStart(existing.State.Status) {
+			if err := cli.ContainerStart(ctx, existing.ID, container.StartOptions{}); err != nil {
+				return fmt.Errorf("failed to start the existing registry container: %w", err)
+			}
+		}
+
 		return nil
 	}
 
@@ -87,6 +92,16 @@ func CreateLocalRegistry() error {
 	}
 
 	return nil
+}
+
+// registryNeedsStart reports whether a leftover registry container can be started.
+func registryNeedsStart(status string) bool {
+	switch status {
+	case container.StateCreated, container.StateExited:
+		return true
+	default:
+		return false
+	}
 }
 
 // ConnectLocalRegistry connects a local Docker container registry to a kind cluster.
@@ -204,8 +219,13 @@ func applyK8sConfig(kubeconfigPath string) error {
 		},
 	}
 
+	// an existing configmap from a previous partial install carries the same
+	// static content, so treat AlreadyExists as success rather than aborting
+	// the whole up path on a retry
 	if _, err = clientset.CoreV1().ConfigMaps("kube-public").Create(context.TODO(), configMap, metav1.CreateOptions{}); err != nil {
-		return fmt.Errorf("failed to create configmap for local registry: %w", err)
+		if !kubeerr.IsAlreadyExists(err) {
+			return fmt.Errorf("failed to create configmap for local registry: %w", err)
+		}
 	}
 
 	return nil

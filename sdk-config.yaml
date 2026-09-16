@@ -89,6 +89,17 @@ ApiObjectGroups:
       Reconcilable: true
       Tptctl:
         Enabled: true
+    - Name: GcpGceMachineRuntimeDefinition
+      Versions:
+        - v0
+      Tptctl:
+        Enabled: true
+    - Name: GcpGceMachineRuntimeInstance
+      Versions:
+        - v0
+      Reconcilable: true
+      Tptctl:
+        Enabled: true
 - Name: control_plane
   Objects:
     - Name: ControlPlaneDefinition
@@ -116,10 +127,12 @@ ApiObjectGroups:
       Versions:
         - v0
       ExcludeRoute: true
+      ExcludeFromDb: true
     - Name: Instance
       Versions:
         - v0
       ExcludeRoute: true
+      ExcludeFromDb: true
 - Name: events
   Objects:
     - Name: Event
@@ -178,6 +191,7 @@ ApiObjectGroups:
     - Name: MachineRuntimeDefinition
       Versions:
         - v0
+      Reconcilable: true
       Tptctl:
         Enabled: true
     - Name: MachineRuntimeInstance
@@ -329,6 +343,5 @@ ApiObjectGroups:
     - Name: ModuleObject
       Versions:
         - v0
-      AllowDuplicateModelNames: true
       Tptctl:
         Enabled: true

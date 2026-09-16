@@ -96,6 +96,24 @@ theme:
 plugins:
     - search
 
+# Raise every link and nav problem to a warning so `mkdocs build --strict`
+# fails on it. Without these, a malformed relative link is only logged at info
+# level and reaches the published site as a dead link.
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+# Pages deliberately kept out of the navigation above. Listing them here keeps
+# the omitted_files check meaningful: these stay quiet, and any other stranded
+# page still fails the build.
+not_in_nav: |
+  managed-threeport.md
+  sdk/advanced-app-abstraction.md
+  sdk/config-abstraction.md
+  sdk/workload-abstraction.md
+
 extra:
   social:
     - icon: fontawesome/brands/github

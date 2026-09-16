@@ -10,8 +10,13 @@ builds:
     main: cmd/tptctl/main.go
     goos:
       - linux
-      - windows
       - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: darwin
+        goarch: amd64
     env:
       - CGO_ENABLED=0
     ldflags:
@@ -19,6 +24,15 @@ builds:
   - id: threeport-sdk
     binary: threeport-sdk
     main: cmd/sdk/main.go
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: darwin
+        goarch: amd64
     env:
       - CGO_ENABLED=0
     ldflags:
@@ -32,6 +46,11 @@ archives:
       - README.md
     wrap_in_directory: true
     allow_different_binary_count: true
+release:
+  # tags with a prerelease segment (e.g. v0.7.0-rc.0) are marked as a GitHub
+  # prerelease and won't be flagged as the "latest" release; final tags
+  # (e.g. v0.7.0) are unaffected.
+  prerelease: auto
 checksum:
   name_template: 'checksums.txt'
 # Mark dev and rc prerelease tags as GitHub pre-releases so they stay off

@@ -42,11 +42,6 @@ func (KubernetesRuntimeInstance) TableName() string {
 	return "v0_kubernetes_runtime_instances"
 }
 
-// TableName sets the name of the table for the Definition objects in the database.
-func (Definition) TableName() string {
-	return "v0_definitions"
-}
-
 // TableName sets the name of the table for the DomainNameDefinition objects in the database.
 func (DomainNameDefinition) TableName() string {
 	return "v0_domain_name_definitions"
@@ -82,6 +77,16 @@ func (GatewayTcpPort) TableName() string {
 	return "v0_gateway_tcp_ports"
 }
 
+// TableName sets the name of the table for the GcpGceMachineRuntimeDefinition objects in the database.
+func (GcpGceMachineRuntimeDefinition) TableName() string {
+	return "v0_gcp_gce_machine_runtime_definitions"
+}
+
+// TableName sets the name of the table for the GcpGceMachineRuntimeInstance objects in the database.
+func (GcpGceMachineRuntimeInstance) TableName() string {
+	return "v0_gcp_gce_machine_runtime_instances"
+}
+
 // TableName sets the name of the table for the GcpGkeKubernetesRuntimeDefinition objects in the database.
 func (GcpGkeKubernetesRuntimeDefinition) TableName() string {
 	return "v0_gcp_gke_kubernetes_runtime_definitions"
@@ -105,11 +110,6 @@ func (HelmWorkloadDefinition) TableName() string {
 // TableName sets the name of the table for the HelmWorkloadInstance objects in the database.
 func (HelmWorkloadInstance) TableName() string {
 	return "v0_helm_workload_instances"
-}
-
-// TableName sets the name of the table for the Instance objects in the database.
-func (Instance) TableName() string {
-	return "v0_instances"
 }
 
 // TableName sets the name of the table for the ControlPlaneDefinition objects in the database.

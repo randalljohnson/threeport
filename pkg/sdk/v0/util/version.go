@@ -1,7 +1,7 @@
 package util
 
-// GetDefaultObjectVersion returns the default version of the object
-// based on the object name.
+// GetDefaultObjectVersion returns the version every object is served
+// under until a second one exists.
 func GetDefaultObjectVersion(obj string) string {
 	return "v0"
 }

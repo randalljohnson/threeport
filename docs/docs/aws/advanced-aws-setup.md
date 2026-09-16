@@ -17,15 +17,15 @@ and
 
 ## Configure AWS Account
 
-`tptctl config aws-account` configures AWS cross-account permissions. It creates an
-`AwsAccount` object in the Threeport API and also configures the respective
+`tptctl config aws-provider` configures AWS cross-account permissions. It creates an
+`AwsProvider` object in the Threeport API and also configures the respective
 externally-managed AWS account.
 
 ![Threeport Cross-Account Permissions](../img/ThreeportCrossAccountPermissions.drawio.svg)
 
 To run this command, the following flags must be provided:
 
-- `--aws-account-name` - name of the AWS account that is being stored in the Threeport API
+- `--aws-provider-name` - name of the `AwsProvider` object that is being stored in the Threeport API
 - `--aws-region` - the default AWS region that Threeport will manage resources in
 - `--aws-profile` - the local AWS profile that will be used to authenticate to AWS
 - `--aws-account-id` - the external AWS account to grant access to.
@@ -36,8 +36,8 @@ for the Threeport control plane in AWS Account #1 from the diagram above to
 manage resources in AWS Account #2.
 
 ```bash
-tptctl config aws-account \
---aws-account-name my-account \
+tptctl config aws-provider \
+--aws-provider-name my-provider \
 --aws-region us-east-1 \
 --aws-profile my-profile \
 --aws-account-id 111111111

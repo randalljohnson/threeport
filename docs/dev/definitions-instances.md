@@ -26,8 +26,8 @@ Definitions should include fields that allow users to create commonly used
 configurations.  Each different configuration will represent a distinct use case
 that may be re-used as many tims as needed.
 
-For example, a kubernetes workload definition includes the Kubernetes manifest that
-configures the Kubernetes resources needed to run some workload.
+For example, a kubernetes workload definition includes the Kubernetes manifest
+that configures the Kubernetes resources needed to run some workload.
 
 A Kubernetes runtime definition includes node sizes and the maximum number of
 nodes allowed per Kubernetes cluster.
@@ -39,10 +39,10 @@ These will be commonly varying values for commonly used configurations.
 Instances should also include fields to store runtime information about the
 deployed instances.
 
-For example, a kubernetes workload instance allows the user to specify which Kubernetes
-runtime a workload will be deployed to.  It also stores status information about
-the important Kubernetes resources - such as pods, as well as important events
-related to the instance.
+For example, a kubernetes workload instance allows the user to specify which
+Kubernetes runtime a workload will be deployed to.  It also stores status
+information about the important Kubernetes resources - such as pods, as well as
+important events related to the instance.
 
 A Kubernetes runtime instance includes a location field that allows the user to
 choose which cloud provider region a Kubernetes cluster should be spun up in.
@@ -55,13 +55,13 @@ An important design decision is whether to put a particular field in the
 definition or the instance.  For example, a Kubernetes runtime definition
 includes an `InfraProvider` field that allows the user to nominate which cloud
 provider to use for hosting a Kubernetes cluster.  This could conceivably be put
-in the instance object so that a definition with particular node sizes and profiles
-could be deployed to any infra provider - as defined at the instance level.  We
-chose to include the `InfraProvider` field in the definition as this is a
-fundamental configuration characteristic in that different cloud providers offer
-different features and services.  In contrast, the region to which a Kubernetes
-cluster is deployed could more commonly change and is less fundamental to the
-configuration.
+in the instance object so that a definition with particular node sizes and
+profiles could be deployed to any infra provider - as defined at the instance
+level.  We chose to include the `InfraProvider` field in the definition as this
+is a fundamental configuration characteristic in that different cloud providers
+offer different features and services.  In contrast, the region to which a
+Kubernetes cluster is deployed could more commonly change and is less
+fundamental to the configuration.
 
 This allows the following kind of use case where a team that needs a cluster
 spun up can choose from the following definitions that are assembled by an SME

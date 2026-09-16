@@ -3,6 +3,7 @@
 package util
 
 import (
+	"errors"
 	"fmt"
 	nats "github.com/nats-io/nats.go"
 	aws_notif "github.com/threeport/threeport/internal/aws/notif"
@@ -32,7 +33,7 @@ func InitJetStream(nc *nats.Conn) (*nats.JetStreamContext, error) {
 		Name:     secret_notif.SecretStreamName,
 		Subjects: secret_notif.GetSecretSubjects(),
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, nats.ErrStreamNameAlreadyInUse) {
 		return nil, fmt.Errorf("could not add stream %s: %w", secret_notif.SecretStreamName, err)
 	}
 
@@ -40,7 +41,7 @@ func InitJetStream(nc *nats.Conn) (*nats.JetStreamContext, error) {
 		Name:     aws_notif.AwsStreamName,
 		Subjects: aws_notif.GetAwsSubjects(),
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, nats.ErrStreamNameAlreadyInUse) {
 		return nil, fmt.Errorf("could not add stream %s: %w", aws_notif.AwsStreamName, err)
 	}
 
@@ -48,7 +49,7 @@ func InitJetStream(nc *nats.Conn) (*nats.JetStreamContext, error) {
 		Name:     notif.OciStreamName,
 		Subjects: notif.GetOciSubjects(),
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, nats.ErrStreamNameAlreadyInUse) {
 		return nil, fmt.Errorf("could not add stream %s: %w", notif.OciStreamName, err)
 	}
 
@@ -56,7 +57,7 @@ func InitJetStream(nc *nats.Conn) (*nats.JetStreamContext, error) {
 		Name:     notif1.GcpStreamName,
 		Subjects: notif1.GetGcpSubjects(),
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, nats.ErrStreamNameAlreadyInUse) {
 		return nil, fmt.Errorf("could not add stream %s: %w", notif1.GcpStreamName, err)
 	}
 
@@ -64,7 +65,7 @@ func InitJetStream(nc *nats.Conn) (*nats.JetStreamContext, error) {
 		Name:     controlplane_notif.ControlPlaneStreamName,
 		Subjects: controlplane_notif.GetControlPlaneSubjects(),
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, nats.ErrStreamNameAlreadyInUse) {
 		return nil, fmt.Errorf("could not add stream %s: %w", controlplane_notif.ControlPlaneStreamName, err)
 	}
 
@@ -72,7 +73,7 @@ func InitJetStream(nc *nats.Conn) (*nats.JetStreamContext, error) {
 		Name:     gateway_notif.GatewayStreamName,
 		Subjects: gateway_notif.GetGatewaySubjects(),
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, nats.ErrStreamNameAlreadyInUse) {
 		return nil, fmt.Errorf("could not add stream %s: %w", gateway_notif.GatewayStreamName, err)
 	}
 
@@ -80,7 +81,7 @@ func InitJetStream(nc *nats.Conn) (*nats.JetStreamContext, error) {
 		Name:     helmworkload_notif.HelmWorkloadStreamName,
 		Subjects: helmworkload_notif.GetHelmWorkloadSubjects(),
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, nats.ErrStreamNameAlreadyInUse) {
 		return nil, fmt.Errorf("could not add stream %s: %w", helmworkload_notif.HelmWorkloadStreamName, err)
 	}
 
@@ -88,7 +89,7 @@ func InitJetStream(nc *nats.Conn) (*nats.JetStreamContext, error) {
 		Name:     notif2.MachineRuntimeStreamName,
 		Subjects: notif2.GetMachineRuntimeSubjects(),
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, nats.ErrStreamNameAlreadyInUse) {
 		return nil, fmt.Errorf("could not add stream %s: %w", notif2.MachineRuntimeStreamName, err)
 	}
 
@@ -96,7 +97,7 @@ func InitJetStream(nc *nats.Conn) (*nats.JetStreamContext, error) {
 		Name:     notif3.MachineWorkloadStreamName,
 		Subjects: notif3.GetMachineWorkloadSubjects(),
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, nats.ErrStreamNameAlreadyInUse) {
 		return nil, fmt.Errorf("could not add stream %s: %w", notif3.MachineWorkloadStreamName, err)
 	}
 
@@ -104,7 +105,7 @@ func InitJetStream(nc *nats.Conn) (*nats.JetStreamContext, error) {
 		Name:     kubernetesruntime_notif.KubernetesRuntimeStreamName,
 		Subjects: kubernetesruntime_notif.GetKubernetesRuntimeSubjects(),
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, nats.ErrStreamNameAlreadyInUse) {
 		return nil, fmt.Errorf("could not add stream %s: %w", kubernetesruntime_notif.KubernetesRuntimeStreamName, err)
 	}
 
@@ -112,7 +113,7 @@ func InitJetStream(nc *nats.Conn) (*nats.JetStreamContext, error) {
 		Name:     observability_notif.ObservabilityStreamName,
 		Subjects: observability_notif.GetObservabilitySubjects(),
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, nats.ErrStreamNameAlreadyInUse) {
 		return nil, fmt.Errorf("could not add stream %s: %w", observability_notif.ObservabilityStreamName, err)
 	}
 
@@ -120,7 +121,7 @@ func InitJetStream(nc *nats.Conn) (*nats.JetStreamContext, error) {
 		Name:     terraform_notif.TerraformStreamName,
 		Subjects: terraform_notif.GetTerraformSubjects(),
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, nats.ErrStreamNameAlreadyInUse) {
 		return nil, fmt.Errorf("could not add stream %s: %w", terraform_notif.TerraformStreamName, err)
 	}
 
@@ -128,7 +129,7 @@ func InitJetStream(nc *nats.Conn) (*nats.JetStreamContext, error) {
 		Name:     kubernetesworkload_notif.KubernetesWorkloadStreamName,
 		Subjects: kubernetesworkload_notif.GetKubernetesWorkloadSubjects(),
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, nats.ErrStreamNameAlreadyInUse) {
 		return nil, fmt.Errorf("could not add stream %s: %w", kubernetesworkload_notif.KubernetesWorkloadStreamName, err)
 	}
 

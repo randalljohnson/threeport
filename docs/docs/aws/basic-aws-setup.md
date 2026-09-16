@@ -5,10 +5,10 @@ Use this documentation to configure Threeport to manage resources within the sam
 To get started, construct a config with the required fields. Here is an example of what this config looks like:
 
 ```yaml
-AwsAccount:
+AwsProvider:
   Name: default-account
   AccountID: "555555555555"
-  DefaultAccount: true
+  DefaultProvider: true
 
   # option 1: provide explicit configs/credentials
   #DefaultRegion: some-region
@@ -21,15 +21,11 @@ AwsAccount:
   LocalProfile: default
 ```
 
-Paste the following command to download `aws-account.yaml`. Open the file and update `AccountID`,
-`LocalConfig`, and `LocalCredentials` to the appropriate values for your environment.
+Save that config to `aws-provider.yaml` and update `AccountID`, `LocalConfig`, and
+`LocalCredentials` to the appropriate values for your environment.
 
-```bash
-curl -O https://raw.githubusercontent.com/threeport/releases/main/samples/aws-account.yaml
-```
-
-Once `aws-account.yaml` is prepared, run the following command to create the `AwsAccount`
+Once `aws-provider.yaml` is prepared, run the following command to create the `AwsProvider`
 object in the Threeport API:
 ```bash
-tptctl create aws-account --config aws-account.yaml
+tptctl create aws-provider --config aws-provider.yaml
 ```

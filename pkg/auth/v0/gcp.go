@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -13,7 +14,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -30,7 +30,7 @@ const (
 	gcpOAuthClientSecret = "d-FL95Q19q7MQmFpd7hHD0Ty"
 )
 
-// GcpOAuthScopes defines the scopes needed for GKE operations.
+// GcpOAuthScopes defines the scopes needed for GCP operations.
 var GcpOAuthScopes = []string{
 	"https://www.googleapis.com/auth/cloud-platform",
 	"https://www.googleapis.com/auth/userinfo.email",
@@ -44,55 +44,50 @@ type adcCredentials struct {
 	Type         string `json:"type"`
 }
 
-// EnsureGCPAuth checks for valid GCP Application Default Credentials and initiates
-// the OAuth flow if credentials are missing or invalid. This allows users to
-// authenticate without manually running `gcloud auth application-default login`.
-//
-// This function handles three authentication scenarios:
-//  1. CLI usage (tptctl): Uses browser-based OAuth flow for user authentication
-//  2. Controller in GKE: Uses Workload Identity (automatic via metadata server)
-//  3. Controller outside GCP: Uses service account credentials JSON
-//
-// The serviceAccountCredentials parameter should contain the JSON contents of a
-// GCP service account key file. If empty, the function will check for existing
-// credentials (scenarios 1 and 2) and fall back to browser-based auth if needed.
+// EnsureGCPAuth ensures GCP credentials for a controller-side caller and never
+// opens a browser. When serviceAccountCredentials is non-empty, it validates
+// that JSON in memory only; the caller passes the same JSON into each GCP
+// client per call so concurrent operations for different accounts stay
+// independent. Otherwise it requires application default credentials already
+// on the machine, such as Workload Identity or a gcloud user login. Without
+// either, it returns an error immediately: a controller pod has no browser and
+// the OAuth flow would wait five minutes before timing out.
 func EnsureGCPAuth(serviceAccountCredentials string) error {
+	return ensureGCPAuth(serviceAccountCredentials, false)
+}
+
+// EnsureGCPAuthWithBrowser ensures GCP credentials for an interactive CLI
+// caller. It follows the same service-account and ambient paths as the
+// non-browser entry point, then opens a browser OAuth flow when neither is
+// available. Controller paths must not call this: a pod has no browser and the
+// fallback waits five minutes before timing out.
+func EnsureGCPAuthWithBrowser(serviceAccountCredentials string) error {
+	return ensureGCPAuth(serviceAccountCredentials, true)
+}
+
+// ensureGCPAuth ensures GCP credentials, opening a browser only when
+// interactive is true and no usable credentials exist.
+func ensureGCPAuth(serviceAccountCredentials string, interactive bool) error {
 	ctx := context.Background()
 
-	// FIRST: Check if valid credentials already exist.
-	// This covers (in order of preference):
-	// - Workload Identity in GKE (scenario 2) — most secure, uses short-lived tokens
-	// - User credentials from gcloud auth (scenario 1)
-	// - Previously configured service account key file via GOOGLE_APPLICATION_CREDENTIALS
-	if hasValidGCPCredentials(ctx) {
-		// Only increment the ref count if a temp SA file is actually in use.
-		// If Workload Identity or user ADC provided the valid credentials,
-		// gcpCredTempFile is empty and no cleanup pairing is needed — the
-		// conditional defer in the caller will fire but CleanupGCPCredentials
-		// is a no-op when refCount is already zero.
-		if serviceAccountCredentials != "" {
-			gcpCredMu.Lock()
-			if gcpCredTempFile != "" {
-				gcpCredRefCount++
-			}
-			gcpCredMu.Unlock()
-		}
-		return nil
-	}
-
-	// SECOND: If no valid credentials exist and service account credentials are
-	// provided, use them. This is the fallback for controllers running outside GCP.
+	// validate service account JSON in memory and return; caller threads it per call
 	if serviceAccountCredentials != "" {
-		if err := configureServiceAccountCredentials(serviceAccountCredentials); err != nil {
-			return fmt.Errorf("failed to configure service account credentials: %w", err)
-		}
+		return validateServiceAccountCredentials(ctx, serviceAccountCredentials)
+	}
+
+	// accept ambient credentials from workload identity or gcloud user login
+	if hasValidGCPCredentials(ctx) {
 		return nil
 	}
 
-	// THIRD: Fall back to browser-based OAuth flow (scenario 1 — CLI only).
-	// This only works for CLI usage (tptctl), not for controllers.
+	// refuse the browser flow for non-interactive callers; a pod has no browser
+	if !interactive {
+		return errors.New("gcp authentication unavailable: no ambient application default credentials and no service account credentials configured")
+	}
+
 	util.CliOutputInfo("GCP credentials not found or expired. Initiating authentication...")
 
+	// run browser OAuth and write application default credentials
 	if err := performGCPOAuthFlow(ctx); err != nil {
 		return fmt.Errorf("failed to authenticate with GCP: %w", err)
 	}
@@ -101,87 +96,31 @@ func EnsureGCPAuth(serviceAccountCredentials string) error {
 	return nil
 }
 
-// gcpCredMu guards gcpCredTempFile and gcpCredRefCount against concurrent access.
-var gcpCredMu sync.Mutex
-
-// gcpCredTempFile holds the path of any temp credentials file written by
-// configureServiceAccountCredentials so it can be removed when no longer needed.
-var gcpCredTempFile string
-
-// gcpCredRefCount tracks how many concurrent operations are relying on the
-// temp credentials file. The file is removed when this reaches zero.
-var gcpCredRefCount int
-
-// CleanupGCPCredentials decrements the credential ref count and removes the
-// temporary service account key file once all concurrent operations have
-// released it. Each call to EnsureGCPAuth with a non-empty
-// serviceAccountCredentials must be paired with exactly one CleanupGCPCredentials.
-func CleanupGCPCredentials() {
-	gcpCredMu.Lock()
-	defer gcpCredMu.Unlock()
-	if gcpCredRefCount > 0 {
-		gcpCredRefCount--
+// validateServiceAccountCredentials parses service-account JSON for
+// the configured OAuth scopes. A well-formed document with a bad
+// private key fails later, when a token is first requested.
+func validateServiceAccountCredentials(ctx context.Context, credentialsJSON string) error {
+	if _, err := google.CredentialsFromJSON(ctx, []byte(credentialsJSON), GcpOAuthScopes...); err != nil {
+		return fmt.Errorf("failed to parse service account credentials: %w", err)
 	}
-	if gcpCredRefCount == 0 && gcpCredTempFile != "" {
-		os.Remove(gcpCredTempFile)
-		os.Unsetenv("GOOGLE_APPLICATION_CREDENTIALS")
-		gcpCredTempFile = ""
-	}
-}
-
-// configureServiceAccountCredentials writes the service account JSON to a
-// temporary file and sets the GOOGLE_APPLICATION_CREDENTIALS environment
-// variable to point to it. The file must persist for the process lifetime
-// since the Google SDK reads it on every token refresh; call
-// CleanupGCPCredentials at shutdown to remove it.
-func configureServiceAccountCredentials(credentialsJSON string) error {
-	tmpFile, err := os.CreateTemp("", "gcp-sa-*.json")
-	if err != nil {
-		return fmt.Errorf("failed to create temp credentials file: %w", err)
-	}
-
-	if _, err := tmpFile.WriteString(credentialsJSON); err != nil {
-		tmpFile.Close()
-		os.Remove(tmpFile.Name())
-		return fmt.Errorf("failed to write credentials to temp file: %w", err)
-	}
-
-	if err := tmpFile.Close(); err != nil {
-		os.Remove(tmpFile.Name())
-		return fmt.Errorf("failed to close temp credentials file: %w", err)
-	}
-
-	gcpCredMu.Lock()
-	if gcpCredTempFile != "" {
-		// Another goroutine registered credentials while we were writing the
-		// file — discard ours and reuse the existing one to avoid orphaning
-		// a file containing key material.
-		os.Remove(tmpFile.Name())
-		gcpCredRefCount++
-		gcpCredMu.Unlock()
-		return nil
-	}
-	gcpCredTempFile = tmpFile.Name()
-	os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", tmpFile.Name())
-	gcpCredRefCount++
-	gcpCredMu.Unlock()
 	return nil
 }
 
-// hasValidGCPCredentials checks if valid Application Default Credentials exist
-// and that those credentials carry the cloud-platform scope required for IAM
-// operations.
+// hasValidGCPCredentials reports whether application default credentials on the
+// machine can mint a live token that includes cloud-platform.
 func hasValidGCPCredentials(ctx context.Context) bool {
 	tokenSource, err := google.DefaultTokenSource(ctx, GcpOAuthScopes...)
 	if err != nil {
 		return false
 	}
 
+	// mint an access token from the ambient credentials
 	token, err := tokenSource.Token()
 	if err != nil {
 		return false
 	}
 
+	// reject an expired or empty access token
 	if !token.Valid() {
 		return false
 	}
@@ -190,14 +129,16 @@ func hasValidGCPCredentials(ctx context.Context) bool {
 }
 
 // tokeninfoClient is a dedicated HTTP client for scope checks with a short
-// timeout so a stalled tokeninfo response never blocks EnsureGCPAuth.
+// timeout so a stalled tokeninfo response cannot block EnsureGCPAuth for long.
 var tokeninfoClient = &http.Client{Timeout: 5 * time.Second}
 
 // gcpTokenHasCloudPlatformScope verifies the access token includes the
 // cloud-platform scope by querying the Google tokeninfo endpoint.
 func gcpTokenHasCloudPlatformScope(token *oauth2.Token) bool {
+	// query Google tokeninfo for the token's granted scopes
 	resp, err := tokeninfoClient.Get("https://oauth2.googleapis.com/tokeninfo?access_token=" + token.AccessToken)
 	if err != nil {
+		// treat an unreachable tokeninfo endpoint as in-scope
 		return true
 	}
 	defer resp.Body.Close()
@@ -210,9 +151,11 @@ func gcpTokenHasCloudPlatformScope(token *oauth2.Token) bool {
 		Scope string `json:"scope"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		// treat an unreadable tokeninfo body as in-scope
 		return true
 	}
 
+	// accept only when cloud-platform is among the granted scopes
 	for _, s := range strings.Fields(info.Scope) {
 		if s == "https://www.googleapis.com/auth/cloud-platform" {
 			return true
@@ -346,11 +289,9 @@ func saveADCCredentials(token *oauth2.Token) error {
 	return nil
 }
 
-// getADCPath returns the standard well-known path for Application Default
-// Credentials. Intentionally ignores GOOGLE_APPLICATION_CREDENTIALS — that
-// env var may point to a service account temp file set by
-// configureServiceAccountCredentials, and overwriting it with OAuth user
-// credentials would silently destroy those service account credentials.
+// getADCPath returns the well-known gcloud Application Default
+// Credentials file path. It ignores GOOGLE_APPLICATION_CREDENTIALS
+// so an OAuth save cannot overwrite the file that variable names.
 func getADCPath() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {

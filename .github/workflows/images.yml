@@ -2,23 +2,26 @@
 # lists to ghcr.io under the repo's own owner, so a fork publishes to its
 # own namespace with no edits.
 #
-# Triggers:
-#   - push to dev -> <image>:v<version>.<short-sha>
-#   - push of a version tag (v*) -> <image>:<tag>
+# Triggers on version tag push only (v*). Cutting a release via
+# `mage release:dev | rc | ga` synthesizes the tag and pushes it, which
+# fires both this workflow (component images) and release.yml (the
+# tptctl + threeport-sdk binaries). Dev commits don't build images on
+# their own, and that is deliberate: per-commit image builds were redundant
+# with the per-tag build, and untagged snapshot images had nobody pinning
+# them. Use `mage release:dev` to mint a snapshot when you need it.
 #
 # Two phases: the build matrix runs one cell per arch (amd64, arm64),
-# pushing single-arch tags <image>:v<version>.<sha>-<arch> per cell (each
-# cell derives the -<arch> suffix from ARCH); the manifest job stitches them
-# into the bare <image>:v<version>.<sha> manifest list via
-# mage package:allManifests. mage self-derives the repo and base tag from
-# the CI context, so this workflow passes no positional args. The component
-# list is owned by mage, so this workflow does not maintain it.
+# pushing single-arch tags <image>:<tag>-<arch> per cell (each cell derives
+# the -<arch> suffix from ARCH); the manifest job stitches them into the
+# bare <image>:<tag> manifest list via mage package:allManifests. mage
+# self-derives the repo and base tag from the CI context, so this workflow
+# passes no positional args. The component list is owned by mage, so this
+# workflow does not maintain it.
 
 name: Images
 
 on:
   push:
-    branches: [dev]
     tags: ['v*']
 
 permissions:
@@ -28,7 +31,7 @@ permissions:
 jobs:
   build:
     name: build-${{ matrix.arch }}
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-24.04' }}
     strategy:
       fail-fast: false
       matrix:
@@ -63,7 +66,7 @@ jobs:
   manifest:
     name: manifest
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-24.04' }}
     steps:
     - name: Checkout
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

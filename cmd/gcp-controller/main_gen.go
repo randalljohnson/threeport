@@ -33,6 +33,11 @@ func main() {
 		1,
 		"Number of concurrent reconcilers to run for gcp gke kubernetes runtime instances",
 	)
+	var gcpGceMachineRuntimeInstanceConcurrentReconciles = flag.Int(
+		"gcp-gce-machine-runtime-instance-concurrent-reconciles",
+		1,
+		"Number of concurrent reconcilers to run for gcp gce machine runtime instances",
+	)
 
 	var apiServer = flag.String("api-server", "threeport-api-server.threeport-control-plane.svc.cluster.local", "Threepoort REST API server endpoint")
 	var msgBrokerHost = flag.String("msg-broker-host", "", "Threeport message broker hostname")
@@ -131,6 +136,12 @@ func main() {
 		Name:                 "GcpGkeKubernetesRuntimeInstanceReconciler",
 		NotifSubject:         notif.GcpGkeKubernetesRuntimeInstanceSubject,
 		ReconcileFunc:        gcp.GcpGkeKubernetesRuntimeInstanceReconciler,
+	})
+	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
+		ConcurrentReconciles: *gcpGceMachineRuntimeInstanceConcurrentReconciles,
+		Name:                 "GcpGceMachineRuntimeInstanceReconciler",
+		NotifSubject:         notif.GcpGceMachineRuntimeInstanceSubject,
+		ReconcileFunc:        gcp.GcpGceMachineRuntimeInstanceReconciler,
 	})
 
 	// readyFlags tracks whether each reconciler's JetStream subscription is alive

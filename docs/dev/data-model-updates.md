@@ -42,7 +42,7 @@ sequential prefix.  See existing migrations for examples.
    migration:
 
    ```bash
-   make build-tptdev
+   mage build:tptdev
    ./bin/tptdev build -r $TEST_REPO -t $TEST_TAG --load --names database-migrator
    ./bin/tptdev build -r $TEST_REPO -t $TEST_TAG --load --names rest-api
    ```

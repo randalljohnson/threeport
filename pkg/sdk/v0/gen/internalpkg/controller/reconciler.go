@@ -248,6 +248,12 @@ func GenReconcilers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							)
 							g.Line()
 
+							g.Comment("capture pre-pass reconciled state to gate the success-event emit")
+							// seed wasReconciled false; getLatestObject sets it true when
+							// the latest object is already reconciled
+							g.Id("wasReconciled").Op(":=").Lit(false)
+							g.Line()
+
 							// If the object has any field with a "persist" tag set to "false", skip
 							// the retrieval of the latest object. Otherwise, generate the
 							// source code to retrieve the latest object.
@@ -380,32 +386,34 @@ func GenReconcilers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							)
 							g.Line()
 
-							g.Comment("log and record event for successful reconciliation")
-							g.Id("successMsg").Op(":=").Qual("fmt", "Sprintf").Call(
-								Line().Lit(fmt.Sprintf("%s successfully reconciled for %%s operation", strcase.ToDelimited(obj.Name, ' '))),
-								Line().Qual("strings", "ToLower").Call(Id("string").Call(Id("notif").Dot("Operation"))),
-								Line(),
-							)
-							g.If(Id("err").Op(":=").Id("r").Dot("EventsRecorder").Dot("RecordEvent").Call(
-								Line().Op("&").Qual("github.com/threeport/threeport/pkg/api/v0", "Event").Values(Dict{
-									Id("Reason"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(
-										Qual("github.com/threeport/threeport/pkg/event/v0", "GetSuccessReasonForOperation").Call(Id("notif").Dot("Operation")),
-									),
-									Id("Note"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(Id("successMsg")),
-									Id("Type"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(
-										Qual("github.com/threeport/threeport/pkg/event/v0", "TypeNormal"),
-									),
-								}),
-								Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetId").Call(),
-								Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetFullyQualifiedType").Call(),
-								Line(),
-							).Op(";").Id("err").Op("!=").Nil().Block(
-								Id("log").Dot("Error").Call(
-									Err(),
-									Lit(fmt.Sprintf("failed to record event for successful %s reconciliation", strcase.ToDelimited(obj.Name, ' '))),
+							g.Comment("emit success event only on the first-successful transition; skip on redelivery")
+							g.If(Op("!").Id("wasReconciled")).Block(
+								Id("successMsg").Op(":=").Qual("fmt", "Sprintf").Call(
+									Line().Lit(fmt.Sprintf("%s successfully reconciled for %%s operation", strcase.ToDelimited(obj.Name, ' '))),
+									Line().Qual("strings", "ToLower").Call(Id("string").Call(Id("notif").Dot("Operation"))),
+									Line(),
 								),
-							))
-							g.Id("log").Dot("Info").Call(Id("successMsg"))
+								If(Id("err").Op(":=").Id("r").Dot("EventsRecorder").Dot("RecordEvent").Call(
+									Line().Op("&").Qual("github.com/threeport/threeport/pkg/api/v0", "Event").Values(Dict{
+										Id("Reason"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(
+											Qual("github.com/threeport/threeport/pkg/event/v0", "GetSuccessReasonForOperation").Call(Id("notif").Dot("Operation")),
+										),
+										Id("Note"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(Id("successMsg")),
+										Id("Type"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(
+											Qual("github.com/threeport/threeport/pkg/event/v0", "TypeNormal"),
+										),
+									}),
+									Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetId").Call(),
+									Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetFullyQualifiedType").Call(),
+									Line(),
+								).Op(";").Id("err").Op("!=").Nil().Block(
+									Id("log").Dot("Error").Call(
+										Err(),
+										Lit(fmt.Sprintf("failed to record event for successful %s reconciliation", strcase.ToDelimited(obj.Name, ' '))),
+									),
+								)),
+								Id("log").Dot("Info").Call(Id("successMsg")),
+							)
 						}),
 					),
 				),
@@ -434,6 +442,102 @@ func GenReconcilers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	}
 
 	return nil
+}
+
+const clientLib = "github.com/threeport/threeport/pkg/client/lib/v0"
+
+// emitDeleteConflictWait generates the wait-and-requeue path for delete-in-progress
+// and delete-blocked conflicts, using a flat 30 second delay. It does not
+// record an event: this reconciliation already recorded DeleteInProgress, and
+// a second RecordEvent would bump Count twice.
+func emitDeleteConflictWait(k *Group, errVar, logMsg, varObjectName string) {
+	k.If(
+		Qual("errors", "Is").Call(
+			Id(errVar),
+			Qual(clientLib, "ErrDeleteInProgress"),
+		).Op("||").Qual("errors", "Is").Call(
+			Id(errVar),
+			Qual(clientLib, "ErrDeleteBlocked"),
+		),
+	).Block(
+		Id("log").Dot("Info").Call(
+			Line().Lit(logMsg),
+			Line().Lit("cause"), Id(errVar).Dot("Error").Call(),
+			Line(),
+		),
+		Comment("in-progress event already recorded before the handler"),
+		Id("r").Dot("UnlockAndRequeue").Call(
+			Line().Id(varObjectName),
+			Line().Lit(int64(30)),
+			Line().Id("lockReleased"),
+			Line().Id("msg"),
+			Line(),
+		),
+		Continue(),
+	)
+}
+
+const eventPkg = "github.com/threeport/threeport/pkg/event/v0"
+
+// emitInProgressEvent records Create, Update, or DeleteInProgress before the
+// custom operation handler runs so a later failure still has a start event.
+func emitInProgressEvent(g *Group, op, varObjectName string) {
+	reasonName := fmt.Sprintf("Reason%sInProgress", strcase.ToCamel(op))
+	fallback := "creating"
+	noteFn := "CreateNote"
+	switch op {
+	case "update":
+		fallback = "updating"
+		noteFn = "UpdateNote"
+	case "delete":
+		fallback = "deleting"
+		noteFn = "DeleteNote"
+	}
+
+	g.Comment("record in-progress before the custom handler so a later failure still has a start event")
+	if op == "update" {
+		g.Id("progressNote").Op(":=").Qual(eventPkg, "UpdateNote").Call()
+	} else {
+		// Emits:
+		//   progressNote := "<creating|deleting>"
+		//   if owner, ok := obj.(api_v0.RelationshipTaggedForeignKeyProvider); ok {
+		//     progressNote = event.CreateNote|DeleteNote(owner)
+		//   }
+		g.Id("progressNote").Op(":=").Lit(fallback)
+		g.Comment("type-assert so types without relationship-tagged foreign keys still emit " + fallback)
+		g.If(
+			List(Id("owner"), Id("ok")).Op(":=").Id(varObjectName).Assert(
+				Qual(
+					"github.com/threeport/threeport/pkg/api/v0",
+					"RelationshipTaggedForeignKeyProvider",
+				),
+			),
+			Id("ok"),
+		).Block(
+			Id("progressNote").Op("=").Qual(eventPkg, noteFn).Call(Id("owner")),
+		)
+	}
+	g.If(
+		Id("recordErr").Op(":=").Id("r").Dot("EventsRecorder").Dot("RecordEvent").Call(
+			Line().Op("&").Qual("github.com/threeport/threeport/pkg/api/v0", "Event").Values(Dict{
+				Id("Reason"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(
+					Qual(eventPkg, reasonName),
+				),
+				Id("Note"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(Id("progressNote")),
+				Id("Type"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(
+					Qual(eventPkg, "TypeNormal"),
+				),
+			}),
+			Line().Id(varObjectName).Dot("GetId").Call(),
+			Line().Id(varObjectName).Dot("GetFullyQualifiedType").Call(),
+			Line(),
+		).Op(";").Id("recordErr").Op("!=").Nil().Block(
+			Id("log").Dot("Error").Call(
+				Id("recordErr"),
+				Lit("failed to record in-progress event"),
+			),
+		),
+	)
 }
 
 // getLatestObject generates the source code for a controller's reconcile functions
@@ -465,6 +569,13 @@ func getLatestObject(
 					Line().Id("r").Dot("APIServer"),
 					Line().Id(objVar).Dot("GetId").Call(),
 					Line(),
+				),
+				If(
+					Id("latestObject").Op("!=").Nil().
+						Op("&&").Id("latestObject").Dot("Reconciled").Op("!=").Nil().
+						Op("&&").Op("*").Id("latestObject").Dot("Reconciled"),
+				).Block(
+					Id("wasReconciled").Op("=").Lit(true),
 				),
 				Id(latestObjVar).Op("=").Id("latestObject"),
 				Id(latestObjErrVar).Op("=").Err(),
@@ -523,9 +634,8 @@ func operationCase(
 		"github.com/threeport/threeport/pkg/notifications/v0",
 		fmt.Sprintf("NotificationOperation%s", upperOpPast),
 	)).BlockFunc(func(i *Group) {
-		// skip create and update when deletion is scheduled
-		// a handler error requeues that notification instead of completing it
 		if op == "create" || op == "update" {
+			// skip create and update when deletion is scheduled
 			h.If(Id(varObjectName).Dot("ScheduledForDeletion").Call().Op("!=").Nil()).Block(
 				Id("log").Dot("Info").Call(
 					Lit(fmt.Sprintf(
@@ -537,6 +647,7 @@ func operationCase(
 				Break(),
 			)
 		}
+		emitInProgressEvent(h, op, varObjectName)
 		h.Var().Id("operationErr").Error()
 		h.Var().Id("customRequeueDelay").Int64()
 		h.Switch(Id(varObjectName).Dot("GetVersion").Call()).BlockFunc(func(j *Group) {
@@ -571,27 +682,39 @@ func operationCase(
 				))),
 			)
 		})
-		h.If(Id("operationErr").Op("!=").Nil()).Block(
-			Id("errorMsg").Op(":=").Lit(fmt.Sprintf(
+		h.If(Id("operationErr").Op("!=").Nil()).BlockFunc(func(k *Group) {
+			// emit the delete-conflict wait before the failure path
+			if op == "delete" {
+				emitDeleteConflictWait(
+					k,
+					"operationErr",
+					fmt.Sprintf(
+						"conflict reconciling deleted %s object, requeueing",
+						strcase.ToDelimited(obj.Name, ' '),
+					),
+					varObjectName,
+				)
+			}
+			k.Id("errorMsg").Op(":=").Lit(fmt.Sprintf(
 				"failed to reconcile %s %s object",
 				lowerOpPast,
 				strcase.ToDelimited(obj.Name, ' '),
-			)),
-			Id("log").Dot("Error").Call(
+			))
+			k.Id("log").Dot("Error").Call(
 				Id("operationErr"),
 				Id("errorMsg"),
-			),
-			Id("r").Dot("EventsRecorder").Dot("HandleEventOverride").Call(
+			)
+			k.Id("r").Dot("EventsRecorder").Dot("HandleEventOverride").Call(
 				Line().Op("&").Qual("github.com/threeport/threeport/pkg/api/v0", "Event").Values(Dict{
 					Id("Reason"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(
 						Qual(
 							"github.com/threeport/threeport/pkg/event/v0",
-							fmt.Sprintf("ReasonFailed%s", uppoerOp),
+							fmt.Sprintf("Reason%sFailed", uppoerOp),
 						),
 					),
 					Id("Note"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(Id("errorMsg")),
 					Id("Type"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(
-						Qual("github.com/threeport/threeport/pkg/event/v0", "TypeNormal"),
+						Qual("github.com/threeport/threeport/pkg/event/v0", "TypeWarning"),
 					),
 				}),
 				Line().Id(strcase.ToLowerCamel(obj.Name)).Dot("GetId").Call(),
@@ -599,16 +722,16 @@ func operationCase(
 				Line().Id("operationErr"),
 				Line().Op("&").Id("log"),
 				Line(),
-			),
-			Id("r").Dot("UnlockAndRequeue").Call(
+			)
+			k.Id("r").Dot("UnlockAndRequeue").Call(
 				Line().Id(varObjectName),
 				Line().Id("requeueDelay"),
 				Line().Id("lockReleased"),
 				Line().Id("msg"),
 				Line(),
-			),
-			Continue(),
-		)
+			)
+			k.Continue()
+		})
 		h.If(Id("customRequeueDelay").Op("!=").Lit(0)).Block(
 			Id("log").Dot("Info").Call(
 				Lit(fmt.Sprintf(
@@ -693,19 +816,29 @@ func operationCase(
 				Line().Id(varObjectName).Dot("GetId").Call(),
 				Line(),
 			)
-			h.If(Id("err").Op("!=").Nil()).Block(
-				Id("log").Dot("Error").Call(Id("err"), Lit(fmt.Sprintf(
+			h.If(Id("err").Op("!=").Nil()).BlockFunc(func(k *Group) {
+				// emit the delete-conflict wait before the failure path
+				emitDeleteConflictWait(
+					k,
+					"err",
+					fmt.Sprintf(
+						"conflict deleting %s, requeueing",
+						strcase.ToDelimited(obj.Name, ' '),
+					),
+					varObjectName,
+				)
+				k.Id("log").Dot("Error").Call(Id("err"), Lit(fmt.Sprintf(
 					"failed to delete %s",
 					strcase.ToDelimited(obj.Name, ' '),
-				))),
-				Id("r").Dot("UnlockAndRequeue").Call(
+				)))
+				k.Id("r").Dot("UnlockAndRequeue").Call(
 					Id(varObjectName),
 					Id("requeueDelay"),
 					Id("lockReleased"),
 					Id("msg"),
-				),
-				Continue(),
-			)
+				)
+				k.Continue()
+			})
 		}
 	})
 }

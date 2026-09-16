@@ -154,3 +154,18 @@ func warnIfDirtyOnce(repoDir string) {
 		}
 	})
 }
+
+// ImageWithoutTag returns the image reference with a :tag stripped. A digest is left alone.
+func ImageWithoutTag(image string) string {
+	if strings.Contains(image, "@") {
+		return image
+	}
+
+	// a colon after the last slash is a tag, not a registry port
+	colon := strings.LastIndex(image, ":")
+	if colon < 0 || colon < strings.LastIndex(image, "/") {
+		return image
+	}
+
+	return image[:colon]
+}

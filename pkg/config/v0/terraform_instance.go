@@ -194,7 +194,9 @@ func (t *TerraformInstanceConfig) Create(
 		return nil, fmt.Errorf("failed to create terraform instance in threeport API: %w", err)
 	}
 
-	// construct terraform instance config
+	// construct terraform instance config. the status is carried over as it
+	// stands: it is filled in by reconciliation, so it is still unset on the
+	// object the create returns
 	createdTerraformInstanceConfig := &TerraformInstanceConfig{
 		TerraformInstance: TerraformInstanceValues{
 			Name:                createdTerraformInstance.Name,
@@ -202,7 +204,7 @@ func (t *TerraformInstanceConfig) Create(
 			VarsDocument:        terraformInstanceValues.VarsDocument,
 			TerraformDefinition: terraformInstanceValues.TerraformDefinition,
 			TerraformConfigPath: terraformInstanceValues.TerraformConfigPath,
-			Status:              util.Ptr(string(*createdTerraformInstance.Status)),
+			Status:              createdTerraformInstance.Status,
 			Age:                 util.Ptr(util.GetAgeFormatted(createdTerraformInstance.CreatedAt)),
 		},
 	}
@@ -292,7 +294,9 @@ func (t *TerraformInstanceConfig) Replace(
 		return nil, fmt.Errorf("failed to replace terraform instance in threeport API: %w", err)
 	}
 
-	// construct updated terraform instance config
+	// construct updated terraform instance config. the status is carried over
+	// as it stands: it is filled in by reconciliation, so it is unset on the
+	// object the replace returns until the terraform run is reconciled
 	updatedTerraformInstanceConfig := &TerraformInstanceConfig{
 		TerraformInstance: TerraformInstanceValues{
 			Name:                replacedTerraformInstance.Name,
@@ -300,7 +304,7 @@ func (t *TerraformInstanceConfig) Replace(
 			VarsDocument:        terraformInstanceValues.VarsDocument,
 			TerraformDefinition: terraformInstanceValues.TerraformDefinition,
 			TerraformConfigPath: terraformInstanceValues.TerraformConfigPath,
-			Status:              util.Ptr(string(*replacedTerraformInstance.Status)),
+			Status:              replacedTerraformInstance.Status,
 			Age:                 util.Ptr(util.GetAgeFormatted(replacedTerraformInstance.CreatedAt)),
 		},
 	}

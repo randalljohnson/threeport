@@ -6,6 +6,7 @@ __debug_bin*
 **/.DS_Store
 .claude/
 .venv/
+hack/
 
 # mage test:moduleGen generates a module here and deletes it again
 test/module/*

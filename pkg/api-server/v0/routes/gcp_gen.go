@@ -8,6 +8,30 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 )
 
+// GcpGceMachineRuntimeDefinitionRoutes sets up all routes for the GcpGceMachineRuntimeDefinition handlers.
+func GcpGceMachineRuntimeDefinitionRoutes(e *echo.Echo, h *handlers.Handler) {
+	e.GET(v0.PathGcpGceMachineRuntimeDefinitionVersions, h.GetGcpGceMachineRuntimeDefinitionVersions)
+
+	e.POST(v0.PathGcpGceMachineRuntimeDefinitions, h.AddGcpGceMachineRuntimeDefinition)
+	e.GET(v0.PathGcpGceMachineRuntimeDefinitions, h.GetGcpGceMachineRuntimeDefinitions)
+	e.GET(v0.PathGcpGceMachineRuntimeDefinitions+"/:id", h.GetGcpGceMachineRuntimeDefinition)
+	e.PATCH(v0.PathGcpGceMachineRuntimeDefinitions+"/:id", h.UpdateGcpGceMachineRuntimeDefinition)
+	e.PUT(v0.PathGcpGceMachineRuntimeDefinitions+"/:id", h.ReplaceGcpGceMachineRuntimeDefinition)
+	e.DELETE(v0.PathGcpGceMachineRuntimeDefinitions+"/:id", h.DeleteGcpGceMachineRuntimeDefinition)
+}
+
+// GcpGceMachineRuntimeInstanceRoutes sets up all routes for the GcpGceMachineRuntimeInstance handlers.
+func GcpGceMachineRuntimeInstanceRoutes(e *echo.Echo, h *handlers.Handler) {
+	e.GET(v0.PathGcpGceMachineRuntimeInstanceVersions, h.GetGcpGceMachineRuntimeInstanceVersions)
+
+	e.POST(v0.PathGcpGceMachineRuntimeInstances, h.AddGcpGceMachineRuntimeInstance)
+	e.GET(v0.PathGcpGceMachineRuntimeInstances, h.GetGcpGceMachineRuntimeInstances)
+	e.GET(v0.PathGcpGceMachineRuntimeInstances+"/:id", h.GetGcpGceMachineRuntimeInstance)
+	e.PATCH(v0.PathGcpGceMachineRuntimeInstances+"/:id", h.UpdateGcpGceMachineRuntimeInstance)
+	e.PUT(v0.PathGcpGceMachineRuntimeInstances+"/:id", h.ReplaceGcpGceMachineRuntimeInstance)
+	e.DELETE(v0.PathGcpGceMachineRuntimeInstances+"/:id", h.DeleteGcpGceMachineRuntimeInstance)
+}
+
 // GcpGkeKubernetesRuntimeDefinitionRoutes sets up all routes for the GcpGkeKubernetesRuntimeDefinition handlers.
 func GcpGkeKubernetesRuntimeDefinitionRoutes(e *echo.Echo, h *handlers.Handler) {
 	e.GET(v0.PathGcpGkeKubernetesRuntimeDefinitionVersions, h.GetGcpGkeKubernetesRuntimeDefinitionVersions)

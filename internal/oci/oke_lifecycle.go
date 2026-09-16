@@ -16,6 +16,7 @@ import (
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	encryption "github.com/threeport/threeport/pkg/encryption/v0"
+	event "github.com/threeport/threeport/pkg/event/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -43,6 +44,15 @@ func newOkeLifecycleProvider(
 	}
 }
 
+// StackKey returns the runtime instance name used to serialize operations on one stack.
+// Threeport also uses that name for the Pulumi stack and the file-backend directory.
+func (o *okeLifecycle) StackKey() string {
+	if o.instance == nil || o.instance.Name == nil {
+		return ""
+	}
+	return *o.instance.Name
+}
+
 // GetReconciliation fetches the latest reconciliation state from the API.
 func (o *okeLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, error) {
 	latest, err := client.GetOciOkeKubernetesRuntimeInstanceByID(
@@ -57,6 +67,10 @@ func (o *okeLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, er
 	if latest.CreationFailed != nil {
 		creationFailed = *latest.CreationFailed
 	}
+	deletionFailed := false
+	if latest.DeletionFailed != nil {
+		deletionFailed = *latest.DeletionFailed
+	}
 	return &provider.ReconciliationSnapshot{
 		CreationAcknowledged: latest.CreationAcknowledged,
 		CreationConfirmed:    latest.CreationConfirmed,
@@ -64,6 +78,7 @@ func (o *okeLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, er
 		DeletionScheduled:    latest.DeletionScheduled,
 		DeletionAcknowledged: latest.DeletionAcknowledged,
 		DeletionConfirmed:    latest.DeletionConfirmed,
+		DeletionFailed:       deletionFailed,
 		ResourceInventory:    latest.ResourceInventory,
 	}, nil
 }
@@ -285,6 +300,21 @@ func (o *okeLifecycle) SetCreationFailed() error {
 	return err
 }
 
+// RecordSuccessfulCreate records a CreateSuccessful event for provisioning
+// completion. ConfirmCreation sets Reconciled=true first, so the generated
+// reconciler's wasReconciled gate skips its own emit on redelivery.
+func (o *okeLifecycle) RecordSuccessfulCreate() error {
+	return o.r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonCreateSuccessful),
+			Note:   util.Ptr("provisioning complete"),
+		},
+		o.instance.GetId(),
+		o.instance.GetFullyQualifiedType(),
+	)
+}
+
 // ConfirmCreation sets CreationConfirmed and Reconciled=true.
 func (o *okeLifecycle) ConfirmCreation() error {
 	reconciled := true
@@ -302,13 +332,15 @@ func (o *okeLifecycle) ConfirmCreation() error {
 	return err
 }
 
-// AckDeletion sets DeletionAcknowledged in the API.
+// AckDeletion sets DeletionAcknowledged and clears DeletionFailed.
 func (o *okeLifecycle) AckDeletion() error {
 	timestamp := time.Now().UTC()
+	deletionFailed := false
 	ackUpdate := v0.OciOkeKubernetesRuntimeInstance{
 		Common: v0.Common{ID: &o.instanceID},
 		Reconciliation: v0.Reconciliation{
 			DeletionAcknowledged: &timestamp,
+			DeletionFailed:       &deletionFailed,
 		},
 	}
 	_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
@@ -328,6 +360,21 @@ func (o *okeLifecycle) RefreshDeletionAck() error {
 	}
 	_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
 		o.r.APIClient, o.r.APIServer, &ackUpdate,
+	)
+	return err
+}
+
+// SetDeletionFailed marks DeletionFailed=true in the API.
+func (o *okeLifecycle) SetDeletionFailed() error {
+	deletionFailed := true
+	failedUpdate := v0.OciOkeKubernetesRuntimeInstance{
+		Common: v0.Common{ID: &o.instanceID},
+		Reconciliation: v0.Reconciliation{
+			DeletionFailed: &deletionFailed,
+		},
+	}
+	_, err := client.UpdateOciOkeKubernetesRuntimeInstance(
+		o.r.APIClient, o.r.APIServer, &failedUpdate,
 	)
 	return err
 }

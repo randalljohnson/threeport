@@ -157,10 +157,15 @@ func ConfigureControlPlaneWithOkeConfig(
 		return fmt.Errorf("failed to get cluster OCID: %w", err)
 	}
 
-	// get resource inventory from Pulumi state
+	// get resource inventory from Pulumi state. In --control-plane-only
+	// mode the infrastructure was provisioned outside of tptctl, so there
+	// is no Pulumi stack to read; leave the inventory nil and let the
+	// caller record the runtime instance without one.
 	var resourceInventory *datatypes.JSON
-	if resourceInventory, err = kubernetesRuntimeInfraOKE.GetStackState(); err != nil {
-		return uninstaller.cleanOnCreateError("failed to get stack state: %w", err)
+	if !cpi.Opts.ControlPlaneOnly {
+		if resourceInventory, err = kubernetesRuntimeInfraOKE.GetStackState(); err != nil {
+			return uninstaller.cleanOnCreateError("failed to get stack state: %w", err)
+		}
 	}
 
 	// create oci oke k8s runtime instance

@@ -216,13 +216,15 @@ func (w *KubernetesWorkloadInstanceConfig) Create(
 		return nil, fmt.Errorf("failed to create kubernetes workload instance in threeport API: %w", err)
 	}
 
-	// construct kubernetes workload instance config
+	// construct kubernetes workload instance config. the status is carried
+	// over as it stands: it is filled in by reconciliation, so it is still
+	// unset on the object the create returns
 	createdK8sWorkloadInstanceConfig := &KubernetesWorkloadInstanceConfig{
 		KubernetesWorkloadInstance: KubernetesWorkloadInstanceValues{
 			Name:                         createdK8sWorkloadInstance.Name,
 			KubernetesRuntimeInstance:    k8sWorkloadInstanceValues.KubernetesRuntimeInstance,
 			KubernetesWorkloadDefinition: k8sWorkloadInstanceValues.KubernetesWorkloadDefinition,
-			Status:                       util.Ptr(string(*createdK8sWorkloadInstance.Status)),
+			Status:                       createdK8sWorkloadInstance.Status,
 			Age:                          util.Ptr(util.GetAgeFormatted(createdK8sWorkloadInstance.CreatedAt)),
 		},
 	}
@@ -304,13 +306,15 @@ func (w *KubernetesWorkloadInstanceConfig) Replace(
 		return nil, fmt.Errorf("failed to replace kubernetes workload instance in threeport API: %w", err)
 	}
 
-	// construct updated kubernetes workload instance config
+	// construct updated kubernetes workload instance config. the status is
+	// carried over as it stands: it is filled in by reconciliation, so it is
+	// unset on the object the replace returns until the workload is reconciled
 	updatedK8sWorkloadInstanceConfig := &KubernetesWorkloadInstanceConfig{
 		KubernetesWorkloadInstance: KubernetesWorkloadInstanceValues{
 			Name:                         replacedK8sWorkloadInstance.Name,
 			KubernetesRuntimeInstance:    k8sWorkloadInstanceValues.KubernetesRuntimeInstance,
 			KubernetesWorkloadDefinition: k8sWorkloadInstanceValues.KubernetesWorkloadDefinition,
-			Status:                       util.Ptr(string(*replacedK8sWorkloadInstance.Status)),
+			Status:                       replacedK8sWorkloadInstance.Status,
 			Age:                          util.Ptr(util.GetAgeFormatted(replacedK8sWorkloadInstance.CreatedAt)),
 		},
 	}

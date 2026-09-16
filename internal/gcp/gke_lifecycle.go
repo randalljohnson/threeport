@@ -1,7 +1,9 @@
 package gcp
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -12,7 +14,11 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	encryption "github.com/threeport/threeport/pkg/encryption/v0"
+	event "github.com/threeport/threeport/pkg/event/v0"
+	kube "github.com/threeport/threeport/pkg/kube/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // gkeLifecycle implements provider.InfraLifecycleProvider for GCP GKE
@@ -38,6 +44,15 @@ func newGkeLifecycleProvider(
 	}
 }
 
+// StackKey returns the runtime instance name used to serialize operations on one stack.
+// Threeport also uses that name for the Pulumi stack and the file-backend directory.
+func (g *gkeLifecycle) StackKey() string {
+	if g.instance == nil || g.instance.Name == nil {
+		return ""
+	}
+	return *g.instance.Name
+}
+
 // GetReconciliation fetches the latest reconciliation state from the API.
 func (g *gkeLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, error) {
 	latest, err := client.GetGcpGkeKubernetesRuntimeInstanceByID(
@@ -52,6 +67,10 @@ func (g *gkeLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, er
 	if latest.CreationFailed != nil {
 		creationFailed = *latest.CreationFailed
 	}
+	deletionFailed := false
+	if latest.DeletionFailed != nil {
+		deletionFailed = *latest.DeletionFailed
+	}
 	return &provider.ReconciliationSnapshot{
 		CreationAcknowledged: latest.CreationAcknowledged,
 		CreationConfirmed:    latest.CreationConfirmed,
@@ -59,6 +78,7 @@ func (g *gkeLifecycle) GetReconciliation() (*provider.ReconciliationSnapshot, er
 		DeletionScheduled:    latest.DeletionScheduled,
 		DeletionAcknowledged: latest.DeletionAcknowledged,
 		DeletionConfirmed:    latest.DeletionConfirmed,
+		DeletionFailed:       deletionFailed,
 		ResourceInventory:    latest.ResourceInventory,
 	}, nil
 }
@@ -72,6 +92,9 @@ func (g *gkeLifecycle) BuildInfra() (provider.InfraProvider, error) {
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get GKE instance for infra build: %w", err)
+	}
+	if latest.GcpGkeKubernetesRuntimeDefinitionID == nil {
+		return nil, errors.New("GKE instance missing required field GcpGkeKubernetesRuntimeDefinitionID")
 	}
 	def, err := client.GetGcpGkeKubernetesRuntimeDefinitionByID(
 		g.r.APIClient,
@@ -97,16 +120,41 @@ func (g *gkeLifecycle) IsCreateComplete() (bool, error) {
 	if latest.ResourceInventory == nil {
 		return false, nil
 	}
-	inventory := *latest.ResourceInventory
-	return len(inventory) > 0 && string(inventory) != "{}" && string(inventory) != "null", nil
+	// trim whitespace and reject placeholder inventory forms; stricter than
+	// inventoryCleared, which compares raw bytes and skips padding, arrays,
+	// and quoted null
+	inventory := strings.TrimSpace(string(*latest.ResourceInventory))
+	switch inventory {
+	case "", "{}", "null", `"null"`, "[]":
+		return false, nil
+	}
+	return true, nil
 }
 
 // OnCreateConfirmed gets connection info and updates the kubernetes runtime instance.
 func (g *gkeLifecycle) OnCreateConfirmed(infra provider.InfraProvider) error {
-	infraGKE := infra.(*provider.KubernetesRuntimeInfraGKE)
+	infraGKE, ok := infra.(*provider.KubernetesRuntimeInfraGKE)
+	if !ok {
+		return fmt.Errorf("expected a GKE infra provider but got %T", infra)
+	}
 	kubeConnectionInfo, err := infraGKE.GetConnection()
 	if err != nil {
 		return fmt.Errorf("failed to get Kubernetes API connection info: %w", err)
+	}
+	return g.updateKubeRuntimeConnection(kubeConnectionInfo)
+}
+
+// updateKubeRuntimeConnection writes the GKE cluster connection info onto the
+// linked kubernetes runtime instance. It is split out from OnCreateConfirmed so
+// unit tests can cover it without calling GetConnection.
+func (g *gkeLifecycle) updateKubeRuntimeConnection(kubeConnectionInfo *kube.KubeConnectionInfo) error {
+	// reject incomplete connection info so empty fields are not written
+	if kubeConnectionInfo.APIEndpoint == "" ||
+		kubeConnectionInfo.CACertificate == "" ||
+		kubeConnectionInfo.Token == "" {
+		return errors.New(
+			"incomplete kube connection info for GKE cluster: API endpoint, CA certificate, and token are all required",
+		)
 	}
 
 	latest, err := client.GetGcpGkeKubernetesRuntimeInstanceByID(
@@ -116,6 +164,9 @@ func (g *gkeLifecycle) OnCreateConfirmed(infra provider.InfraProvider) error {
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get GKE instance for connection update: %w", err)
+	}
+	if latest.KubernetesRuntimeInstanceID == nil {
+		return errors.New("GKE instance missing required field KubernetesRuntimeInstanceID")
 	}
 	kubernetesRuntimeInstance, err := client.GetKubernetesRuntimeInstanceByID(
 		g.r.APIClient,
@@ -204,6 +255,21 @@ func (g *gkeLifecycle) SetCreationFailed() error {
 	return err
 }
 
+// RecordSuccessfulCreate records a CreateSuccessful event for the GKE instance.
+// ConfirmCreation sets Reconciled=true first, so a later reconcile pass sees
+// wasReconciled and skips the generated wrapper's success emit.
+func (g *gkeLifecycle) RecordSuccessfulCreate() error {
+	return g.r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonCreateSuccessful),
+			Note:   util.Ptr("provisioning complete"),
+		},
+		g.instance.GetId(),
+		g.instance.GetFullyQualifiedType(),
+	)
+}
+
 // ConfirmCreation sets CreationConfirmed and Reconciled=true.
 func (g *gkeLifecycle) ConfirmCreation() error {
 	reconciled := true
@@ -219,13 +285,15 @@ func (g *gkeLifecycle) ConfirmCreation() error {
 	return err
 }
 
-// AckDeletion sets DeletionAcknowledged in the API.
+// AckDeletion sets DeletionAcknowledged and clears DeletionFailed.
 func (g *gkeLifecycle) AckDeletion() error {
 	timestamp := time.Now().UTC()
+	deletionFailed := false
 	ackUpdate := v0.GcpGkeKubernetesRuntimeInstance{
 		Common: v0.Common{ID: &g.instanceID},
 		Reconciliation: v0.Reconciliation{
 			DeletionAcknowledged: &timestamp,
+			DeletionFailed:       &deletionFailed,
 		},
 	}
 	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &ackUpdate)
@@ -242,6 +310,19 @@ func (g *gkeLifecycle) RefreshDeletionAck() error {
 		},
 	}
 	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &ackUpdate)
+	return err
+}
+
+// SetDeletionFailed marks DeletionFailed=true in the API.
+func (g *gkeLifecycle) SetDeletionFailed() error {
+	deletionFailed := true
+	failedUpdate := v0.GcpGkeKubernetesRuntimeInstance{
+		Common: v0.Common{ID: &g.instanceID},
+		Reconciliation: v0.Reconciliation{
+			DeletionFailed: &deletionFailed,
+		},
+	}
+	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &failedUpdate)
 	return err
 }
 
@@ -324,6 +405,18 @@ func buildGkeInfra(
 	definition *v0.GcpGkeKubernetesRuntimeDefinition,
 	log *logr.Logger,
 ) (*provider.KubernetesRuntimeInfraGKE, error) {
+	// validate required pointers before dereference
+	switch {
+	case instance.GcpProviderID == nil:
+		return nil, errors.New("GKE instance missing required field GcpProviderID")
+	case instance.Name == nil:
+		return nil, errors.New("GKE instance missing required field Name")
+	case instance.Region == nil:
+		return nil, errors.New("GKE instance missing required field Region")
+	case definition.DefaultNodeGroupInitialSize == nil:
+		return nil, errors.New("GKE definition missing required field DefaultNodeGroupInitialSize")
+	}
+
 	gcpProvider, err := client.GetGcpProviderByID(
 		r.APIClient,
 		r.APIServer,
@@ -331,6 +424,9 @@ func buildGkeInfra(
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve GCP provider by ID: %w", err)
+	}
+	if gcpProvider.ProjectID == nil {
+		return nil, errors.New("GCP provider missing required field ProjectID")
 	}
 
 	infraGKE := &provider.KubernetesRuntimeInfraGKE{
@@ -343,9 +439,18 @@ func buildGkeInfra(
 		WorkerNodeInitialCount: int32(*definition.DefaultNodeGroupInitialSize),
 	}
 
-	if gcpProvider.ServiceAccountCredentials != nil && *gcpProvider.ServiceAccountCredentials != "" {
-		infraGKE.ServiceAccountCredentials = *gcpProvider.ServiceAccountCredentials
+	// require service account credentials so a missing key fails at BuildInfra
+	if gcpProvider.ServiceAccountCredentials == nil || *gcpProvider.ServiceAccountCredentials == "" {
+		if gcpProvider.ID == nil {
+			return nil, errors.New("gcp provider has no service account credentials")
+		}
+		return nil, fmt.Errorf("gcp provider %d has no service account credentials", *gcpProvider.ID)
 	}
+	decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
+	}
+	infraGKE.ServiceAccountCredentials = decryptedCredentials
 
 	return infraGKE, nil
 }

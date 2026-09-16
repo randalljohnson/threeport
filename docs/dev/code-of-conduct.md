@@ -27,7 +27,8 @@ Examples of unacceptable behavior include but are not limited to:
 * Public or private harassment in any form.
 * Publishing others' private information, such as a physical or email
   address, without their explicit permission.
-* Violence, threatening violence, or encouraging others to engage in violent behavior.
+* Violence, threatening violence, or encouraging others to engage in violent
+  behavior.
 * Stalking or following someone without their consent.
 * Unwelcome physical contact.
 * Unwelcome sexual or romantic attention or advances.
@@ -36,7 +37,8 @@ Examples of unacceptable behavior include but are not limited to:
 
 The following behaviors are also prohibited:
 * Providing knowingly false or misleading information in connection with a Code
-of Conduct investigation or otherwise intentionally tampering with an investigation.
+of Conduct investigation or otherwise intentionally tampering with an
+investigation.
 * Retaliating against a person because they reported an incident or provided
 information about an incident as a witness.
 

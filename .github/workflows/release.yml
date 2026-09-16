@@ -32,17 +32,15 @@ jobs:
     # GORELEASER_PARALLELISM and GOFLAGS
     - run: mage ci:env >> "$GITHUB_ENV"
 
-    - name: Install GoReleaser
+    - name: Run GoReleaser
       uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
       with:
         # the goreleaser binary version to install, not the Go version
         version: v1.26.2
-        install-only: true
-
-    # shell-expand GORELEASER_PARALLELISM from GITHUB_ENV. ${{ env.X }} in
-    # `with.args` is evaluated when the job starts, before ci:env runs, so an
-    # empty expansion made --parallelism consume -f and fail parse
-    - name: Run GoReleaser
+        # the number of whole-tree targets built at once comes from
+        # GORELEASER_PARALLELISM (memory-derived, a quarter of the go-build
+        # worker count, since each release target links the full tree); the
+        # per-target compile workers come from GOFLAGS (-p). Both are set by ci:env.
+        args: release --clean --parallelism ${{ env.GORELEASER_PARALLELISM }} -f ./.goreleaser.yml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: goreleaser release --clean --parallelism "${GORELEASER_PARALLELISM:-1}" -f ./.goreleaser.yml

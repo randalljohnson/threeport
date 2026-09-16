@@ -18,9 +18,6 @@ on:
       - edited
       - synchronize
       - reopened
-  # fork integration branch: run unit, cockroach, and integration on every push
-  push:
-    branches: [dev]
 
 permissions:
   contents: read

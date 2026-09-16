@@ -490,10 +490,7 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 					strings.TrimSpace(i.sshPublicKeyAuthorized),
 				)),
 			},
-			// label the instance as managed by threeport
-			Labels: pulumi.StringMap{
-				provider.ManagedByLabelKey: pulumi.String(provider.ManagedByLabelValue),
-			},
+			Labels: provider.GcpLabelsInput(i.RuntimeInstanceName),
 		}, i.resourceOptions(gcpProvider, i.instanceLogicalName())...)
 		if err != nil {
 			return fmt.Errorf("failed to create GCE instance: %w", err)

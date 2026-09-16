@@ -891,8 +891,8 @@ func TestPulumiProgram_AssertsLabelableResourcesCarryManagedByLabel(t *testing.T
 
 		sawLabelable = true
 		labels := instanceLabels(t, r)
-		if got := labels[provider.ManagedByLabelKey]; got != provider.ManagedByLabelValue {
-			t.Errorf("resource %q (%s) labels[%q] = %q, want %q", r.name, r.typeToken, provider.ManagedByLabelKey, got, provider.ManagedByLabelValue)
+		if got := labels[provider.GcpLabelProvisionedBy]; got != provider.GcpLabelProvisionedByValue {
+			t.Errorf("resource %q (%s) labels[%q] = %q, want %q", r.name, r.typeToken, provider.GcpLabelProvisionedBy, got, provider.GcpLabelProvisionedByValue)
 		}
 	}
 

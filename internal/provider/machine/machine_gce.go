@@ -425,14 +425,16 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 			if len(ranges) == 0 {
 				ranges = []string{defaultIngressSourceRange}
 			}
+			desc := provider.GcpOwnershipDescription(i.RuntimeInstanceName)
+			if rule.Description != "" {
+				desc = desc + "; " + rule.Description
+			}
 			firewallArgs := &compute.FirewallArgs{
 				Name:         pulumi.String(name),
 				Network:      networkRef,
+				Description:  pulumi.String(desc),
 				Allows:       compute.FirewallAllowArray{allowArgs},
 				SourceRanges: pulumi.ToStringArray(ranges),
-			}
-			if rule.Description != "" {
-				firewallArgs.Description = pulumi.String(rule.Description)
 			}
 			if _, err := compute.NewFirewall(
 				pctx,

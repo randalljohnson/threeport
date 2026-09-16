@@ -82,6 +82,16 @@ func (GatewayTcpPort) TableName() string {
 	return "v0_gateway_tcp_ports"
 }
 
+// TableName sets the name of the table for the GcpGceMachineRuntimeDefinition objects in the database.
+func (GcpGceMachineRuntimeDefinition) TableName() string {
+	return "v0_gcp_gce_machine_runtime_definitions"
+}
+
+// TableName sets the name of the table for the GcpGceMachineRuntimeInstance objects in the database.
+func (GcpGceMachineRuntimeInstance) TableName() string {
+	return "v0_gcp_gce_machine_runtime_instances"
+}
+
 // TableName sets the name of the table for the GcpGkeKubernetesRuntimeDefinition objects in the database.
 func (GcpGkeKubernetesRuntimeDefinition) TableName() string {
 	return "v0_gcp_gke_kubernetes_runtime_definitions"

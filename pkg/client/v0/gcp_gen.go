@@ -13,6 +13,600 @@ import (
 	"net/http"
 )
 
+// GetGcpGceMachineRuntimeDefinitions fetches all gcp gce machine runtime definitions.
+func GetGcpGceMachineRuntimeDefinitions(apiClient *http.Client, apiAddr string) (*[]v0.GcpGceMachineRuntimeDefinition, error) {
+	var gcpGceMachineRuntimeDefinitions []v0.GcpGceMachineRuntimeDefinition
+
+	allPagesReceived := false
+	var allPageData []apiserver_lib.Object
+	nextCursor := uint(0)
+	queryId := ""
+	for !allPagesReceived {
+		url := fmt.Sprintf("%s%s", apiAddr, v0.PathGcpGceMachineRuntimeDefinitions)
+		if queryId != "" {
+			url = fmt.Sprintf("%s%s?queryid=%s&cursor=%d", apiAddr, v0.PathGcpGceMachineRuntimeDefinitions, queryId, nextCursor)
+		}
+
+		response, err := client_lib.GetResponse(
+			apiClient,
+			url,
+			http.MethodGet,
+			new(bytes.Buffer),
+			map[string]string{},
+			http.StatusOK,
+		)
+		if err != nil {
+			return &gcpGceMachineRuntimeDefinitions, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+		}
+
+		allPageData = append(allPageData, response.Data...)
+
+		if response.Meta.Pagination.HasMore {
+			nextCursor = response.Meta.Pagination.NextCursor
+			queryId = response.Meta.Pagination.QueryId
+		} else {
+			allPagesReceived = true
+		}
+	}
+
+	jsonData, err := json.Marshal(allPageData)
+	if err != nil {
+		return &gcpGceMachineRuntimeDefinitions, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpGceMachineRuntimeDefinitions); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return &gcpGceMachineRuntimeDefinitions, nil
+}
+
+// GetGcpGceMachineRuntimeDefinitionByID fetches a gcp gce machine runtime definition by ID.
+func GetGcpGceMachineRuntimeDefinitionByID(apiClient *http.Client, apiAddr string, id uint) (*v0.GcpGceMachineRuntimeDefinition, error) {
+	var gcpGceMachineRuntimeDefinition v0.GcpGceMachineRuntimeDefinition
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s/%d", apiAddr, v0.PathGcpGceMachineRuntimeDefinitions, id),
+		http.MethodGet,
+		new(bytes.Buffer),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return &gcpGceMachineRuntimeDefinition, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return &gcpGceMachineRuntimeDefinition, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpGceMachineRuntimeDefinition); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return &gcpGceMachineRuntimeDefinition, nil
+}
+
+// GetGcpGceMachineRuntimeDefinitionsByQueryString fetches gcp gce machine runtime definitions by provided query string.
+func GetGcpGceMachineRuntimeDefinitionsByQueryString(apiClient *http.Client, apiAddr string, queryString string) (*[]v0.GcpGceMachineRuntimeDefinition, error) {
+	var gcpGceMachineRuntimeDefinitions []v0.GcpGceMachineRuntimeDefinition
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s?%s", apiAddr, v0.PathGcpGceMachineRuntimeDefinitions, queryString),
+		http.MethodGet,
+		new(bytes.Buffer),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return &gcpGceMachineRuntimeDefinitions, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data)
+	if err != nil {
+		return &gcpGceMachineRuntimeDefinitions, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpGceMachineRuntimeDefinitions); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return &gcpGceMachineRuntimeDefinitions, nil
+}
+
+// GetGcpGceMachineRuntimeDefinitionByName fetches a gcp gce machine runtime definition by name.
+func GetGcpGceMachineRuntimeDefinitionByName(apiClient *http.Client, apiAddr, name string) (*v0.GcpGceMachineRuntimeDefinition, error) {
+	var gcpGceMachineRuntimeDefinitions []v0.GcpGceMachineRuntimeDefinition
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s?name=%s", apiAddr, v0.PathGcpGceMachineRuntimeDefinitions, name),
+		http.MethodGet,
+		new(bytes.Buffer),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return &v0.GcpGceMachineRuntimeDefinition{}, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data)
+	if err != nil {
+		return &v0.GcpGceMachineRuntimeDefinition{}, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpGceMachineRuntimeDefinitions); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	switch {
+	case len(gcpGceMachineRuntimeDefinitions) < 1:
+		return &v0.GcpGceMachineRuntimeDefinition{}, client_lib.ErrObjectNotFound
+	case len(gcpGceMachineRuntimeDefinitions) > 1:
+		return &v0.GcpGceMachineRuntimeDefinition{}, fmt.Errorf("more than one gcp gce machine runtime definition with name %s returned", name)
+	}
+
+	return &gcpGceMachineRuntimeDefinitions[0], nil
+}
+
+// CreateGcpGceMachineRuntimeDefinition creates a new gcp gce machine runtime definition.
+func CreateGcpGceMachineRuntimeDefinition(apiClient *http.Client, apiAddr string, gcpGceMachineRuntimeDefinition *v0.GcpGceMachineRuntimeDefinition) (*v0.GcpGceMachineRuntimeDefinition, error) {
+	client_lib.ReplaceAssociatedObjectsWithNil(gcpGceMachineRuntimeDefinition)
+	jsonGcpGceMachineRuntimeDefinition, err := util.MarshalObject(gcpGceMachineRuntimeDefinition)
+	if err != nil {
+		return gcpGceMachineRuntimeDefinition, fmt.Errorf("failed to marshal provided object to JSON: %w", err)
+	}
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s", apiAddr, v0.PathGcpGceMachineRuntimeDefinitions),
+		http.MethodPost,
+		bytes.NewBuffer(jsonGcpGceMachineRuntimeDefinition),
+		map[string]string{},
+		http.StatusCreated,
+	)
+	if err != nil {
+		return gcpGceMachineRuntimeDefinition, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return gcpGceMachineRuntimeDefinition, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpGceMachineRuntimeDefinition); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return gcpGceMachineRuntimeDefinition, nil
+}
+
+// UpdateGcpGceMachineRuntimeDefinition updates a gcp gce machine runtime definition with a PATCH request.
+func UpdateGcpGceMachineRuntimeDefinition(apiClient *http.Client, apiAddr string, gcpGceMachineRuntimeDefinition *v0.GcpGceMachineRuntimeDefinition) (*v0.GcpGceMachineRuntimeDefinition, error) {
+	client_lib.ReplaceAssociatedObjectsWithNil(gcpGceMachineRuntimeDefinition)
+	// capture the object ID, make a copy of the object, then remove fields that
+	// cannot be updated in the API
+	gcpGceMachineRuntimeDefinitionID := *gcpGceMachineRuntimeDefinition.ID
+	payloadGcpGceMachineRuntimeDefinition := *gcpGceMachineRuntimeDefinition
+	payloadGcpGceMachineRuntimeDefinition.ID = nil
+	payloadGcpGceMachineRuntimeDefinition.CreatedAt = nil
+	payloadGcpGceMachineRuntimeDefinition.UpdatedAt = nil
+
+	jsonGcpGceMachineRuntimeDefinition, err := util.MarshalObject(payloadGcpGceMachineRuntimeDefinition)
+	if err != nil {
+		return gcpGceMachineRuntimeDefinition, fmt.Errorf("failed to marshal provided object to JSON: %w", err)
+	}
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s/%d", apiAddr, v0.PathGcpGceMachineRuntimeDefinitions, gcpGceMachineRuntimeDefinitionID),
+		http.MethodPatch,
+		bytes.NewBuffer(jsonGcpGceMachineRuntimeDefinition),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return gcpGceMachineRuntimeDefinition, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return gcpGceMachineRuntimeDefinition, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&payloadGcpGceMachineRuntimeDefinition); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	payloadGcpGceMachineRuntimeDefinition.ID = &gcpGceMachineRuntimeDefinitionID
+	return &payloadGcpGceMachineRuntimeDefinition, nil
+}
+
+// ReplaceGcpGceMachineRuntimeDefinition updates a gcp gce machine runtime definition with a PUT request.
+func ReplaceGcpGceMachineRuntimeDefinition(apiClient *http.Client, apiAddr string, gcpGceMachineRuntimeDefinition *v0.GcpGceMachineRuntimeDefinition) (*v0.GcpGceMachineRuntimeDefinition, error) {
+	client_lib.ReplaceAssociatedObjectsWithNil(gcpGceMachineRuntimeDefinition)
+	// capture the object ID, make a copy of the object, then remove fields that
+	// cannot be updated in the API
+	gcpGceMachineRuntimeDefinitionID := *gcpGceMachineRuntimeDefinition.ID
+	payloadGcpGceMachineRuntimeDefinition := *gcpGceMachineRuntimeDefinition
+	payloadGcpGceMachineRuntimeDefinition.ID = nil
+	payloadGcpGceMachineRuntimeDefinition.CreatedAt = nil
+	payloadGcpGceMachineRuntimeDefinition.UpdatedAt = nil
+
+	jsonGcpGceMachineRuntimeDefinition, err := util.MarshalObject(payloadGcpGceMachineRuntimeDefinition)
+	if err != nil {
+		return gcpGceMachineRuntimeDefinition, fmt.Errorf("failed to marshal provided object to JSON: %w", err)
+	}
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s/%d", apiAddr, v0.PathGcpGceMachineRuntimeDefinitions, gcpGceMachineRuntimeDefinitionID),
+		http.MethodPut,
+		bytes.NewBuffer(jsonGcpGceMachineRuntimeDefinition),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return gcpGceMachineRuntimeDefinition, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return gcpGceMachineRuntimeDefinition, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&payloadGcpGceMachineRuntimeDefinition); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	payloadGcpGceMachineRuntimeDefinition.ID = &gcpGceMachineRuntimeDefinitionID
+	return &payloadGcpGceMachineRuntimeDefinition, nil
+}
+
+// DeleteGcpGceMachineRuntimeDefinition deletes a gcp gce machine runtime definition by ID.
+func DeleteGcpGceMachineRuntimeDefinition(apiClient *http.Client, apiAddr string, id uint) (*v0.GcpGceMachineRuntimeDefinition, error) {
+	var gcpGceMachineRuntimeDefinition v0.GcpGceMachineRuntimeDefinition
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s/%d", apiAddr, v0.PathGcpGceMachineRuntimeDefinitions, id),
+		http.MethodDelete,
+		new(bytes.Buffer),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return &gcpGceMachineRuntimeDefinition, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return &gcpGceMachineRuntimeDefinition, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpGceMachineRuntimeDefinition); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return &gcpGceMachineRuntimeDefinition, nil
+}
+
+// GetGcpGceMachineRuntimeInstances fetches all gcp gce machine runtime instances.
+func GetGcpGceMachineRuntimeInstances(apiClient *http.Client, apiAddr string) (*[]v0.GcpGceMachineRuntimeInstance, error) {
+	var gcpGceMachineRuntimeInstances []v0.GcpGceMachineRuntimeInstance
+
+	allPagesReceived := false
+	var allPageData []apiserver_lib.Object
+	nextCursor := uint(0)
+	queryId := ""
+	for !allPagesReceived {
+		url := fmt.Sprintf("%s%s", apiAddr, v0.PathGcpGceMachineRuntimeInstances)
+		if queryId != "" {
+			url = fmt.Sprintf("%s%s?queryid=%s&cursor=%d", apiAddr, v0.PathGcpGceMachineRuntimeInstances, queryId, nextCursor)
+		}
+
+		response, err := client_lib.GetResponse(
+			apiClient,
+			url,
+			http.MethodGet,
+			new(bytes.Buffer),
+			map[string]string{},
+			http.StatusOK,
+		)
+		if err != nil {
+			return &gcpGceMachineRuntimeInstances, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+		}
+
+		allPageData = append(allPageData, response.Data...)
+
+		if response.Meta.Pagination.HasMore {
+			nextCursor = response.Meta.Pagination.NextCursor
+			queryId = response.Meta.Pagination.QueryId
+		} else {
+			allPagesReceived = true
+		}
+	}
+
+	jsonData, err := json.Marshal(allPageData)
+	if err != nil {
+		return &gcpGceMachineRuntimeInstances, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpGceMachineRuntimeInstances); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return &gcpGceMachineRuntimeInstances, nil
+}
+
+// GetGcpGceMachineRuntimeInstanceByID fetches a gcp gce machine runtime instance by ID.
+func GetGcpGceMachineRuntimeInstanceByID(apiClient *http.Client, apiAddr string, id uint) (*v0.GcpGceMachineRuntimeInstance, error) {
+	var gcpGceMachineRuntimeInstance v0.GcpGceMachineRuntimeInstance
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s/%d", apiAddr, v0.PathGcpGceMachineRuntimeInstances, id),
+		http.MethodGet,
+		new(bytes.Buffer),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return &gcpGceMachineRuntimeInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return &gcpGceMachineRuntimeInstance, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpGceMachineRuntimeInstance); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return &gcpGceMachineRuntimeInstance, nil
+}
+
+// GetGcpGceMachineRuntimeInstancesByQueryString fetches gcp gce machine runtime instances by provided query string.
+func GetGcpGceMachineRuntimeInstancesByQueryString(apiClient *http.Client, apiAddr string, queryString string) (*[]v0.GcpGceMachineRuntimeInstance, error) {
+	var gcpGceMachineRuntimeInstances []v0.GcpGceMachineRuntimeInstance
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s?%s", apiAddr, v0.PathGcpGceMachineRuntimeInstances, queryString),
+		http.MethodGet,
+		new(bytes.Buffer),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return &gcpGceMachineRuntimeInstances, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data)
+	if err != nil {
+		return &gcpGceMachineRuntimeInstances, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpGceMachineRuntimeInstances); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return &gcpGceMachineRuntimeInstances, nil
+}
+
+// GetGcpGceMachineRuntimeInstanceByName fetches a gcp gce machine runtime instance by name.
+func GetGcpGceMachineRuntimeInstanceByName(apiClient *http.Client, apiAddr, name string) (*v0.GcpGceMachineRuntimeInstance, error) {
+	var gcpGceMachineRuntimeInstances []v0.GcpGceMachineRuntimeInstance
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s?name=%s", apiAddr, v0.PathGcpGceMachineRuntimeInstances, name),
+		http.MethodGet,
+		new(bytes.Buffer),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return &v0.GcpGceMachineRuntimeInstance{}, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data)
+	if err != nil {
+		return &v0.GcpGceMachineRuntimeInstance{}, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpGceMachineRuntimeInstances); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	switch {
+	case len(gcpGceMachineRuntimeInstances) < 1:
+		return &v0.GcpGceMachineRuntimeInstance{}, client_lib.ErrObjectNotFound
+	case len(gcpGceMachineRuntimeInstances) > 1:
+		return &v0.GcpGceMachineRuntimeInstance{}, fmt.Errorf("more than one gcp gce machine runtime instance with name %s returned", name)
+	}
+
+	return &gcpGceMachineRuntimeInstances[0], nil
+}
+
+// CreateGcpGceMachineRuntimeInstance creates a new gcp gce machine runtime instance.
+func CreateGcpGceMachineRuntimeInstance(apiClient *http.Client, apiAddr string, gcpGceMachineRuntimeInstance *v0.GcpGceMachineRuntimeInstance) (*v0.GcpGceMachineRuntimeInstance, error) {
+	client_lib.ReplaceAssociatedObjectsWithNil(gcpGceMachineRuntimeInstance)
+	jsonGcpGceMachineRuntimeInstance, err := util.MarshalObject(gcpGceMachineRuntimeInstance)
+	if err != nil {
+		return gcpGceMachineRuntimeInstance, fmt.Errorf("failed to marshal provided object to JSON: %w", err)
+	}
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s", apiAddr, v0.PathGcpGceMachineRuntimeInstances),
+		http.MethodPost,
+		bytes.NewBuffer(jsonGcpGceMachineRuntimeInstance),
+		map[string]string{},
+		http.StatusCreated,
+	)
+	if err != nil {
+		return gcpGceMachineRuntimeInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return gcpGceMachineRuntimeInstance, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpGceMachineRuntimeInstance); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return gcpGceMachineRuntimeInstance, nil
+}
+
+// UpdateGcpGceMachineRuntimeInstance updates a gcp gce machine runtime instance with a PATCH request.
+func UpdateGcpGceMachineRuntimeInstance(apiClient *http.Client, apiAddr string, gcpGceMachineRuntimeInstance *v0.GcpGceMachineRuntimeInstance) (*v0.GcpGceMachineRuntimeInstance, error) {
+	client_lib.ReplaceAssociatedObjectsWithNil(gcpGceMachineRuntimeInstance)
+	// capture the object ID, make a copy of the object, then remove fields that
+	// cannot be updated in the API
+	gcpGceMachineRuntimeInstanceID := *gcpGceMachineRuntimeInstance.ID
+	payloadGcpGceMachineRuntimeInstance := *gcpGceMachineRuntimeInstance
+	payloadGcpGceMachineRuntimeInstance.ID = nil
+	payloadGcpGceMachineRuntimeInstance.CreatedAt = nil
+	payloadGcpGceMachineRuntimeInstance.UpdatedAt = nil
+
+	jsonGcpGceMachineRuntimeInstance, err := util.MarshalObject(payloadGcpGceMachineRuntimeInstance)
+	if err != nil {
+		return gcpGceMachineRuntimeInstance, fmt.Errorf("failed to marshal provided object to JSON: %w", err)
+	}
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s/%d", apiAddr, v0.PathGcpGceMachineRuntimeInstances, gcpGceMachineRuntimeInstanceID),
+		http.MethodPatch,
+		bytes.NewBuffer(jsonGcpGceMachineRuntimeInstance),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return gcpGceMachineRuntimeInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return gcpGceMachineRuntimeInstance, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&payloadGcpGceMachineRuntimeInstance); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	payloadGcpGceMachineRuntimeInstance.ID = &gcpGceMachineRuntimeInstanceID
+	return &payloadGcpGceMachineRuntimeInstance, nil
+}
+
+// ReplaceGcpGceMachineRuntimeInstance updates a gcp gce machine runtime instance with a PUT request.
+func ReplaceGcpGceMachineRuntimeInstance(apiClient *http.Client, apiAddr string, gcpGceMachineRuntimeInstance *v0.GcpGceMachineRuntimeInstance) (*v0.GcpGceMachineRuntimeInstance, error) {
+	client_lib.ReplaceAssociatedObjectsWithNil(gcpGceMachineRuntimeInstance)
+	// capture the object ID, make a copy of the object, then remove fields that
+	// cannot be updated in the API
+	gcpGceMachineRuntimeInstanceID := *gcpGceMachineRuntimeInstance.ID
+	payloadGcpGceMachineRuntimeInstance := *gcpGceMachineRuntimeInstance
+	payloadGcpGceMachineRuntimeInstance.ID = nil
+	payloadGcpGceMachineRuntimeInstance.CreatedAt = nil
+	payloadGcpGceMachineRuntimeInstance.UpdatedAt = nil
+
+	jsonGcpGceMachineRuntimeInstance, err := util.MarshalObject(payloadGcpGceMachineRuntimeInstance)
+	if err != nil {
+		return gcpGceMachineRuntimeInstance, fmt.Errorf("failed to marshal provided object to JSON: %w", err)
+	}
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s/%d", apiAddr, v0.PathGcpGceMachineRuntimeInstances, gcpGceMachineRuntimeInstanceID),
+		http.MethodPut,
+		bytes.NewBuffer(jsonGcpGceMachineRuntimeInstance),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return gcpGceMachineRuntimeInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return gcpGceMachineRuntimeInstance, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&payloadGcpGceMachineRuntimeInstance); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	payloadGcpGceMachineRuntimeInstance.ID = &gcpGceMachineRuntimeInstanceID
+	return &payloadGcpGceMachineRuntimeInstance, nil
+}
+
+// DeleteGcpGceMachineRuntimeInstance deletes a gcp gce machine runtime instance by ID.
+func DeleteGcpGceMachineRuntimeInstance(apiClient *http.Client, apiAddr string, id uint) (*v0.GcpGceMachineRuntimeInstance, error) {
+	var gcpGceMachineRuntimeInstance v0.GcpGceMachineRuntimeInstance
+
+	response, err := client_lib.GetResponse(
+		apiClient,
+		fmt.Sprintf("%s%s/%d", apiAddr, v0.PathGcpGceMachineRuntimeInstances, id),
+		http.MethodDelete,
+		new(bytes.Buffer),
+		map[string]string{},
+		http.StatusOK,
+	)
+	if err != nil {
+		return &gcpGceMachineRuntimeInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	jsonData, err := json.Marshal(response.Data[0])
+	if err != nil {
+		return &gcpGceMachineRuntimeInstance, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+	if err := decoder.Decode(&gcpGceMachineRuntimeInstance); err != nil {
+		return nil, fmt.Errorf("failed to decode object in response data from threeport API: %w", err)
+	}
+
+	return &gcpGceMachineRuntimeInstance, nil
+}
+
 // GetGcpGkeKubernetesRuntimeDefinitions fetches all gcp gke kubernetes runtime definitions.
 func GetGcpGkeKubernetesRuntimeDefinitions(apiClient *http.Client, apiAddr string) (*[]v0.GcpGkeKubernetesRuntimeDefinition, error) {
 	var gcpGkeKubernetesRuntimeDefinitions []v0.GcpGkeKubernetesRuntimeDefinition

@@ -91,6 +91,8 @@ func dbInterfaces000001() []interface{} {
 		&v0.GcpProvider{},
 		&v0.GcpGkeKubernetesRuntimeDefinition{},
 		&v0.GcpGkeKubernetesRuntimeInstance{},
+		&v0.GcpGceMachineRuntimeDefinition{},
+		&v0.GcpGceMachineRuntimeInstance{},
 		&v0.KubernetesRuntimeDefinition{},
 		&v0.KubernetesRuntimeInstance{},
 		&v0.ControlPlaneDefinition{},

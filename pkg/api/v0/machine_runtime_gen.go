@@ -79,6 +79,12 @@ func (mrd *MachineRuntimeDefinition) GetFullyQualifiedType() string {
 	return "threeport.io/v0.MachineRuntimeDefinition"
 }
 
+// ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
+// if scheduled for deletion or nil if not scheduled for deletion.
+func (mrd *MachineRuntimeDefinition) ScheduledForDeletion() *time.Time {
+	return mrd.DeletionScheduled
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.

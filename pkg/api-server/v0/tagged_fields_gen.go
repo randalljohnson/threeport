@@ -20,6 +20,8 @@ var (
 	GatewayHttpPortTaggedFields                      = make(map[string]*apiserver_lib.FieldsByTag)
 	GatewayInstanceTaggedFields                      = make(map[string]*apiserver_lib.FieldsByTag)
 	GatewayTcpPortTaggedFields                       = make(map[string]*apiserver_lib.FieldsByTag)
+	GcpGceMachineRuntimeDefinitionTaggedFields       = make(map[string]*apiserver_lib.FieldsByTag)
+	GcpGceMachineRuntimeInstanceTaggedFields         = make(map[string]*apiserver_lib.FieldsByTag)
 	GcpGkeKubernetesRuntimeDefinitionTaggedFields    = make(map[string]*apiserver_lib.FieldsByTag)
 	GcpGkeKubernetesRuntimeInstanceTaggedFields      = make(map[string]*apiserver_lib.FieldsByTag)
 	GcpProviderTaggedFields                          = make(map[string]*apiserver_lib.FieldsByTag)

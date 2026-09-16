@@ -9,6 +9,11 @@ const (
 	GcpGkeKubernetesRuntimeInstanceCreateSubject = "gcpGkeKubernetesRuntimeInstance.create"
 	GcpGkeKubernetesRuntimeInstanceUpdateSubject = "gcpGkeKubernetesRuntimeInstance.update"
 	GcpGkeKubernetesRuntimeInstanceDeleteSubject = "gcpGkeKubernetesRuntimeInstance.delete"
+
+	GcpGceMachineRuntimeInstanceSubject       = "gcpGceMachineRuntimeInstance.*"
+	GcpGceMachineRuntimeInstanceCreateSubject = "gcpGceMachineRuntimeInstance.create"
+	GcpGceMachineRuntimeInstanceUpdateSubject = "gcpGceMachineRuntimeInstance.update"
+	GcpGceMachineRuntimeInstanceDeleteSubject = "gcpGceMachineRuntimeInstance.delete"
 )
 
 // GetGcpGkeKubernetesRuntimeInstanceSubjects returns the NATS subjects
@@ -21,12 +26,23 @@ func GetGcpGkeKubernetesRuntimeInstanceSubjects() []string {
 	}
 }
 
+// GetGcpGceMachineRuntimeInstanceSubjects returns the NATS subjects
+// for gcp gce machine runtime instances.
+func GetGcpGceMachineRuntimeInstanceSubjects() []string {
+	return []string{
+		GcpGceMachineRuntimeInstanceCreateSubject,
+		GcpGceMachineRuntimeInstanceUpdateSubject,
+		GcpGceMachineRuntimeInstanceDeleteSubject,
+	}
+}
+
 // GetGcpSubjects returns the NATS subjects
 // for all gcp objects.
 func GetGcpSubjects() []string {
 	var gcpSubjects []string
 
 	gcpSubjects = append(gcpSubjects, GetGcpGkeKubernetesRuntimeInstanceSubjects()...)
+	gcpSubjects = append(gcpSubjects, GetGcpGceMachineRuntimeInstanceSubjects()...)
 
 	return gcpSubjects
 }

@@ -251,7 +251,7 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 			return fmt.Errorf("failed to create GCP provider: %w", err)
 		}
 
-		// create SSH firewall rule scoped to this instance's network tag
+		// allow SSH ingress from the configured source ranges
 		sshTag := i.RuntimeInstanceName
 		sourceRanges := pulumi.ToStringArray(i.sshSourceRanges())
 		_, err = compute.NewFirewall(pctx, fmt.Sprintf("%s-ssh", i.RuntimeInstanceName), &compute.FirewallArgs{
@@ -417,4 +417,19 @@ func (i *GceMachineInfra) SetCreateOutputs(hostname, externalIP, sshPrivateKey s
 	i.hostname = hostname
 	i.externalIP = externalIP
 	i.sshPrivateKeyPEM = sshPrivateKey
+}
+
+// SeedSSHKeyPair loads a persisted private key onto the provider and derives
+// its authorized-keys public form so the next deploy reuses that key.
+func (i *GceMachineInfra) SeedSSHKeyPair(sshPrivateKeyPEM string) error {
+	if sshPrivateKeyPEM == "" {
+		return fmt.Errorf("failed to seed ssh key pair: private key is empty")
+	}
+	signer, err := ssh.ParsePrivateKey([]byte(sshPrivateKeyPEM))
+	if err != nil {
+		return fmt.Errorf("failed to parse persisted SSH private key: %w", err)
+	}
+	i.sshPrivateKeyPEM = sshPrivateKeyPEM
+	i.sshPublicKeyAuthorized = string(ssh.MarshalAuthorizedKey(signer.PublicKey()))
+	return nil
 }

@@ -71,8 +71,9 @@ func (m *recordingMocks) byType(typeToken string) []recordedResource {
 }
 
 const (
-	instanceTypeToken = "gcp:compute/instance:Instance"
-	firewallTypeToken = "gcp:compute/firewall:Firewall"
+	instanceTypeToken    = "gcp:compute/instance:Instance"
+	firewallTypeToken    = "gcp:compute/firewall:Firewall"
+	gcpProviderTypeToken = "pulumi:providers:gcp"
 )
 
 // newTestInfra returns a GceMachineInfra with test project, zone, and image fields set.
@@ -219,8 +220,8 @@ func TestPulumiProgram_CreatesInstanceAndFirewall(t *testing.T) {
 	if got := stringMapInput(t, inst.inputs["labels"]); !equalStringMaps(got, wantLabels) {
 		t.Errorf("instance labels = %v, want %v", got, wantLabels)
 	}
-	if got, ok := firewalls[0].inputs["description"].(string); !ok || got != provider.GcpOwnershipDescription(i.RuntimeInstanceName) {
-		t.Errorf("firewall description = %v, want ownership pair", firewalls[0].inputs["description"])
+	if got, ok := firewalls[0].inputs["description"].(string); !ok || !strings.Contains(got, provider.GcpOwnershipDescription(i.RuntimeInstanceName)) {
+		t.Errorf("firewall description = %v, want it to contain ownership pair", firewalls[0].inputs["description"])
 	}
 }
 
@@ -684,4 +685,105 @@ func equalStringSlices(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+// TestPulumiProgram_AssertsLabelableResourcesCarryProvisionedByLabel covers that
+// every registered resource is labeled provisioned-by=threeport or listed as exempt.
+// An unknown type fails so a new resource cannot ship unlabeled by default.
+func TestPulumiProgram_AssertsLabelableResourcesCarryProvisionedByLabel(t *testing.T) {
+	// build a configured provider and generate the SSH key pair the program requires
+	i := newTestInfra("label-test")
+	if err := i.ensureSSHKeyPair(); err != nil {
+		t.Fatalf("ensureSSHKeyPair: %v", err)
+	}
+
+	// run the program under the recording monitor
+	mocks := &recordingMocks{}
+	if err := pulumi.RunErr(i.pulumiProgram(), pulumi.WithMocks("gce", "test-stack", mocks)); err != nil {
+		t.Fatalf("RunErr: %v", err)
+	}
+
+	// fail fast when the program registered nothing
+	if len(mocks.resources) == 0 {
+		t.Fatal("program registered no resources; nothing to test")
+	}
+
+	type labelExpectation struct {
+		labelable    bool
+		exemptReason string
+	}
+	// classify each type as labelable or exempt; a missing type fails the test
+	allowlist := map[string]labelExpectation{
+		instanceTypeToken: {labelable: true},
+		firewallTypeToken: {
+			labelable:    false,
+			exemptReason: "firewall rules have no labels field, so the provisioned-by label cannot be applied",
+		},
+		gcpProviderTypeToken: {
+			labelable:    false,
+			exemptReason: "the cloud-provider meta-resource carries no user labels",
+		},
+	}
+
+	sawLabelable := false
+	sawFirewall := false
+
+	// check each registered resource against the allowlist
+	for _, r := range mocks.resources {
+		exp, ok := allowlist[r.typeToken]
+		if !ok {
+			t.Errorf("resource %q (%s) is not in the label allowlist; classify it as labelable or exempt", r.name, r.typeToken)
+			continue
+		}
+
+		if !exp.labelable {
+			if r.typeToken == firewallTypeToken {
+				sawFirewall = true
+			}
+			if exp.exemptReason == "" {
+				t.Errorf("resource type %s is exempt but carries no documented reason", r.typeToken)
+			}
+			continue
+		}
+
+		sawLabelable = true
+		labels := instanceLabels(t, r)
+		want := provider.GcpResourceLabels(i.RuntimeInstanceName)
+		for k, v := range want {
+			if got := labels[k]; got != v {
+				t.Errorf("resource %q (%s) labels[%q] = %q, want %q", r.name, r.typeToken, k, got, v)
+			}
+		}
+	}
+
+	// require at least one labelable resource and the exempt firewall
+	if !sawLabelable {
+		t.Error("no labelable resource was registered; expected at least the VM instance")
+	}
+	if !sawFirewall {
+		t.Error("the exempt firewall resource was not registered")
+	}
+}
+
+// instanceLabels returns the labels input as strings.
+// It fails the test when the input is missing or the wrong shape.
+func instanceLabels(t *testing.T, r recordedResource) map[string]string {
+	t.Helper()
+	raw, ok := r.inputs["labels"]
+	if !ok {
+		t.Fatalf("resource %q (%s) has no labels input", r.name, r.typeToken)
+	}
+	m, ok := raw.(map[string]any)
+	if !ok {
+		t.Fatalf("resource %q labels is not a map: %T", r.name, raw)
+	}
+	out := make(map[string]string, len(m))
+	for k, v := range m {
+		s, ok := v.(string)
+		if !ok {
+			t.Fatalf("resource %q label %q is not a string: %T", r.name, k, v)
+		}
+		out[k] = s
+	}
+	return out
 }

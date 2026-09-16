@@ -106,6 +106,20 @@ func (h Handler) AddMachineRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
 	}
 
+	// notify controller if reconciliation is required
+	if !*machineRuntimeDefinition.Reconciled {
+		notifPayload, err := machineRuntimeDefinition.NotificationPayload(
+			notifications.NotificationOperationCreated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.MachineRuntimeDefinitionCreateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		machineRuntimeDefinition,
@@ -338,6 +352,20 @@ func (h Handler) UpdateMachineRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
+	// notify controller if reconciliation is required
+	if !*existingMachineRuntimeDefinition.Reconciled {
+		notifPayload, err := existingMachineRuntimeDefinition.NotificationPayload(
+			notifications.NotificationOperationUpdated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.MachineRuntimeDefinitionUpdateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingMachineRuntimeDefinition,
@@ -474,31 +502,87 @@ func (h Handler) DeleteMachineRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
-	// delete object
-	if err := crdbgorm.ExecuteTx(
-		c.Request().Context(), h.DB, nil,
-		func(tx *gorm.DB) error {
-			return tx.Scopes(apiserver_lib.QueryScopes(c)...).Delete(&machineRuntimeDefinition).Error
-		},
-	); err != nil {
-		h.Logger.Error("handler error: error deleting object", zap.Error(err))
-		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
+	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
+	if checkErr := api_v0.CheckBlockingAttachedObjectReferences(h.RequestDB(c), &machineRuntimeDefinition); checkErr != nil {
 		var blockedErr *api_v0.BlockedDeleteError
-		if errors.As(err, &blockedErr) {
+		if errors.As(checkErr, &blockedErr) {
 			return RespondBlockedDelete(
 				c,
 				h.RequestDB(c),
 				blockedErr,
 			)
 		}
-		// check if this is a custom HTTP error with specific status code
-		var httpErr *util_v0.HttpError
-		if errors.As(err, &httpErr) {
-			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, err, objectType,
-			)
+		return apiserver_lib.ResponseStatus500(c, nil, checkErr, objectType)
+	}
+	// schedule for deletion if not already scheduled
+	// if scheduled and reconciled, delete object from DB
+	// if scheduled but not reconciled, return 409 (controller is working on it)
+	if machineRuntimeDefinition.DeletionScheduled == nil {
+		// schedule for deletion
+		reconciled := false
+		timestamp := time.Now().UTC()
+		scheduledMachineRuntimeDefinition := api_v0.MachineRuntimeDefinition{
+			Reconciliation: api_v0.Reconciliation{
+				DeletionScheduled: &timestamp,
+				Reconciled:        &reconciled,
+			}}
+		if err := crdbgorm.ExecuteTx(
+			c.Request().Context(), h.DB, nil,
+			func(tx *gorm.DB) error {
+				return tx.Scopes(apiserver_lib.QueryScopes(c)...).Model(&machineRuntimeDefinition).Updates(&scheduledMachineRuntimeDefinition).Error
+			},
+		); err != nil {
+			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		// notify controller
+		notifPayload, err := machineRuntimeDefinition.NotificationPayload(
+			notifications.NotificationOperationDeleted,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+		}
+		h.JS.Publish(notif.MachineRuntimeDefinitionDeleteSubject, *notifPayload)
+	} else {
+		if machineRuntimeDefinition.DeletionConfirmed == nil {
+			// if deletion scheduled but not reconciled, return 409 - deletion
+			// already underway
+			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
+				"object with ID %d already being deleted",
+				*machineRuntimeDefinition.ID,
+			)), objectType)
+		} else {
+			// object scheduled for deletion and confirmed - it can be deleted
+			// from DB
+			if err := crdbgorm.ExecuteTx(
+				c.Request().Context(), h.DB, nil,
+				func(tx *gorm.DB) error {
+					return tx.Scopes(apiserver_lib.QueryScopes(c)...).Delete(&machineRuntimeDefinition).Error
+				},
+			); err != nil {
+				h.Logger.Error("handler error: error deleting object", zap.Error(err))
+				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
+				var blockedErr *api_v0.BlockedDeleteError
+				if errors.As(err, &blockedErr) {
+					return RespondBlockedDelete(
+						c,
+						h.RequestDB(c),
+						blockedErr,
+					)
+				}
+				// check if this is a custom HTTP error with specific status code
+				var httpErr *util_v0.HttpError
+				if errors.As(err, &httpErr) {
+					return apiserver_lib.ResponseStatusErr(
+						httpErr.GetStatusCode(), c, nil, err, objectType,
+					)
+				}
+				return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
+			}
+		}
 	}
 
 	response, err := apiserver_lib.CreateResponse(

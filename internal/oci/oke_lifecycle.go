@@ -16,6 +16,7 @@ import (
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	encryption "github.com/threeport/threeport/pkg/encryption/v0"
+	event "github.com/threeport/threeport/pkg/event/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -297,6 +298,20 @@ func (o *okeLifecycle) SetCreationFailed() error {
 		o.r.APIClient, o.r.APIServer, &failedUpdate,
 	)
 	return err
+}
+
+// RecordSuccessfulCreate records a SuccessfulCreate event for provisioning
+// completion.
+func (o *okeLifecycle) RecordSuccessfulCreate() error {
+	return o.r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonSuccessfulCreate),
+			Note:   util.Ptr("provisioning complete"),
+		},
+		o.instance.GetId(),
+		o.instance.GetFullyQualifiedType(),
+	)
 }
 
 // ConfirmCreation sets CreationConfirmed and Reconciled=true.

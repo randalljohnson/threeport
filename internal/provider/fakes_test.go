@@ -657,6 +657,11 @@ func (f *fakeLifecycle) ConfirmCreation() error {
 	return f.recordSimple("ConfirmCreation")
 }
 
+// RecordSuccessfulCreate records the call and returns any configured error.
+func (f *fakeLifecycle) RecordSuccessfulCreate() error {
+	return f.recordSimple("RecordSuccessfulCreate")
+}
+
 // AckDeletion records the call and returns any configured error.
 func (f *fakeLifecycle) AckDeletion() error {
 	return f.recordSimple("AckDeletion")

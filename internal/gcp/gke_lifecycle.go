@@ -1,6 +1,7 @@
 package gcp
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -12,7 +13,9 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	event "github.com/threeport/threeport/pkg/event/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // gkeLifecycle implements provider.InfraLifecycleProvider for GCP GKE
@@ -218,6 +221,19 @@ func (g *gkeLifecycle) SetCreationFailed() error {
 	return err
 }
 
+// RecordSuccessfulCreate records a SuccessfulCreate event for the GKE instance.
+func (g *gkeLifecycle) RecordSuccessfulCreate() error {
+	return g.r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonSuccessfulCreate),
+			Note:   util.Ptr("provisioning complete"),
+		},
+		g.instance.GetId(),
+		g.instance.GetFullyQualifiedType(),
+	)
+}
+
 // ConfirmCreation sets CreationConfirmed and Reconciled=true.
 func (g *gkeLifecycle) ConfirmCreation() error {
 	reconciled := true
@@ -362,6 +378,13 @@ func buildGkeInfra(
 		return nil, fmt.Errorf("failed to retrieve GCP provider by ID: %w", err)
 	}
 
+	if gcpProvider.ServiceAccountCredentials == nil || *gcpProvider.ServiceAccountCredentials == "" {
+		if gcpProvider.ID == nil {
+			return nil, errors.New("gcp provider has no service account credentials")
+		}
+		return nil, fmt.Errorf("gcp provider %d has no service account credentials", *gcpProvider.ID)
+	}
+
 	infraGKE := &provider.KubernetesRuntimeInfraGKE{
 		PulumiWorkspace: provider.PulumiWorkspace{
 			RuntimeInstanceName: *instance.Name,
@@ -369,11 +392,8 @@ func buildGkeInfra(
 		},
 		ProjectID:              *gcpProvider.ProjectID,
 		Region:                 *instance.Region,
-		WorkerNodeInitialCount: int32(*definition.DefaultNodeGroupInitialSize),
-	}
-
-	if gcpProvider.ServiceAccountCredentials != nil && *gcpProvider.ServiceAccountCredentials != "" {
-		infraGKE.ServiceAccountCredentials = *gcpProvider.ServiceAccountCredentials
+		WorkerNodeInitialCount:     int32(*definition.DefaultNodeGroupInitialSize),
+		ServiceAccountCredentials:  *gcpProvider.ServiceAccountCredentials,
 	}
 
 	return infraGKE, nil

@@ -753,7 +753,6 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 		for id := range idSet {
 			ids = append(ids, id)
 		}
-
 		resolved, err := resolveNamesWithCache(ctx, db, typ, ids)
 		if err != nil {
 			log.Error("failed to resolve object names", zap.String("objectType", typ), zap.Error(err))

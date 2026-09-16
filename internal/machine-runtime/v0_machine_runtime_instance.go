@@ -269,19 +269,10 @@ func reconcileProviderInstance(
 			gcpProvider = *provider
 		}
 
-		// map location with the GCP cloud token, or use an already-set region
-		var region string
-		switch {
-		case machineRuntimeInstance.Location != nil && *machineRuntimeInstance.Location != "":
-			mapped, err := mapping.GetProviderRegionForLocation(util.GcpProvider, *machineRuntimeInstance.Location)
-			if err != nil {
-				return 0, fmt.Errorf("failed to map threeport location to GCP region: %w", err)
-			}
-			region = mapped
-		case machineRuntimeInstance.Region != nil && *machineRuntimeInstance.Region != "":
-			region = *machineRuntimeInstance.Region
-		default:
-			return 0, fmt.Errorf("failed to resolve GCP region: machine runtime instance has neither location nor region")
+		// map location with the GCP cloud token and hardcode zone a
+		region, err := mapping.GetProviderRegionForLocation(util.GcpProvider, *machineRuntimeInstance.Location)
+		if err != nil {
+			return 0, fmt.Errorf("failed to map threeport location to GCP region: %w", err)
 		}
 		zone := region + "-a"
 
@@ -302,6 +293,7 @@ func reconcileProviderInstance(
 		if machineRuntimeInstance.SSHUser == nil || *machineRuntimeInstance.SSHUser == "" {
 			return 0, fmt.Errorf("failed to create GCE machine runtime instance: ssh user is empty")
 		}
+		// create GCE machine runtime instance on the default network
 		gcpGceMachineRuntimeInstance := v0.GcpGceMachineRuntimeInstance{
 			Instance: v0.Instance{
 				Name: machineRuntimeInstance.Name,
@@ -311,7 +303,13 @@ func reconcileProviderInstance(
 			Zone:                             &zone,
 			MachineRuntimeInstanceID:         machineRuntimeInstance.ID,
 			GcpGceMachineRuntimeDefinitionID: gcpGceMachineRuntimeDefinition.ID,
-			SSHUser:                          machineRuntimeInstance.SSHUser,
+		}
+
+		// propagate ssh credentials from the abstract instance so the GCE
+		// provisioner can authorize the user and inject the key; copy only
+		// when present to leave the married columns null otherwise
+		if machineRuntimeInstance.SSHUser != nil {
+			gcpGceMachineRuntimeInstance.SSHUser = util.Ptr(*machineRuntimeInstance.SSHUser)
 		}
 		if machineRuntimeInstance.SSHKey != nil {
 			gcpGceMachineRuntimeInstance.SSHKey = util.Ptr(*machineRuntimeInstance.SSHKey)

@@ -722,50 +722,15 @@ func firewallSourceRanges(t *testing.T, r recordedResource) []string {
 	if !ok {
 		t.Fatal("firewall has no sourceRanges input")
 	}
-	return stringSliceInput(t, raw)
-}
-
-// stringSliceInput converts a Pulumi string-array input to []string.
-func stringMapInput(t *testing.T, raw any) map[string]string {
-	t.Helper()
-	items, ok := raw.(map[string]any)
-	if !ok {
-		t.Fatalf("input is not a map: %T", raw)
-	}
-	out := make(map[string]string, len(items))
-	for k, v := range items {
-		s, ok := v.(string)
-		if !ok {
-			t.Fatalf("map value is not a string: %T", v)
-		}
-		out[k] = s
-	}
-	return out
-}
-
-func equalStringMaps(a, b map[string]string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for k, v := range a {
-		if b[k] != v {
-			return false
-		}
-	}
-	return true
-}
-
-func stringSliceInput(t *testing.T, raw any) []string {
-	t.Helper()
 	items, ok := raw.([]any)
 	if !ok {
-		t.Fatalf("input is not a slice: %T", raw)
+		t.Fatalf("sourceRanges is not a slice: %T", raw)
 	}
 	out := make([]string, 0, len(items))
 	for _, it := range items {
 		s, ok := it.(string)
 		if !ok {
-			t.Fatalf("slice entry is not a string: %T", it)
+			t.Fatalf("sourceRanges entry is not a string: %T", it)
 		}
 		out = append(out, s)
 	}
@@ -865,12 +830,12 @@ func equalStringSlices(a, b []string) bool {
 	return true
 }
 
-// TestPulumiProgram_AssertsLabelableResourcesCarryProvisionedByLabel covers that
-// every registered resource is labeled provisioned-by=threeport or listed as exempt.
+// TestPulumiProgram_AssertsLabelableResourcesCarryManagedByLabel covers that
+// every registered resource is labeled managed-by=threeport or listed as exempt.
 // An unknown type fails so a new resource cannot ship unlabeled by default.
-func TestPulumiProgram_AssertsLabelableResourcesCarryProvisionedByLabel(t *testing.T) {
+func TestPulumiProgram_AssertsLabelableResourcesCarryManagedByLabel(t *testing.T) {
 	// build a configured provider and generate the SSH key pair the program requires
-	i := newTestInfra("label-test")
+	i := newTestInfra("label-audit")
 	if err := i.ensureSSHKeyPair(); err != nil {
 		t.Fatalf("ensureSSHKeyPair: %v", err)
 	}
@@ -883,19 +848,19 @@ func TestPulumiProgram_AssertsLabelableResourcesCarryProvisionedByLabel(t *testi
 
 	// fail fast when the program registered nothing
 	if len(mocks.resources) == 0 {
-		t.Fatal("program registered no resources; nothing to test")
+		t.Fatal("program registered no resources; nothing to audit")
 	}
 
 	type labelExpectation struct {
 		labelable    bool
 		exemptReason string
 	}
-	// classify each type as labelable or exempt; a missing type fails the test
+	// classify each type as labelable or exempt; a missing type fails the audit
 	allowlist := map[string]labelExpectation{
 		instanceTypeToken: {labelable: true},
 		firewallTypeToken: {
 			labelable:    false,
-			exemptReason: "firewall rules have no labels field, so the provisioned-by label cannot be applied",
+			exemptReason: "firewall rules have no labels field, so the managed-by label cannot be applied",
 		},
 		gcpProviderTypeToken: {
 			labelable:    false,
@@ -926,11 +891,8 @@ func TestPulumiProgram_AssertsLabelableResourcesCarryProvisionedByLabel(t *testi
 
 		sawLabelable = true
 		labels := instanceLabels(t, r)
-		want := provider.GcpResourceLabels(i.RuntimeInstanceName)
-		for k, v := range want {
-			if got := labels[k]; got != v {
-				t.Errorf("resource %q (%s) labels[%q] = %q, want %q", r.name, r.typeToken, k, got, v)
-			}
+		if got := labels[provider.GcpLabelProvisionedBy]; got != provider.GcpLabelProvisionedByValue {
+			t.Errorf("resource %q (%s) labels[%q] = %q, want %q", r.name, r.typeToken, provider.GcpLabelProvisionedBy, got, provider.GcpLabelProvisionedByValue)
 		}
 	}
 

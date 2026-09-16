@@ -2,6 +2,7 @@ package gcp
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -494,14 +495,18 @@ func buildGceMachineInfra(
 		}
 	}
 
-	if gcpProvider.ServiceAccountCredentials != nil && *gcpProvider.ServiceAccountCredentials != "" {
-		// decrypt service account credentials
-		decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
+	// fail at BuildInfra when credentials are missing so adopt never falls into interactive oauth
+	if gcpProvider.ServiceAccountCredentials == nil || *gcpProvider.ServiceAccountCredentials == "" {
+		if gcpProvider.ID == nil {
+			return nil, errors.New("gcp provider has no service account credentials")
 		}
-		infraGce.ServiceAccountCredentials = decryptedCredentials
+		return nil, fmt.Errorf("gcp provider %d has no service account credentials", *gcpProvider.ID)
 	}
+	decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
+	}
+	infraGce.ServiceAccountCredentials = decryptedCredentials
 
 	if instance.SSHKey != nil && *instance.SSHKey != "" {
 		// decrypt and seed persisted SSH key

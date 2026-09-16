@@ -308,7 +308,7 @@ func (i *GceMachineInfra) createInfra() error {
 // compute API reports the instance is not found, so a pulumi program that
 // silently skipped the instance resource cannot masquerade as create success.
 func (i *GceMachineInfra) verifyInstanceExists(ctx context.Context) error {
-	service, err := computev1.NewService(ctx, option.WithScopes(computev1.ComputeReadonlyScope))
+	service, err := computev1.NewService(ctx, i.GcpClientOptions(option.WithScopes(computev1.ComputeReadonlyScope))...)
 	if err != nil {
 		return fmt.Errorf("failed to create GCE compute service for existence check: %w", err)
 	}
@@ -363,11 +363,15 @@ func (i *GceMachineInfra) SetStackState(state *datatypes.JSON) error {
 // generated public key injected into ssh-keys metadata.
 func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 	return func(pctx *pulumi.Context) error {
-		// create GCP provider
-		gcpProvider, err := gcp.NewProvider(pctx, "gcp-provider", &gcp.ProviderArgs{
+		// thread service-account JSON into this stack's provider, not a process-global env var
+		providerArgs := &gcp.ProviderArgs{
 			Project: pulumi.String(i.ProjectID),
 			Region:  pulumi.String(i.Region),
-		})
+		}
+		if i.ServiceAccountCredentials != "" {
+			providerArgs.Credentials = pulumi.String(i.ServiceAccountCredentials)
+		}
+		gcpProvider, err := gcp.NewProvider(pctx, "gcp-provider", providerArgs)
 		if err != nil {
 			return fmt.Errorf("failed to create GCP provider: %w", err)
 		}
@@ -590,7 +594,7 @@ func (i *GceMachineInfra) DiscoverAndAdopt() error {
 	}
 
 	ctx := context.Background()
-	service, err := computev1.NewService(ctx, option.WithScopes(computev1.ComputeReadonlyScope))
+	service, err := computev1.NewService(ctx, i.GcpClientOptions(option.WithScopes(computev1.ComputeReadonlyScope))...)
 	if err != nil {
 		return fmt.Errorf("failed to create GCE compute service: %w", err)
 	}
@@ -794,4 +798,14 @@ func (i *GceMachineInfra) SeedSSHKeyPair(sshPrivateKeyPEM string) error {
 	i.sshPrivateKeyPEM = sshPrivateKeyPEM
 	i.sshPublicKeyAuthorized = string(ssh.MarshalAuthorizedKey(signer.PublicKey()))
 	return nil
+}
+
+// GcpClientOptions returns GCP SDK client options, threading
+// ServiceAccountCredentials per call when set.
+func (i *GceMachineInfra) GcpClientOptions(base ...option.ClientOption) []option.ClientOption {
+	// keep ambient process credentials when this instance has no JSON key
+	if i.ServiceAccountCredentials == "" {
+		return base
+	}
+	return append(base, option.WithCredentialsJSON([]byte(i.ServiceAccountCredentials)))
 }

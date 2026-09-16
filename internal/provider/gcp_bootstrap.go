@@ -457,6 +457,10 @@ func CreateGCPServiceAccountWithKey(projectID, accountName string) (*GCPServiceA
 		return nil, fmt.Errorf("failed to create Cloud Resource Manager service client: %w", err)
 	}
 
+	if !canonicalGCPAccountName(accountName) {
+		return nil, fmt.Errorf("GCP provider name %q is not a unique service-account identity; use lowercase letters, digits, and hyphens", accountName)
+	}
+
 	// Generate service account ID and create the service account
 	serviceAccountID := generateServiceAccountID(accountName)
 	displayName := fmt.Sprintf(serviceAccountDisplayFormat, accountName)
@@ -475,17 +479,9 @@ func CreateGCPServiceAccountWithKey(projectID, accountName string) (*GCPServiceA
 		return nil, fmt.Errorf("GCP service account %s already exists; pick a different provider name", account.Email)
 	}
 
-	rollbackCreated := func(opErr error) error {
-		if existed {
-			return opErr
-		}
-		rbErr := rollbackCreatedGCPServiceAccount(iamService, crmService, projectID, account.Email)
-		return wrapCreatedServiceAccountError(opErr, rbErr, account.Email)
-	}
-
 	// grant IAM roles to the service account
 	if err := grantServiceAccountRolesForProject(crmService, projectID, account.Email); err != nil {
-		return nil, rollbackCreated(fmt.Errorf("failed to grant IAM roles: %w", err))
+		return nil, fmt.Errorf("failed to grant IAM roles: %w", err)
 	}
 
 	// create JSON key for controllers running outside GCP
@@ -498,13 +494,13 @@ func CreateGCPServiceAccountWithKey(projectID, accountName string) (*GCPServiceA
 		keyRequest,
 	).Do()
 	if err != nil {
-		return nil, rollbackCreated(fmt.Errorf("failed to create service account key: %w", err))
+		return nil, fmt.Errorf("failed to create service account key: %w", err)
 	}
 
 	// The key is base64 encoded, decode it
 	keyJSON, err := util.Base64Decode(key.PrivateKeyData)
 	if err != nil {
-		return nil, rollbackCreated(fmt.Errorf("failed to decode service account key: %w", err))
+		return nil, fmt.Errorf("failed to decode service account key: %w", err)
 	}
 
 	util.CliOutputInfo("Created and exported GCP service account key")
@@ -559,28 +555,6 @@ func DeleteGCPServiceAccountWithKey(projectID, accountName string) error {
 	return nil
 }
 
-// rollbackCreatedGCPServiceAccount removes IAM bindings and deletes an account
-// this create added, so a retry can use the same provider name.
-func rollbackCreatedGCPServiceAccount(
-	iamService *iam.Service,
-	crmService *cloudresourcemanager.Service,
-	projectID string,
-	serviceAccountEmail string,
-) error {
-	roleErr := removeServiceAccountRolesForProject(crmService, projectID, serviceAccountEmail)
-	delErr := deleteServiceAccountForProject(iamService, projectID, serviceAccountEmail)
-	return errors.Join(roleErr, delErr)
-}
-
-// wrapCreatedServiceAccountError returns opErr, and names the rollback failure
-// when deleting the account this create added also failed.
-func wrapCreatedServiceAccountError(opErr, rollbackErr error, email string) error {
-	if rollbackErr == nil {
-		return opErr
-	}
-	return fmt.Errorf("%w; failed to delete newly created service account %s: %v", opErr, email, rollbackErr)
-}
-
 // createServiceAccountForProject returns the named service account, creating it
 // when Get reports not found. The bool is true when the account already existed.
 func createServiceAccountForProject(
@@ -593,7 +567,7 @@ func createServiceAccountForProject(
 	serviceAccountEmail := fmt.Sprintf("%s@%s.iam.gserviceaccount.com", serviceAccountID, projectID)
 	serviceAccountResource := fmt.Sprintf("projects/%s/serviceAccounts/%s", projectID, serviceAccountEmail)
 
-	// report an existing account; CreateGCPServiceAccountWithKey errors on that
+	// report an existing account; CreateGCPServiceAccountWithKey reuses an owned one
 	existingAccount, err := iamService.Projects.ServiceAccounts.Get(serviceAccountResource).Do()
 	if err == nil {
 		return existingAccount, true, nil
@@ -778,6 +752,23 @@ func isNotFoundError(err error) bool {
 // This is used when creating service accounts via tptctl create gcp-provider.
 func generateServiceAccountID(name string) string {
 	return formatServiceAccountID(serviceAccountNameFormat, name)
+}
+
+// canonicalGCPAccountName reports whether name is already the unique
+// lowercase [a-z0-9-] form, and whether generateServiceAccountID keeps it
+// without truncating to 30 characters.
+func canonicalGCPAccountName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, r := range name {
+		if (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '-' {
+			return false
+		}
+	}
+	id := generateServiceAccountID(name)
+	full := strings.ToLower(fmt.Sprintf(serviceAccountNameFormat, name))
+	return id == full
 }
 
 // grantServiceAccountRolesForProject grants the necessary IAM roles to a service account.

@@ -467,7 +467,7 @@ func TestGceBuildInfraNilRequiredFields(t *testing.T) {
 
 		_, err := buildGceMachineInfra(s.gceReconciler(), instance, gceDiscardLog())
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "GcpProviderID")
+		assert.Contains(t, err.Error(), "gcp provider id is empty")
 	})
 
 	t.Run("nil provider ProjectID returns clean error", func(t *testing.T) {
@@ -478,7 +478,7 @@ func TestGceBuildInfraNilRequiredFields(t *testing.T) {
 
 		_, err := buildGceMachineInfra(s.gceReconciler(), gceBaseInstance(gceTestInstanceID, gceTestInstanceName), gceDiscardLog())
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "ProjectID")
+		assert.Contains(t, err.Error(), "gcp project id is empty")
 	})
 
 	t.Run("nil GcpGceMachineRuntimeDefinitionID returns clean error", func(t *testing.T) {
@@ -489,7 +489,7 @@ func TestGceBuildInfraNilRequiredFields(t *testing.T) {
 
 		_, err := buildGceMachineInfra(s.gceReconciler(), instance, gceDiscardLog())
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "GcpGceMachineRuntimeDefinitionID")
+		assert.Contains(t, err.Error(), "gce machine runtime definition id is empty")
 	})
 }
 
@@ -951,7 +951,7 @@ func TestGceLifecycleOnCreateConfirmedNilMarriedIDReturnsError(t *testing.T) {
 	g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
 	err := g.OnCreateConfirmed(nil)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "MachineRuntimeInstanceID")
+	assert.Contains(t, err.Error(), "machine runtime instance id is empty")
 }
 
 // TestGceLifecycleOnCreateConfirmedInstanceGETErrorWraps covers

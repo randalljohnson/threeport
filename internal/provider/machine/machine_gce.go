@@ -13,6 +13,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/pulumi/pulumi-gcp/sdk/v8/go/gcp"
@@ -29,11 +30,15 @@ import (
 	gcpauth "github.com/threeport/threeport/pkg/auth/v0"
 )
 
+// gceNameRe is GCE's RFC1035 instance-name pattern, 1 to 63 characters.
+var gceNameRe = regexp.MustCompile(`^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$`)
+
 // compile-time guarantees that GceMachineInfra satisfies the infra provider
 // lifecycle contract plus the optional streaming, refresh, and adopt seams.
 // The three streaming and refresh methods (GetStateFilePath, ReadStateFile,
 // RefreshStack) come from the embedded PulumiWorkspace for free; the adopt
 // method is implemented on this provider.
+
 var (
 	_ provider.InfraProvider       = (*GceMachineInfra)(nil)
 	_ provider.StreamableProvider  = (*GceMachineInfra)(nil)
@@ -217,6 +222,8 @@ func (i *GceMachineInfra) validateRequiredFields() error {
 	var missing []string
 	if i.RuntimeInstanceName == "" {
 		missing = append(missing, "RuntimeInstanceName")
+	} else if !gceNameRe.MatchString(i.RuntimeInstanceName) {
+		return fmt.Errorf("RuntimeInstanceName %q is not a valid GCE instance name", i.RuntimeInstanceName)
 	}
 	if i.ProjectID == "" {
 		missing = append(missing, "ProjectID")

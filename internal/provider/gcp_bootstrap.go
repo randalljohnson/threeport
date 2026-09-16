@@ -457,26 +457,31 @@ func CreateGCPServiceAccountWithKey(projectID, accountName string) (*GCPServiceA
 		return nil, fmt.Errorf("failed to create Cloud Resource Manager service client: %w", err)
 	}
 
+	if !canonicalGCPAccountName(accountName) {
+		return nil, fmt.Errorf("GCP provider name %q is not a unique service-account identity; use lowercase letters, digits, and hyphens", accountName)
+	}
+
 	// Generate service account ID and create the service account
 	serviceAccountID := generateServiceAccountID(accountName)
 	displayName := fmt.Sprintf(serviceAccountDisplayFormat, accountName)
-	description := fmt.Sprintf("Service account for Threeport GcpProvider %s to manage GCP resources", accountName)
+	description := fmt.Sprintf(
+		"Service account for Threeport GcpProvider %s to manage GCP resources; %s",
+		accountName,
+		GcpOwnershipDescription(accountName),
+	)
 
 	account, existed, err := createServiceAccountForProject(iamService, projectID, serviceAccountID, displayName, description)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create service account: %w", err)
 	}
 
+	if existed && !serviceAccountOwnedBy(account, accountName) {
+		return nil, fmt.Errorf("GCP service account %s already exists; pick a different provider name", account.Email)
+	}
+
 	// grant IAM roles to the service account
 	if err := grantServiceAccountRolesForProject(crmService, projectID, account.Email); err != nil {
 		return nil, fmt.Errorf("failed to grant IAM roles: %w", err)
-	}
-
-	if existed {
-		// prune user-managed keys so a new key stays under the 10-key limit
-		if err := pruneUserManagedServiceAccountKeys(iamService, projectID, account.Email); err != nil {
-			return nil, fmt.Errorf("failed to prune stale service account keys: %w", err)
-		}
 	}
 
 	// create JSON key for controllers running outside GCP
@@ -562,10 +567,9 @@ func createServiceAccountForProject(
 	serviceAccountEmail := fmt.Sprintf("%s@%s.iam.gserviceaccount.com", serviceAccountID, projectID)
 	serviceAccountResource := fmt.Sprintf("projects/%s/serviceAccounts/%s", projectID, serviceAccountEmail)
 
-	// reuse the account when it already exists
+	// report an existing account; CreateGCPServiceAccountWithKey reuses an owned one
 	existingAccount, err := iamService.Projects.ServiceAccounts.Get(serviceAccountResource).Do()
 	if err == nil {
-		fmt.Printf("Using existing GCP service account: %s\n", existingAccount.Email)
 		return existingAccount, true, nil
 	}
 
@@ -596,47 +600,13 @@ func createServiceAccountForProject(
 	return account, false, nil
 }
 
-// pruneUserManagedServiceAccountKeys deletes USER_MANAGED keys on the account.
-// SYSTEM_MANAGED keys stay; Google rotates them and Delete rejects those names.
-func pruneUserManagedServiceAccountKeys(iamService *iam.Service, projectID, serviceAccountEmail string) error {
-	serviceAccountResource := fmt.Sprintf("projects/%s/serviceAccounts/%s", projectID, serviceAccountEmail)
-
-	// list user-managed keys
-	keys, err := iamService.Projects.ServiceAccounts.Keys.List(serviceAccountResource).
-		KeyTypes("USER_MANAGED").
-		Do()
-	if err != nil {
-		return fmt.Errorf("failed to list service account keys: %w", err)
+// serviceAccountOwnedBy reports whether the account description records the
+// same ownership pair GcpResourceLabels would put on a Compute resource.
+func serviceAccountOwnedBy(account *iam.ServiceAccount, ownerName string) bool {
+	if account == nil {
+		return false
 	}
-
-	prunedIDs := make([]string, 0, len(keys.Keys))
-	for _, key := range keys.Keys {
-		if key.KeyType == "SYSTEM_MANAGED" {
-			continue
-		}
-
-		// delete the user-managed key
-		if _, err := iamService.Projects.ServiceAccounts.Keys.Delete(key.Name).Do(); err != nil {
-			return fmt.Errorf("failed to delete service account key %s: %w", key.Name, err)
-		}
-
-		keyID := key.Name
-		if idx := strings.LastIndex(keyID, "/"); idx != -1 {
-			keyID = keyID[idx+1:]
-		}
-		prunedIDs = append(prunedIDs, keyID)
-	}
-
-	if len(prunedIDs) > 0 {
-		util.CliOutputInfo(fmt.Sprintf(
-			"Pruned %d user-managed key(s) from existing GCP service account %s: %s",
-			len(prunedIDs),
-			serviceAccountEmail,
-			strings.Join(prunedIDs, ", "),
-		))
-	}
-
-	return nil
+	return strings.Contains(account.Description, GcpOwnershipDescription(ownerName))
 }
 
 // removeServiceAccountRolesForProject removes all IAM roles granted to a service account.
@@ -782,6 +752,23 @@ func isNotFoundError(err error) bool {
 // This is used when creating service accounts via tptctl create gcp-provider.
 func generateServiceAccountID(name string) string {
 	return formatServiceAccountID(serviceAccountNameFormat, name)
+}
+
+// canonicalGCPAccountName reports whether name is already the unique
+// lowercase [a-z0-9-] form, and whether generateServiceAccountID keeps it
+// without truncating to 30 characters.
+func canonicalGCPAccountName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, r := range name {
+		if (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '-' {
+			return false
+		}
+	}
+	id := generateServiceAccountID(name)
+	full := strings.ToLower(fmt.Sprintf(serviceAccountNameFormat, name))
+	return id == full
 }
 
 // grantServiceAccountRolesForProject grants the necessary IAM roles to a service account.

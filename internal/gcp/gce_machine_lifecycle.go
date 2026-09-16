@@ -123,7 +123,7 @@ func (g *gceMachineLifecycle) OnCreateConfirmed(_ provider.InfraProvider) error 
 		return fmt.Errorf("failed to get GCE instance for machine runtime update: %w", err)
 	}
 	if latest.MachineRuntimeInstanceID == nil {
-		return fmt.Errorf("GCE instance missing required field MachineRuntimeInstanceID")
+		return fmt.Errorf("failed to update machine runtime instance: machine runtime instance id is empty")
 	}
 
 	// get related machine runtime instance
@@ -385,10 +385,10 @@ func buildGceMachineInfra(
 	log *logr.Logger,
 ) (*machine.GceMachineInfra, error) {
 	if instance.Name == nil {
-		return nil, fmt.Errorf("GCE instance missing required field Name")
+		return nil, fmt.Errorf("failed to build gce machine infra: instance name is empty")
 	}
 	if instance.GcpProviderID == nil {
-		return nil, fmt.Errorf("GCE instance missing required field GcpProviderID")
+		return nil, fmt.Errorf("failed to build gce machine infra: gcp provider id is empty")
 	}
 
 	// get GCP provider
@@ -401,7 +401,7 @@ func buildGceMachineInfra(
 		return nil, fmt.Errorf("failed to retrieve GCP provider by ID: %w", err)
 	}
 	if gcpProvider.ProjectID == nil {
-		return nil, fmt.Errorf("GCP provider missing required field ProjectID")
+		return nil, fmt.Errorf("failed to build gce machine infra: gcp project id is empty")
 	}
 
 	infraGce := machine.NewGceMachineInfra(*instance.Name)
@@ -409,7 +409,7 @@ func buildGceMachineInfra(
 	infraGce.ProjectID = *gcpProvider.ProjectID
 
 	if instance.GcpGceMachineRuntimeDefinitionID == nil {
-		return nil, fmt.Errorf("GCE instance missing required field GcpGceMachineRuntimeDefinitionID")
+		return nil, fmt.Errorf("failed to build gce machine infra: gce machine runtime definition id is empty")
 	}
 	// get GCE machine runtime definition
 	definition, err := client.GetGcpGceMachineRuntimeDefinitionByID(

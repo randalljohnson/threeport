@@ -81,7 +81,7 @@ type MachineRuntimeInstance struct {
 	NetworkID *string `validate:"optional"`
 
 	// The provider subnet identifier the machine attaches to
-	SubnetID *string `validate:"optional" gorm:"type:text"`
+	SubnetID *string `validate:"optional"`
 
 	// IngressRules are the firewall ingress rules applied to the machine.
 	// Rules are provider-agnostic; each provider reconciler translates them

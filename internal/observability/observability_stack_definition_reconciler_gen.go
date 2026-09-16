@@ -119,6 +119,9 @@ func ObservabilityStackDefinitionReconciler(r *controller.Reconciler) {
 				continue
 			}
 
+			// capture pre-pass reconciled state to gate the success-event emit
+			wasReconciled := false
+
 			// retrieve latest version of object
 			var latestObservabilityStackDefinition tpapi_lib.ReconciledThreeportApiObject
 			var getLatestErr error
@@ -129,6 +132,9 @@ func ObservabilityStackDefinitionReconciler(r *controller.Reconciler) {
 					r.APIServer,
 					observabilityStackDefinition.GetId(),
 				)
+				if latestObject != nil && latestObject.Reconciled != nil && *latestObject.Reconciled {
+					wasReconciled = true
+				}
 				latestObservabilityStackDefinition = latestObject
 				getLatestErr = err
 			default:
@@ -170,13 +176,26 @@ func ObservabilityStackDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of observability stack definition encountered for create operation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"observability stack definition create deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							observabilityStackDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile created observability stack definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedCreate),
-							Type:   util.Ptr(event.TypeNormal),
+							Reason: util.Ptr(event.ReasonCreateFailed),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						observabilityStackDefinition.GetId(),
 						observabilityStackDefinition.GetFullyQualifiedType(),
@@ -192,7 +211,7 @@ func ObservabilityStackDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("create requeued for future reconciliation")
+					log.V(1).Info("create requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						observabilityStackDefinition,
 						customRequeueDelay,
@@ -221,13 +240,26 @@ func ObservabilityStackDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of observability stack definition encountered for update operation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"observability stack definition update deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							observabilityStackDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile updated observability stack definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedUpdate),
-							Type:   util.Ptr(event.TypeNormal),
+							Reason: util.Ptr(event.ReasonUpdateFailed),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						observabilityStackDefinition.GetId(),
 						observabilityStackDefinition.GetFullyQualifiedType(),
@@ -243,7 +275,7 @@ func ObservabilityStackDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("update requeued for future reconciliation")
+					log.V(1).Info("update requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						observabilityStackDefinition,
 						customRequeueDelay,
@@ -268,13 +300,26 @@ func ObservabilityStackDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of observability stack definition encountered for delete operation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"observability stack definition delete deferred pending in-flight deletion, requeueing",
+							"cause", operationErr.Error(),
+						)
+						r.UnlockAndRequeue(
+							observabilityStackDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted observability stack definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedDelete),
-							Type:   util.Ptr(event.TypeNormal),
+							Reason: util.Ptr(event.ReasonDeleteFailed),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						observabilityStackDefinition.GetId(),
 						observabilityStackDefinition.GetFullyQualifiedType(),
@@ -290,7 +335,7 @@ func ObservabilityStackDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("delete requeued for future reconciliation")
+					log.V(1).Info("delete requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						observabilityStackDefinition,
 						customRequeueDelay,
@@ -324,6 +369,19 @@ func ObservabilityStackDefinitionReconciler(r *controller.Reconciler) {
 					observabilityStackDefinition.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrConflict) {
+						log.V(1).Info(
+							"observability stack definition deletion already in progress, requeueing",
+							"cause", err.Error(),
+						)
+						r.UnlockAndRequeue(
+							observabilityStackDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete observability stack definition")
 					r.UnlockAndRequeue(observabilityStackDefinition, requeueDelay, lockReleased, msg)
 					continue
@@ -371,23 +429,25 @@ func ObservabilityStackDefinitionReconciler(r *controller.Reconciler) {
 				log.V(1).Info("observability stack definition unlocked")
 			}
 
-			// log and record event for successful reconciliation
-			successMsg := fmt.Sprintf(
-				"observability stack definition successfully reconciled for %s operation",
-				strings.ToLower(string(notif.Operation)),
-			)
-			if err := r.EventsRecorder.RecordEvent(
-				&api_v0.Event{
-					Note:   util.Ptr(successMsg),
-					Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
-					Type:   util.Ptr(event.TypeNormal),
-				},
-				observabilityStackDefinition.GetId(),
-				observabilityStackDefinition.GetFullyQualifiedType(),
-			); err != nil {
-				log.Error(err, "failed to record event for successful observability stack definition reconciliation")
+			// emit success event only on the first-successful transition; skip on redelivery
+			if !wasReconciled {
+				successMsg := fmt.Sprintf(
+					"observability stack definition successfully reconciled for %s operation",
+					strings.ToLower(string(notif.Operation)),
+				)
+				if err := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(successMsg),
+						Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					observabilityStackDefinition.GetId(),
+					observabilityStackDefinition.GetFullyQualifiedType(),
+				); err != nil {
+					log.Error(err, "failed to record event for successful observability stack definition reconciliation")
+				}
+				log.Info(successMsg)
 			}
-			log.Info(successMsg)
 		}
 	}
 

@@ -85,6 +85,11 @@ func (mrd *MachineRuntimeDefinition) ScheduledForDeletion() *time.Time {
 	return mrd.DeletionScheduled
 }
 
+// AssociationRequiredByTypes returns the fully-qualified type names of children referenced via has-many association slices on MachineRuntimeDefinition.
+func (m *MachineRuntimeDefinition) AssociationRequiredByTypes() []string {
+	return []string{new(MachineRuntimeInstance).GetFullyQualifiedType()}
+}
+
 // NotificationPayload returns the notification payload that is delivered to the
 // controller when a change is made.  It includes the object as presented by the
 // client when the change was made.
@@ -158,6 +163,11 @@ func (m *MachineRuntimeInstance) RelationshipTaggedForeignKeys() []RelationshipT
 		ObjectType:   new(MachineRuntimeDefinition).GetFullyQualifiedType(),
 		Relationship: RelationshipRequires,
 	}}
+}
+
+// AssociationRequiredByTypes returns the fully-qualified type names of children referenced via has-many association slices on MachineRuntimeInstance.
+func (m *MachineRuntimeInstance) AssociationRequiredByTypes() []string {
+	return []string{new(MachineWorkloadInstance).GetFullyQualifiedType()}
 }
 
 // EncryptedFields returns the encrypt-tagged fields on MachineRuntimeInstance.

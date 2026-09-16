@@ -87,6 +87,7 @@ func GetKubernetesWorkloadInstanceStatus(
 			"objectid=%d&objecttypename=%s&objectnamespace=threeport.io&objectversion=v0",
 			workloadInstanceId, subjectType,
 		),
+		0,
 	)
 	if err != nil {
 		workloadInstanceStatusDetail.Status = WorkloadInstanceStatusError

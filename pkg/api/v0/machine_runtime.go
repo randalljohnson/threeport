@@ -55,7 +55,7 @@ type MachineRuntimeInstance struct {
 	// The SSH username for authenticating to the machine. Optional at create
 	// for the same reason as the hostname; populated once the machine is
 	// provisioned.
-	SSHUser *string `validate:"optional"`
+	SSHUser *string `json:",omitempty" validate:"optional"`
 
 	// The SSH private key for authenticating to the machine.
 	SSHKey *string `validate:"optional" encrypt:"true"`
@@ -82,7 +82,29 @@ type MachineRuntimeInstance struct {
 	// The provider subnet identifier the machine attaches to
 	SubnetID *string `json:",omitempty" gorm:"type:text" validate:"optional"`
 
-	// An inventory of all provider resources backing this machine
+	// IngressRules are the firewall ingress rules applied to the machine.
+	// Rules are provider-agnostic; each provider reconciler translates them
+	// to its native firewall shape. Callers who need SSH must include a
+	// tcp/22 rule here; no rule is added by default.
+	IngressRules *[]IngressRule `json:",omitempty" validate:"optional" gorm:"type:jsonb;serializer:json"`
+
+	// NetworkCIDR is the CIDR block for the VPC network the machine is
+	// placed in. Optional; when unset the reconciler falls back to a
+	// provider-specific default.
+	NetworkCIDR *string `json:",omitempty" validate:"optional" gorm:"column:network_cidr"`
+
+	// SubnetCIDR is the CIDR block for the subnet the machine's primary
+	// interface is placed in. Optional; when unset the reconciler falls
+	// back to a provider-specific default.
+	SubnetCIDR *string `json:",omitempty" validate:"optional" gorm:"column:subnet_cidr"`
+
+	// AssignPublicIP controls whether the primary network interface gets
+	// an external IP address. Defaults false; the reconciler reads back
+	// the assigned address into Hostname after provisioning when true.
+	AssignPublicIP *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
+
+	// An inventory of all provider resources backing this machine, used for
+	// crash recovery and deprovisioning.
 	ResourceInventory *datatypes.JSON `json:",omitempty" validate:"optional"`
 
 	// The machine runtime definition for this instance.  Optional because

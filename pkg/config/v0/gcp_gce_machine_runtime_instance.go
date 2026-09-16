@@ -110,6 +110,7 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Get(
 		}
 
 		// get machine runtime instance
+		var networkID *string
 		if gcpGceMachineRuntimeInstance.MachineRuntimeInstanceID != nil {
 			machineRuntimeInstanceObj, err := client_v0.GetMachineRuntimeInstanceByID(
 				apiClient,
@@ -127,6 +128,7 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Get(
 				Name:     machineRuntimeInstanceObj.Name,
 				Hostname: machineRuntimeInstanceObj.Hostname,
 			}
+			networkID = machineRuntimeInstanceObj.NetworkID
 		}
 
 		gcpGceMachineRuntimeInstanceConfig := GcpGceMachineRuntimeInstanceConfig{
@@ -135,7 +137,7 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Get(
 				GcpProviderName:                gcpProviderName,
 				Region:                         gcpGceMachineRuntimeInstance.Region,
 				Zone:                           gcpGceMachineRuntimeInstance.Zone,
-				NetworkID:                      gcpGceMachineRuntimeInstance.NetworkID,
+				NetworkID:                      networkID,
 				SSHUser:                        gcpGceMachineRuntimeInstance.SSHUser,
 				GcpGceMachineRuntimeDefinition: gcpGceMachineRuntimeDefinition,
 				MachineRuntimeInstance:         machineRuntimeInstance,
@@ -201,7 +203,6 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Create(
 		GcpProviderID:                    gcpProvider.ID,
 		Region:                           gcpGceMachineRuntimeInstanceValues.Region,
 		Zone:                             gcpGceMachineRuntimeInstanceValues.Zone,
-		NetworkID:                        gcpGceMachineRuntimeInstanceValues.NetworkID,
 		SSHUser:                          gcpGceMachineRuntimeInstanceValues.SSHUser,
 		MachineRuntimeInstanceID:         createdMachineRuntimeInstance.ID,
 		GcpGceMachineRuntimeDefinitionID: gcpGceMachineRuntimeDefinition.ID,
@@ -225,7 +226,6 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Create(
 			GcpProviderName:                gcpGceMachineRuntimeInstanceValues.GcpProviderName,
 			Region:                         createdGcpGceMachineRuntimeInstance.Region,
 			Zone:                           createdGcpGceMachineRuntimeInstance.Zone,
-			NetworkID:                      createdGcpGceMachineRuntimeInstance.NetworkID,
 			SSHUser:                        createdGcpGceMachineRuntimeInstance.SSHUser,
 			GcpGceMachineRuntimeDefinition: gcpGceMachineRuntimeInstanceValues.GcpGceMachineRuntimeDefinition,
 			Reconciled:                     createdGcpGceMachineRuntimeInstance.Reconciled,
@@ -271,7 +271,6 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Replace(
 		},
 		Region:                           gcpGceMachineRuntimeInstanceValues.Region,
 		Zone:                             gcpGceMachineRuntimeInstanceValues.Zone,
-		NetworkID:                        gcpGceMachineRuntimeInstanceValues.NetworkID,
 		SSHUser:                          gcpGceMachineRuntimeInstanceValues.SSHUser,
 		MachineRuntimeInstanceID:         existingGcpGceMachineRuntimeInstance.MachineRuntimeInstanceID,
 		GcpGceMachineRuntimeDefinitionID: existingGcpGceMachineRuntimeInstance.GcpGceMachineRuntimeDefinitionID,
@@ -294,7 +293,6 @@ func (g *GcpGceMachineRuntimeInstanceConfig) Replace(
 			Name:                           replacedGcpGceMachineRuntimeInstance.Name,
 			Region:                         replacedGcpGceMachineRuntimeInstance.Region,
 			Zone:                           replacedGcpGceMachineRuntimeInstance.Zone,
-			NetworkID:                      replacedGcpGceMachineRuntimeInstance.NetworkID,
 			SSHUser:                        replacedGcpGceMachineRuntimeInstance.SSHUser,
 			GcpGceMachineRuntimeDefinition: gcpGceMachineRuntimeInstanceValues.GcpGceMachineRuntimeDefinition,
 			Reconciled:                     replacedGcpGceMachineRuntimeInstance.Reconciled,

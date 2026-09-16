@@ -1,6 +1,8 @@
 package gcp
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -176,12 +178,51 @@ func (g *gceMachineLifecycle) SaveCreateOutputs(infra provider.InfraProvider, st
 	); err != nil {
 		return fmt.Errorf("failed to update GCE instance with create outputs: %w", err)
 	}
+
+	// persist the GCE resource inventory onto the abstract machine runtime
+	// instance so a downstream consumer can read the payload without
+	// crossing into the provider-specific row. skip when no parent link is
+	// present, which is the shape a fixture or a partial create can produce
+	if g.instance == nil || g.instance.MachineRuntimeInstanceID == nil {
+		return nil
+	}
+	inventory := gceInfra.BuildResourceInventory()
+	inventoryBytes, err := json.Marshal(inventory)
+	if err != nil {
+		return fmt.Errorf("failed to marshal GCE resource inventory: %w", err)
+	}
+	inventoryJSON := datatypes.JSON(inventoryBytes)
+	mriUpdate := v0.MachineRuntimeInstance{
+		Common:            v0.Common{ID: g.instance.MachineRuntimeInstanceID},
+		ResourceInventory: &inventoryJSON,
+	}
+	if _, err := client.UpdateMachineRuntimeInstance(
+		g.r.APIClient,
+		g.r.APIServer,
+		&mriUpdate,
+	); err != nil {
+		return fmt.Errorf("failed to update machine runtime instance with resource inventory: %w", err)
+	}
 	return nil
 }
 
-// OnDeleteConfirmed performs provider-specific post-deletion cleanup.
-func (g *gceMachineLifecycle) OnDeleteConfirmed(_ provider.InfraProvider) error {
-	return nil
+// OnDeleteConfirmed validates against the compute API that the machine's VM and
+// firewall are actually gone after destroy, and reclaims any the destroy left
+// behind, so a checkpoint that drifted out of sync with the cloud cannot confirm
+// a deletion that abandoned a live resource.
+func (g *gceMachineLifecycle) OnDeleteConfirmed(infra provider.InfraProvider) error {
+	gceInfra, ok := infra.(*machine.GceMachineInfra)
+	if !ok {
+		return fmt.Errorf(
+			"failed to reclaim GCE orphans: expected *machine.GceMachineInfra, got %T",
+			infra,
+		)
+	}
+	cloud, err := newComputeOrphanReclaimCloud(gceInfra)
+	if err != nil {
+		return err
+	}
+	return reclaimOrphans(cloud)
 }
 
 // AckCreation sets CreationAcknowledged and clears CreationFailed.
@@ -393,24 +434,79 @@ func buildGceMachineInfra(
 	if instance.Zone != nil {
 		infraGce.Zone = *instance.Zone
 	}
-	if instance.NetworkID != nil {
-		infraGce.NetworkID = *instance.NetworkID
-	}
 	if instance.SSHUser != nil {
 		infraGce.SSHUser = *instance.SSHUser
 	}
-	if instance.SSHSourceRanges != nil {
-		infraGce.SSHSourceRanges = append([]string(nil), *instance.SSHSourceRanges...)
+
+	// load the parent machine runtime instance so NetworkID, IngressRules,
+	// NetworkCIDR, SubnetCIDR, and AssignPublicIP are read from the abstract
+	// instance where they now live; a nil MachineRuntimeInstanceID leaves
+	// those fields at their zero values.
+	var mri *v0.MachineRuntimeInstance
+	if instance.MachineRuntimeInstanceID != nil {
+		var err error
+		mri, err = client.GetMachineRuntimeInstanceByID(
+			r.APIClient,
+			r.APIServer,
+			*instance.MachineRuntimeInstanceID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve machine runtime instance by ID: %w", err)
+		}
 	}
 
-	if gcpProvider.ServiceAccountCredentials != nil && *gcpProvider.ServiceAccountCredentials != "" {
-		// decrypt service account credentials
-		decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
+	// translate each portable ingress rule to the provider-side shape; each
+	// non-nil string/slice field is copied out of its pointer so a partial
+	// rule renders as an empty value on the provider rather than a panic.
+	if mri != nil && mri.IngressRules != nil {
+		for _, rule := range *mri.IngressRules {
+			gceRule := machine.GceIngressRule{}
+			if rule.Protocol != nil {
+				gceRule.Protocol = *rule.Protocol
+			}
+			if rule.Ports != nil {
+				gceRule.Ports = append([]string(nil), *rule.Ports...)
+			}
+			if rule.SourceRanges != nil {
+				gceRule.SourceRanges = append([]string(nil), *rule.SourceRanges...)
+			}
+			if rule.Description != nil {
+				gceRule.Description = *rule.Description
+			}
+			infraGce.IngressRules = append(infraGce.IngressRules, gceRule)
 		}
-		infraGce.ServiceAccountCredentials = decryptedCredentials
 	}
+
+	if mri != nil {
+		if mri.NetworkID != nil {
+			infraGce.NetworkID = *mri.NetworkID
+		}
+		if mri.SubnetID != nil {
+			infraGce.SubnetID = *mri.SubnetID
+		}
+		if mri.NetworkCIDR != nil {
+			infraGce.NetworkCIDR = *mri.NetworkCIDR
+		}
+		if mri.SubnetCIDR != nil {
+			infraGce.SubnetCIDR = *mri.SubnetCIDR
+		}
+		if mri.AssignPublicIP != nil {
+			infraGce.AssignPublicIP = *mri.AssignPublicIP
+		}
+	}
+
+	// fail at BuildInfra when credentials are missing so adopt never falls into interactive oauth
+	if gcpProvider.ServiceAccountCredentials == nil || *gcpProvider.ServiceAccountCredentials == "" {
+		if gcpProvider.ID == nil {
+			return nil, errors.New("gcp provider has no service account credentials")
+		}
+		return nil, fmt.Errorf("gcp provider %d has no service account credentials", *gcpProvider.ID)
+	}
+	decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
+	}
+	infraGce.ServiceAccountCredentials = decryptedCredentials
 
 	if instance.SSHKey != nil && *instance.SSHKey != "" {
 		// decrypt and seed persisted SSH key

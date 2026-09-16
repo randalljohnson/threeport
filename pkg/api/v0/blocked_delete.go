@@ -77,6 +77,31 @@ func FormatObjectPath(rawType string, id uint, names map[uint]string) string {
 	return fmt.Sprintf("%s/%d", tail, id)
 }
 
+// NewBlockedDeleteErrorFromChildren returns a BlockedDeleteError anchored on
+// parent with one AttachedObjectReference per blocking child. Handlers use
+// this when a defined-instance-definition delete is refused because the
+// parent still has related child instances, so the 409 body lists each
+// blocker instead of a generic "has related X" line.
+func NewBlockedDeleteErrorFromChildren(parent lib.FullyQualifiedTypeProvider, children []lib.FullyQualifiedTypeProvider) *BlockedDeleteError {
+	parentType := parent.GetFullyQualifiedType()
+	parentIDPtr := util.ObjectID(parent)
+	refs := make([]AttachedObjectReference, 0, len(children))
+	for _, child := range children {
+		childType := child.GetFullyQualifiedType()
+		childIDPtr := util.ObjectID(child)
+		if childIDPtr == nil {
+			continue
+		}
+		refs = append(refs, AttachedObjectReference{
+			ObjectType:         util.Ptr(parentType),
+			ObjectID:           parentIDPtr,
+			AttachedObjectType: util.Ptr(childType),
+			AttachedObjectID:   childIDPtr,
+		})
+	}
+	return &BlockedDeleteError{AttachedRefs: refs}
+}
+
 // CheckBlockingAttachedObjectReferences returns a BlockedDeleteError if obj
 // has any incoming references that block its deletion. Handlers call this
 // synchronously before scheduling a delete so the caller sees the 409

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -66,7 +67,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	var filter v0.Event
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatusBindErr(c, pageParams, err, objectType)
 	}
 
 	// collect object IDs to filter on. The accepted shapes are:
@@ -507,7 +508,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 	// enrich records with attached object reference fields and resolved
 	// object names; failures are logged so events still come back when
 	// resolution can't fully complete
-	if err := enrichEventsWithObjectInfo(h.DB, *records, h.Logger); err != nil {
+	if err := enrichEventsWithObjectInfo(c.Request().Context(), h.DB, *records, h.Logger); err != nil {
 		h.Logger.Error("handler error: error enriching events with object info", zap.Error(err))
 	}
 
@@ -531,7 +532,7 @@ func (h Handler) GetEventsJoinAttachedObjectReferences(c echo.Context) error {
 // enrichEventsWithObjectInfo populates ObjectType, ObjectID, and ObjectName
 // on each event from the joined attached object reference and a per-type
 // batched name lookup.
-func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger) error {
+func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Event, log *zap.Logger) error {
 	// no events to enrich - nothing to do
 	if len(events) == 0 {
 		return nil
@@ -621,7 +622,7 @@ func enrichEventsWithObjectInfo(db *gorm.DB, events []v0.Event, log *zap.Logger)
 		for id := range idSet {
 			ids = append(ids, id)
 		}
-		names, err := GetObjectNames(db, typ, ids, true)
+		names, err := GetObjectNames(ctx, db, typ, ids, true)
 		if err != nil {
 			log.Error("failed to resolve object names", zap.String("objectType", typ), zap.Error(err))
 			continue

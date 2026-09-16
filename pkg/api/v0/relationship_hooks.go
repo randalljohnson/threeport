@@ -46,6 +46,26 @@ type RelationshipTaggedForeignKeyProvider interface {
 	RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey
 }
 
+// AssociationTypesProvider is implemented by every API type that has at
+// least one has-many association slice ([]*T with validate:"...,association"
+// and no gorm:"many2many:...") where T does NOT declare a
+// relationship:"requires" back-FK to this type. These are the truly-owned
+// many-side. Currently untagged; if the convention becomes to tag such
+// slices with relationship:"owns", this method can be retired in favor of
+// RelationshipTaggedForeignKeys.
+type AssociationTypesProvider interface {
+	AssociationTypes() []string
+}
+
+// AssociationRequiredByTypesProvider is implemented by every API type that
+// has at least one has-many association slice where T declares a
+// relationship:"requires" back-FK to this type. These slice entries are
+// dependents, not owned children; the parent's existence is a prerequisite
+// for theirs but the parent does not create them.
+type AssociationRequiredByTypesProvider interface {
+	AssociationRequiredByTypes() []string
+}
+
 // relationshipTaggedForeignKeysFor returns the tagged foreign keys of obj, or nil.
 func relationshipTaggedForeignKeysFor(obj interface{}) []RelationshipTaggedForeignKey {
 	p, ok := obj.(RelationshipTaggedForeignKeyProvider)

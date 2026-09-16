@@ -11,6 +11,8 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	event "github.com/threeport/threeport/pkg/event/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // v0SecretInstanceCreated performs reconciliation when a v0 SecretInstance
@@ -20,6 +22,20 @@ func v0SecretInstanceCreated(
 	secretInstance *v0.SecretInstance,
 	log *logr.Logger,
 ) (int64, error) {
+	// record the start of the reconciliation before the fan-out so the
+	// causal boundary is visible in events even if a downstream call fails
+	if eventErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr("ReconciliationStarted"),
+			Note:   util.Ptr(fmt.Sprintf("starting reconciliation of secret instance %s", *secretInstance.Name)),
+		},
+		*secretInstance.ID,
+		secretInstance.GetFullyQualifiedType(),
+	); eventErr != nil {
+		log.Error(eventErr, "failed to record event for reconciliation start")
+	}
+
 	// configure secret instance config
 	c := &SecretInstanceConfig{
 		r:              r,
@@ -71,6 +87,20 @@ func v0SecretInstanceDeleted(
 	// more
 	if secretInstance.DeletionConfirmed != nil {
 		return 0, nil
+	}
+
+	// record the start of the deletion after the idempotency guards so
+	// requeues on already-scheduled deletes do not spam the event log
+	if eventErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr("ReconciliationStarted"),
+			Note:   util.Ptr(fmt.Sprintf("starting deletion of secret instance %s", *secretInstance.Name)),
+		},
+		*secretInstance.ID,
+		secretInstance.GetFullyQualifiedType(),
+	); eventErr != nil {
+		log.Error(eventErr, "failed to record event for reconciliation start")
 	}
 
 	// configure secret instance config

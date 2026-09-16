@@ -1906,9 +1906,9 @@ definitions:
           cannot be represented by two records that each drive their own
           reconciliation against it. The deleted_at predicate keeps
           soft-deleted rows out of the unique slot, so the hostname of a
-          deleted instance is available to a new one right away. CockroachDB
-          treats every NULL as distinct in a unique index, so any number of
-          instances may hold no hostname while they wait on provisioning.
+          deleted instance is available to a new one right away. Empty and
+          null hostnames stay out of the unique slot so two unprovisioned
+          instances can coexist.
         type: string
       IngressRules:
         description: |-

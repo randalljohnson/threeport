@@ -56,18 +56,6 @@ func GcpGkeKubernetesRuntimeInstanceRoutes(e *echo.Echo, h *handlers.Handler) {
 	e.DELETE(v0.PathGcpGkeKubernetesRuntimeInstances+"/:id", h.DeleteGcpGkeKubernetesRuntimeInstance)
 }
 
-// GcpNetworkRoutes sets up all routes for the GcpNetwork handlers.
-func GcpNetworkRoutes(e *echo.Echo, h *handlers.Handler) {
-	e.GET(v0.PathGcpNetworkVersions, h.GetGcpNetworkVersions)
-
-	e.POST(v0.PathGcpNetworks, h.AddGcpNetwork)
-	e.GET(v0.PathGcpNetworks, h.GetGcpNetworks)
-	e.GET(v0.PathGcpNetworks+"/:id", h.GetGcpNetwork)
-	e.PATCH(v0.PathGcpNetworks+"/:id", h.UpdateGcpNetwork)
-	e.PUT(v0.PathGcpNetworks+"/:id", h.ReplaceGcpNetwork)
-	e.DELETE(v0.PathGcpNetworks+"/:id", h.DeleteGcpNetwork)
-}
-
 // GcpProviderRoutes sets up all routes for the GcpProvider handlers.
 func GcpProviderRoutes(e *echo.Echo, h *handlers.Handler) {
 	e.GET(v0.PathGcpProviderVersions, h.GetGcpProviderVersions)

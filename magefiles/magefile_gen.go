@@ -39,11 +39,7 @@ type Ci mg.Namespace
 
 // Env prints KEY=value lines for a workflow GITHUB_ENV file.
 func (Ci) Env() error {
-	if err := util.WriteCIEnv(""); err != nil {
-		return err
-	}
-	fmt.Printf("GORELEASER_PARALLELISM=%d\n", util.ReleaseParallelism())
-	return nil
+	return util.WriteCIEnv("")
 }
 
 // Teardown removes leftover kind clusters, containers, networks, and volumes.

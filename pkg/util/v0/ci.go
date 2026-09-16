@@ -8,10 +8,11 @@ import (
 )
 
 // WriteCIEnv prints KEY=value lines for a workflow GITHUB_ENV file. It always
-// prints GOFLAGS. When moduleVersion is non-empty it also prints
-// MODULE_IMAGE_TAG from ResolveImageTag.
+// prints GOFLAGS and GORELEASER_PARALLELISM. When moduleVersion is non-empty
+// it also prints MODULE_IMAGE_TAG from ResolveImageTag.
 func WriteCIEnv(moduleVersion string) error {
 	fmt.Printf("GOFLAGS=-p=%d\n", BuildParallelism())
+	fmt.Printf("GORELEASER_PARALLELISM=%d\n", ReleaseParallelism())
 	if moduleVersion == "" {
 		return nil
 	}

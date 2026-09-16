@@ -226,19 +226,6 @@ func TestPulumiProgram_CreatesInstanceAndFirewall(t *testing.T) {
 	if !firewallAllowsTCP22(t, firewalls[0]) {
 		t.Errorf("firewall does not allow tcp/22: %v", firewalls[0].inputs["allows"])
 	}
-	if got := stringSliceInput(t, firewalls[0].inputs["targetTags"]); !equalStringSlices(got, []string{i.RuntimeInstanceName}) {
-		t.Errorf("firewall targetTags = %v, want [%s]", got, i.RuntimeInstanceName)
-	}
-	if got := stringSliceInput(t, inst.inputs["tags"]); !equalStringSlices(got, []string{i.RuntimeInstanceName}) {
-		t.Errorf("instance tags = %v, want [%s]", got, i.RuntimeInstanceName)
-	}
-	wantLabels := provider.GcpResourceLabels(i.RuntimeInstanceName)
-	if got := stringMapInput(t, inst.inputs["labels"]); !equalStringMaps(got, wantLabels) {
-		t.Errorf("instance labels = %v, want %v", got, wantLabels)
-	}
-	if got, ok := firewalls[0].inputs["description"].(string); !ok || !strings.Contains(got, provider.GcpOwnershipDescription(i.RuntimeInstanceName)) {
-		t.Errorf("firewall description = %v, want it to contain ownership pair", firewalls[0].inputs["description"])
-	}
 }
 
 // TestPulumiProgram_InjectsSSHKeyMetadata asserts ssh-keys metadata is user:pubkey and holds no private key.

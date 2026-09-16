@@ -456,7 +456,6 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 				Description:  pulumi.String(desc),
 				Allows:       compute.FirewallAllowArray{allowArgs},
 				SourceRanges: pulumi.ToStringArray(ranges),
-				TargetTags:   pulumi.StringArray{pulumi.String(i.RuntimeInstanceName)},
 			}
 			if _, err := compute.NewFirewall(
 				pctx,

@@ -134,6 +134,10 @@ func GenInstaller(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		Comment("Secret from each component's imagePullSecrets so the kubelet"),
 		Comment("can pull images from a private registry."),
 		Id("ImagePullSecretFile").String(),
+
+		Line().Comment("The number of reconcile workers per object type in each"),
+		Comment("controller. A value below 1 uses DefaultConcurrentReconciles."),
+		Id("ConcurrentReconciles").Int(),
 	)
 
 	// emit getImagePullPolicy() helper on Installer so the per-deployment
@@ -146,6 +150,32 @@ func GenInstaller(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			Return().Lit("Always"),
 		),
 		Return().Lit("IfNotPresent"),
+	)
+
+	// emit getControllerArgs() so every controller deployment gets the
+	// same -auth-enabled and -concurrent-reconciles flags as core
+	f.Comment("getControllerArgs returns the args that are passed to a controller.")
+	f.Func().Params(Id("i").Op("*").Id("Installer")).Id("getControllerArgs").Params().Index().Interface().Block(
+		Id("args").Op(":=").Index().Interface().Values(),
+		If(Op("!").Id("i").Dot("AuthEnabled")).Block(
+			Id("args").Op("=").Append(Id("args"), Lit("-auth-enabled=false")),
+		),
+		Comment("pass the shared worker count to every controller"),
+		Id("count").Op(":=").Id("i").Dot("ConcurrentReconciles"),
+		If(Id("count").Op("<").Lit(1)).Block(
+			Id("count").Op("=").Qual(
+				"github.com/threeport/threeport/pkg/threeport-installer/v0",
+				"DefaultConcurrentReconciles",
+			),
+		),
+		Id("args").Op("=").Append(
+			Id("args"),
+			Qual("fmt", "Sprintf").Call(
+				Lit("-concurrent-reconciles=%d"),
+				Id("count"),
+			),
+		),
+		Return(Id("args")),
 	)
 
 	f.Comment(fmt.Sprintf(
@@ -162,6 +192,10 @@ func GenInstaller(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			Id("KubeRestMapper"):     Id("restMapper"),
 			Id("ModuleNamespace"):    Id("defaultNamespace"),
 			Id("ThreeportNamespace"): Id("defaultThreeportNamespace"),
+			Id("ConcurrentReconciles"): Qual(
+				"github.com/threeport/threeport/pkg/threeport-installer/v0",
+				"DefaultConcurrentReconciles",
+			),
 		}),
 		Line(),
 
@@ -734,11 +768,7 @@ GRANT ALL ON DATABASE %[1]s TO threeport;`, moduleDbName)).Op(",").Line(),
 			"install %s controller/s",
 			moduleNameKebab,
 		))
-		g.Comment("set auth enabled flag if auth not enabled (default is true)")
-		g.Id("controllerArgs").Op(":=").Index().Interface().Values()
-		g.If(Op("!").Id("i").Dot("AuthEnabled")).Block(
-			Id("controllerArgs").Op("=").Append(Id("controllerArgs"), Lit("-auth-enabled=false")),
-		)
+		g.Id("controllerArgs").Op(":=").Id("i").Dot("getControllerArgs").Call()
 		g.Line()
 		for _, objGroup := range gen.ApiObjectGroups {
 			// skip if no controllers for this object group

@@ -26,6 +26,7 @@ func GenPluginInstallCmd(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	f.ImportAlias("github.com/threeport/threeport/pkg/cli/v0", "cli")
 	f.ImportAlias("github.com/threeport/threeport/pkg/client/v0", "client")
 	f.ImportAlias("github.com/threeport/threeport/pkg/kube/v0", "kube")
+	f.ImportAlias("github.com/threeport/threeport/pkg/threeport-installer/v0", "tp_installer")
 	f.ImportAlias(installerPkg, "installer")
 
 	f.Var().Defs(
@@ -33,6 +34,7 @@ func GenPluginInstallCmd(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 		Id("controlPlaneImageRepo").String(),
 		Id("controlPlaneImageTag").String(),
 		Id("imagePullSecretFile").String(),
+		Id("concurrentReconciles").Int(),
 	)
 
 	f.Comment("installCmd represents the install command")
@@ -166,6 +168,7 @@ func GenPluginInstallCmd(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			Id("inst").Dot("ApiClient").Op("=").Id("apiClient"),
 			Id("inst").Dot("ApiEndpoint").Op("=").Id("apiEndpoint"),
 			Id("inst").Dot("ImagePullSecretFile").Op("=").Id("imagePullSecretFile"),
+			Id("inst").Dot("ConcurrentReconciles").Op("=").Id("concurrentReconciles"),
 			Line(),
 
 			Comment("install extension module"),
@@ -241,6 +244,16 @@ func GenPluginInstallCmd(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				Lit(""),
 				Lit("Path to a docker config JSON file. When set, a dockerconfigjson Secret is created and referenced from each component's imagePullSecrets so the kubelet can pull from a private registry."),
 			),
+			Line(),
+		),
+		Id("installCmd").Dot("Flags").Call().Dot("IntVar").Call(
+			Line().Op("&").Id("concurrentReconciles"),
+			Line().Lit("concurrent-reconciles"),
+			Line().Qual(
+				"github.com/threeport/threeport/pkg/threeport-installer/v0",
+				"DefaultConcurrentReconciles",
+			),
+			Line().Lit("Number of concurrent reconcile workers per object type."),
 			Line(),
 		),
 	)

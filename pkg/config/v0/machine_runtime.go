@@ -17,11 +17,10 @@ type MachineRuntimeConfig struct {
 	MachineRuntime MachineRuntimeValues
 }
 
-// MachineRuntimeValues contains all the attributes needed to manage the
-// MachineRuntimeDefinition and MachineRuntimeInstance API objects
-// together with a single operation. For sensitive values, the *File
-// variants take a path to a file whose contents are read at API-call
-// time and encrypted at rest by the server.
+// MachineRuntimeValues contains the attributes used to manage a
+// MachineRuntimeDefinition and MachineRuntimeInstance together.
+// A *File field is a path whose contents are read at API-call time
+// and encrypted at rest by the server.
 type MachineRuntimeValues struct {
 	Name            *string `json:",omitempty"`
 	Hostname        *string `json:",omitempty"`

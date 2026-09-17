@@ -22,9 +22,8 @@ type OciProviderConfig struct {
 }
 
 // OciProviderValues contains all the attributes needed to manage
-// the OciProvider API object. For sensitive values, the *File variants
-// take a path to a file whose contents are read at API-call time and
-// encrypted at rest by the server.
+// the OciProvider API object. A *File field is a path whose contents
+// are read at create and replace into the matching inline field.
 type OciProviderValues struct {
 	Name            *string `json:",omitempty"`
 	UserOCID        *string `json:",omitempty"`
@@ -33,8 +32,9 @@ type OciProviderValues struct {
 	DefaultRegion   *string `json:",omitempty"`
 	KeyFingerprint  *string `json:",omitempty"`
 	PrivateKey      *string `json:",omitempty"`
-	PrivateKeyFile  *string `json:",omitempty"`
-	Age             *string `json:",omitempty"`
+	// The path to a file whose contents fill PrivateKey
+	PrivateKeyFile *string `json:",omitempty"`
+	Age            *string `json:",omitempty"`
 }
 
 // Get gets oci providers from the Threeport API.
@@ -109,7 +109,7 @@ func (o *OciProviderConfig) Create(
 		return nil, fmt.Errorf("failed to validate values for oci provider with name %s: %w", *ociProviderValues.Name, err)
 	}
 
-	// resolve *File fields into their inline counterparts
+	// load PrivateKey from PrivateKeyFile when unset
 	if ociProviderValues.PrivateKey == nil && ociProviderValues.PrivateKeyFile != nil {
 		v, err := resolveFileField("PrivateKey", *ociProviderValues.PrivateKeyFile)
 		if err != nil {
@@ -171,8 +171,7 @@ func (o *OciProviderConfig) Replace(
 		return nil, fmt.Errorf("invalid oci provider config: %w", err)
 	}
 
-	// resolve *File fields into their inline counterparts so a full replacement
-	// does not null persisted secrets supplied only by file
+	// load PrivateKey from PrivateKeyFile so replace does not store a nil key
 	if ociProviderValues.PrivateKey == nil && ociProviderValues.PrivateKeyFile != nil {
 		v, err := resolveFileField("PrivateKey", *ociProviderValues.PrivateKeyFile)
 		if err != nil {
@@ -298,7 +297,7 @@ func (o *OciProviderConfig) Validate() error {
 		multiError.AppendError(errors.New("missing required field in config: KeyFingerprint"))
 	}
 
-	// ensure PrivateKey is set, either inline or via file
+	// ensure PrivateKey or PrivateKeyFile is set
 	if ociProviderValues.PrivateKey == nil && ociProviderValues.PrivateKeyFile == nil {
 		multiError.AppendError(errors.New("missing required field in config: PrivateKey (or PrivateKeyFile)"))
 	}

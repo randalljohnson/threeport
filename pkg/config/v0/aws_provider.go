@@ -24,23 +24,47 @@ type AwsProviderConfig struct {
 }
 
 // AwsProviderValues contains all the attributes needed to manage
-// the AwsProvider API object. For sensitive values, the *File variants
-// take a path to a file whose contents are read at API-call time and
-// encrypted at rest by the server.
+// the AwsProvider API object. A *File field names a path whose contents
+// are read on Create and Replace; the API encrypts those secrets at rest.
 type AwsProviderValues struct {
-	Name                *string `json:",omitempty"`
-	AccountID           *string `json:",omitempty"`
-	DefaultProvider     *bool   `json:",omitempty"`
-	DefaultRegion       *string `json:",omitempty"`
-	AccessKeyID         *string `json:",omitempty"`
-	AccessKeyIDFile     *string `json:",omitempty"`
-	SecretAccessKey     *string `json:",omitempty"`
+	// The unique name of this AWS provider
+	Name *string `json:",omitempty"`
+
+	// The AWS account ID for this provider
+	AccountID *string `json:",omitempty"`
+
+	// If true, this AWS provider is used when a definition names none
+	DefaultProvider *bool `json:",omitempty"`
+
+	// The default AWS region for resources created with this provider
+	DefaultRegion *string `json:",omitempty"`
+
+	// The AWS access key ID, supplied inline
+	AccessKeyID *string `json:",omitempty"`
+
+	// The path to a file read into AccessKeyID when that field is unset
+	AccessKeyIDFile *string `json:",omitempty"`
+
+	// The AWS secret access key, supplied inline
+	SecretAccessKey *string `json:",omitempty"`
+
+	// The path to a file read into SecretAccessKey when that field is unset
 	SecretAccessKeyFile *string `json:",omitempty"`
-	RoleArn             *string `json:",omitempty"`
-	LocalConfig         *string `json:",omitempty"`
-	LocalCredentials    *string `json:",omitempty"`
-	LocalProfile        *string `json:",omitempty"`
-	Age                 *string `json:",omitempty"`
+
+	// The IAM role ARN to assume for this AWS account
+	RoleArn *string `json:",omitempty"`
+
+	// The path to a local AWS config file used when DefaultRegion is unset
+	LocalConfig *string `json:",omitempty"`
+
+	// The path to a local AWS credentials file used when keys are unset
+	LocalCredentials *string `json:",omitempty"`
+
+	// The profile name in LocalConfig and LocalCredentials
+	LocalProfile *string `json:",omitempty"`
+
+	// Age is a computed field showing how long ago the object was created
+	Age *string `json:",omitempty"`
 }
 
 // Get gets aws providers from the Threeport API.
@@ -117,7 +141,7 @@ func (a *AwsProviderConfig) Create(
 		return nil, fmt.Errorf("failed to validate values for aws provider with name %s: %w", *awsProviderValues.Name, err)
 	}
 
-	// resolve *File fields into their inline counterparts
+	// load AccessKeyID and SecretAccessKey from *File fields when unset
 	if awsProviderValues.AccessKeyID == nil && awsProviderValues.AccessKeyIDFile != nil {
 		v, err := resolveFileField("AccessKeyID", *awsProviderValues.AccessKeyIDFile)
 		if err != nil {
@@ -237,8 +261,7 @@ func (a *AwsProviderConfig) Replace(
 		return nil, fmt.Errorf("invalid aws provider config: %w", err)
 	}
 
-	// resolve *File fields into their inline counterparts so a full replacement
-	// does not null persisted secrets supplied only by file
+	// load *File secrets so a full replace does not persist nil keys
 	if awsProviderValues.AccessKeyID == nil && awsProviderValues.AccessKeyIDFile != nil {
 		v, err := resolveFileField("AccessKeyID", *awsProviderValues.AccessKeyIDFile)
 		if err != nil {
@@ -371,6 +394,7 @@ LocalConfig, LocalCredentials and LocalProfile
 	if awsProviderValues.LocalConfig != nil && awsProviderValues.LocalCredentials != nil && awsProviderValues.LocalProfile != nil {
 		localConfig = true
 	}
+	// count a *File field as providing the matching credential
 	accessKeyProvided := awsProviderValues.AccessKeyID != nil || awsProviderValues.AccessKeyIDFile != nil
 	secretAccessKeyProvided := awsProviderValues.SecretAccessKey != nil || awsProviderValues.SecretAccessKeyFile != nil
 	if awsProviderValues.DefaultRegion != nil && accessKeyProvided && secretAccessKeyProvided {

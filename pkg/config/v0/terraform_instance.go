@@ -194,9 +194,9 @@ func (t *TerraformInstanceConfig) Create(
 		return nil, fmt.Errorf("failed to create terraform instance in threeport API: %w", err)
 	}
 
-	// construct terraform instance config. the status is carried over as it
-	// stands: it is filled in by reconciliation, so it is still unset on the
-	// object the create returns
+	// construct terraform instance config
+	// Status is copied from the create response; this path never sets Instance.Status
+	// Get derives status from Reconciled and CreationFailed
 	createdTerraformInstanceConfig := &TerraformInstanceConfig{
 		TerraformInstance: TerraformInstanceValues{
 			Name:                createdTerraformInstance.Name,
@@ -294,9 +294,9 @@ func (t *TerraformInstanceConfig) Replace(
 		return nil, fmt.Errorf("failed to replace terraform instance in threeport API: %w", err)
 	}
 
-	// construct updated terraform instance config. the status is carried over
-	// as it stands: it is filled in by reconciliation, so it is unset on the
-	// object the replace returns until the terraform run is reconciled
+	// construct updated terraform instance config
+	// Status is copied from the replace response; this path never sets Instance.Status
+	// Get derives status from Reconciled and CreationFailed
 	updatedTerraformInstanceConfig := &TerraformInstanceConfig{
 		TerraformInstance: TerraformInstanceValues{
 			Name:                replacedTerraformInstance.Name,

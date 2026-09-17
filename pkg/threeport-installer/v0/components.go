@@ -1641,33 +1641,27 @@ func (cpi *ControlPlaneInstaller) getAPIArgs() []interface{} {
 }
 
 // getControllerArgs returns the args that are passed to a controller.
-func (cpi *ControlPlaneInstaller) getControllerArgs() []interface{} {
-
-	// in tptdev, auth is disabled by default
-	// in tptctl, auth is enabled by default
-
-	// enable auth if authConfig is set in dev environment
-	switch {
-	case cpi.Opts.Debug:
-		args := []interface{}{}
-		if !cpi.Opts.AuthEnabled {
-			args = append(args, "-auth-enabled=false")
-		}
-		if cpi.Opts.Verbose {
-			args = append(args, "-verbose=true")
-		}
-		return args
-	default:
-		args := []interface{}{}
-
-		if !cpi.Opts.AuthEnabled {
-			args = append(args, "-auth-enabled=false")
-		}
-		if cpi.Opts.Verbose {
-			args = append(args, "-verbose=true")
-		}
-		return args
+func (cpi *ControlPlaneInstaller) getControllerArgs(controller v0.ControlPlaneComponent) []interface{} {
+	args := []interface{}{}
+	if !cpi.Opts.AuthEnabled {
+		args = append(args, "-auth-enabled=false")
 	}
+	if cpi.Opts.Verbose {
+		args = append(args, "-verbose=true")
+	}
+
+	// pass worker count only to the machine-workload controller
+	if controller.Name == ThreeportMachineWorkloadControllerName {
+		count := cpi.Opts.MachineWorkloadInstanceConcurrentReconciles
+		if count < 1 {
+			count = DefaultMachineWorkloadInstanceConcurrentReconciles
+		}
+		args = append(args, fmt.Sprintf(
+			"-machine-workload-instance-concurrent-reconciles=%d",
+			count,
+		))
+	}
+	return args
 }
 
 // getAPIVolumes returns volumes and volume mounts for the API server.
@@ -1966,7 +1960,7 @@ func (cpi *ControlPlaneInstaller) getControllerDeployment(
 		return nil, fmt.Errorf("could not get vols for controller %s: %w", controller.Name, err)
 	}
 
-	controllerArgs := cpi.getControllerArgs()
+	controllerArgs := cpi.getControllerArgs(controller)
 	controllerImagePullSecrets := cpi.getImagePullSecrets(controller.ImagePullSecretName)
 
 	ports := []map[string]interface{}{}

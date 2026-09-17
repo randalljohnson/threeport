@@ -42,7 +42,7 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					Line().Lit(
 						fmt.Sprintf("%s-concurrent-reconciles", strcase.ToKebab(obj.Name)),
 					),
-					Line().Lit(1),
+					Line().Lit(concurrentReconcilesDefault(obj.Name)),
 					Line().Lit(fmt.Sprintf(
 						"Number of concurrent reconcilers to run for %s",
 						pluralize.Pluralize(strcase.ToDelimited(obj.Name, ' '), 2, false),
@@ -477,6 +477,15 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	}
 
 	return nil
+}
+
+// concurrentReconcilesDefault returns the flag default for an object's
+// concurrent reconcile workers.
+func concurrentReconcilesDefault(objectName string) int {
+	if objectName == "MachineWorkloadInstance" {
+		return 2
+	}
+	return 1
 }
 
 // ConfigurePullSubscription adds a durable consumer to a controller's main package.

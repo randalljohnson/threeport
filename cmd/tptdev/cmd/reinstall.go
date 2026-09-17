@@ -282,4 +282,10 @@ func init() {
 		&reinstallRestoreBootstrap,
 		"restore-bootstrap", false, "Recreate the kubernetes runtime and control plane records the API needs in order to accept work, for a database emptied outside this command. Creates only the records that are missing. Implied by --drop-database.",
 	)
+	reinstallCmd.Flags().IntVar(
+		&cliArgs.MachineWorkloadInstanceConcurrentReconciles,
+		"machine-workload-instance-concurrent-reconciles",
+		installer.DefaultMachineWorkloadInstanceConcurrentReconciles,
+		"Number of concurrent machine workload instance reconcile workers.",
+	)
 }

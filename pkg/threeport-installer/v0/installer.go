@@ -156,6 +156,11 @@ type Options struct {
 	// and `materialized-view`. A nil or empty value omits the flag, so the
 	// API server applies its own default.
 	PaginationMode *string
+
+	// MachineWorkloadInstanceConcurrentReconciles is the number of
+	// machine-workload-instance reconcile workers. A value below 1 uses
+	// DefaultMachineWorkloadInstanceConcurrentReconciles.
+	MachineWorkloadInstanceConcurrentReconciles int
 }
 
 type ControlPlaneInstaller struct {
@@ -226,6 +231,10 @@ func defaultInstallFunction(kubernetesRuntimeInstance *v0.KubernetesRuntimeInsta
 	return nil
 }
 
+// DefaultMachineWorkloadInstanceConcurrentReconciles is the starvation
+// floor for machine workload instance workers.
+const DefaultMachineWorkloadInstanceConcurrentReconciles = 2
+
 var defaultInstallerOptions = Options{
 	Name:                        ControlPlaneName,
 	Namespace:                   ControlPlaneNamespace,
@@ -238,6 +247,7 @@ var defaultInstallerOptions = Options{
 	InThreeport:                 false,
 	AdditionalAwsIrsaConditions: make([]string, 0),
 	AdditionalOptions:           make(map[string]interface{}),
+	MachineWorkloadInstanceConcurrentReconciles: DefaultMachineWorkloadInstanceConcurrentReconciles,
 }
 
 func NewInstaller(os ...InstallerOption) *ControlPlaneInstaller {

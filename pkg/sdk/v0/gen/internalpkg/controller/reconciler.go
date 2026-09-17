@@ -262,8 +262,26 @@ func GenReconcilers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							}
 
 							g.Line()
+							g.Comment("treat a deletion-scheduled update as a delete")
+							g.Id("operation").Op(":=").Id("notif").Dot("Operation")
+							g.If(
+								Id(varObjectName).Dot("ScheduledForDeletion").Call().Op("!=").Nil().
+									Op("&&").Id("operation").Op("==").Qual(
+									"github.com/threeport/threeport/pkg/notifications/v0",
+									"NotificationOperationUpdated",
+								),
+							).Block(
+								Id("log").Dot("Info").Call(
+									Lit(fmt.Sprintf("%s scheduled for deletion - treating update as delete", strcase.ToDelimited(obj.Name, ' '))),
+								),
+								Id("operation").Op("=").Qual(
+									"github.com/threeport/threeport/pkg/notifications/v0",
+									"NotificationOperationDeleted",
+								),
+							)
+
 							g.Comment("determine which operation and act accordingly")
-							g.Switch(Id("notif").Dot("Operation")).BlockFunc(func(h *Group) {
+							g.Switch(Id("operation")).BlockFunc(func(h *Group) {
 								operationCase(h, "create", &obj, varObjectName, gen.ModulePath)
 								operationCase(h, "update", &obj, varObjectName, gen.ModulePath)
 								operationCase(h, "delete", &obj, varObjectName, gen.ModulePath)
@@ -286,10 +304,10 @@ func GenReconcilers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							g.Line()
 
 							g.Comment("set the object's Reconciled field to true if not deleted")
-							g.If(Id("notif").Dot("Operation").Op("!=").Qual(
+							g.If(Id("operation").Op("!=").Qual(
 								"github.com/threeport/threeport/pkg/notifications/v0",
 								"NotificationOperationDeleted",
-							).Block(
+							)).Block(
 								Id(fmt.Sprintf(
 									"reconciled%s",
 									obj.Name,
@@ -358,7 +376,7 @@ func GenReconcilers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 									)).Dot("Name"),
 									Line(),
 								),
-							))
+							)
 							g.Line()
 
 							g.Comment("release the lock on the reconciliation of the created object")

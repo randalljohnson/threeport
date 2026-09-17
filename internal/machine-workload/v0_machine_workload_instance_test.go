@@ -355,6 +355,19 @@ func (f *fixture) patchedReconciled() []*bool {
 	return out
 }
 
+// patchedCreationFailed returns each PATCH body's CreationFailed pointer.
+func (f *fixture) patchedCreationFailed() []*bool {
+	f.patchesMu.Lock()
+	defer f.patchesMu.Unlock()
+	out := make([]*bool, 0, len(f.patches))
+	for _, body := range f.patches {
+		var mwi v0.MachineWorkloadInstance
+		require.NoError(f.t, json.Unmarshal(body, &mwi))
+		out = append(out, mwi.CreationFailed)
+	}
+	return out
+}
+
 // TestMachineWorkloadInstanceCreated_HappyPath covers a zero-exit create that patches Healthy and Reconciled.
 func TestMachineWorkloadInstanceCreated_HappyPath(t *testing.T) {
 	f := newFixture(t, machinetest.SSHOpts{ExitCode: 0})
@@ -405,6 +418,11 @@ func TestMachineWorkloadInstanceCreated_ScriptFails(t *testing.T) {
 	reconciled := f.patchedReconciled()
 	require.Len(t, reconciled, 1)
 	assert.False(t, *reconciled[0], "failed create must patch Reconciled=false")
+
+	failed := f.patchedCreationFailed()
+	require.Len(t, failed, 1)
+	require.NotNil(t, failed[0])
+	assert.True(t, *failed[0], "script failure must set CreationFailed=true")
 
 	var errWithEvent *tp_errors.ErrWithEvent
 	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")

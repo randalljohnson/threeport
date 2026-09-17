@@ -732,10 +732,19 @@ func TestGkeLifecycleSaveCreateOutputs(t *testing.T) {
 	)
 }
 
-// TestGkeLifecycleOnDeleteConfirmed asserts the post-delete hook is a no-op.
+// TestGkeLifecycleOnDeleteConfirmed covers parent KRI cleanup when deletion
+// is already scheduled on the KRI.
 func TestGkeLifecycleOnDeleteConfirmed(t *testing.T) {
 	api := machinetest.NewAPIStub(t)
 	inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
+	inst.KubernetesRuntimeInstanceID = util.Ptr(gkeTestKriID)
+	gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
+	now := time.Now().UTC()
+	kri := &v0.KubernetesRuntimeInstance{
+		Common:            v0.Common{ID: util.Ptr(gkeTestKriID)},
+		DeletionScheduled: &now,
+	}
+	gkeServeKubeRuntimeInstances(t, api, kri, nil, http.StatusOK, http.StatusOK)
 	assert.NoError(t, gkeNewLifecycle(api, inst).OnDeleteConfirmed(nil))
 }
 

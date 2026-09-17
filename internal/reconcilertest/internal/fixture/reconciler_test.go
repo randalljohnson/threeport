@@ -324,10 +324,10 @@ func TestUpdateSkippedWhenDeletionScheduled(t *testing.T) {
 	h.spy.SetResult("update", Result{RequeueDelay: 1, Err: fmt.Errorf("update handler failed")})
 	h.scheduleDeletion()
 
-	// update must not dispatch
+	// a deletion-scheduled update is rewritten to delete
 	h.publish(notifications.NotificationOperationUpdated)
 
-	assert.Empty(t, h.spy.Calls(), "update ran on an object already scheduled for deletion")
+	assert.Contains(t, h.spy.Calls(), "delete", "update on a deletion-scheduled object must run as delete")
 
 	// delete still must
 	h.publish(notifications.NotificationOperationDeleted)

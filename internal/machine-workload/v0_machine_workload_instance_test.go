@@ -385,6 +385,10 @@ func TestMachineWorkloadInstanceCreated_HappyPath(t *testing.T) {
 	assert.Equal(t, int64(0), delay)
 	assert.Equal(t, []string{string(wlstatus.WorkloadInstanceStatusHealthy)}, f.patchedStatuses())
 	assert.Equal(t, []string{"ScriptSucceeded"}, f.recorder.GetReasons())
+	failed := f.patchedCreationFailed()
+	if len(failed) != 1 || failed[0] == nil || *failed[0] {
+		t.Fatalf("successful create must set CreationFailed=false, got %v", failed)
+	}
 }
 
 // TestMachineWorkloadInstanceCreated_RuntimeNotReconciled covers the early

@@ -21,12 +21,11 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// All package-level test identifiers in this file are prefixed oke/oci so a
-// sibling worktree can later add _test.go files to this package without
-// collisions. No TestMain is defined here for the same reason.
+// Package-level test identifiers here are prefixed oke so a sibling _test.go
+// can land in this package without collisions. This file defines no TestMain
+// for the same reason.
 
-// okeNewAPIStub returns the shared machinetest API stub under an
-// oke-prefixed name.
+// okeNewAPIStub returns a machinetest API stub under an oke-prefixed name.
 func okeNewAPIStub(t *testing.T) *machinetest.APIStub {
 	t.Helper()
 	return machinetest.NewAPIStub(t)
@@ -38,17 +37,15 @@ func okeNewEncryptionKey(t *testing.T) string {
 	return machinetest.NewEncryptionKey(t)
 }
 
-// okeWriteResponse writes data in the response envelope the threeport client
-// helpers expect.
+// okeWriteResponse writes data in the Response envelope the threeport client expects.
 func okeWriteResponse(t *testing.T, w http.ResponseWriter, status int, data []apiserver_lib.Object) {
 	t.Helper()
 	machinetest.WriteResponse(t, w, status, data)
 }
 
-// okeFakeJetStream satisfies nats.JetStreamContext by embedding the
-// interface and overriding only Publish(). Any other method panics on the
-// nil embedded interface, which is desirable: the lifecycle methods under
-// test must never touch JetStream beyond publishing.
+// okeFakeJetStream is a JetStreamContext that records Publish calls.
+// Other methods panic on the nil embedded interface, so a lifecycle
+// method that touches JetStream beyond Publish fails the test.
 type okeFakeJetStream struct {
 	nats.JetStreamContext
 
@@ -58,12 +55,15 @@ type okeFakeJetStream struct {
 	publishErr error
 }
 
+// Publish records subj and a copy of data, or returns publishErr when set.
 func (f *okeFakeJetStream) Publish(subj string, data []byte, opts ...nats.PubOpt) (*nats.PubAck, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	// fail the publish when a test injected an error
 	if f.publishErr != nil {
 		return nil, f.publishErr
 	}
+	// record subject and payload copy
 	f.subjects = append(f.subjects, subj)
 	f.payloads = append(f.payloads, append([]byte(nil), data...))
 	return &nats.PubAck{}, nil
@@ -73,12 +73,13 @@ func (f *okeFakeJetStream) Publish(subj string, data []byte, opts ...nats.PubOpt
 func (f *okeFakeJetStream) published() ([]string, [][]byte) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	// copy recorded slices for the caller
 	subjects := append([]string(nil), f.subjects...)
 	payloads := append([][]byte(nil), f.payloads...)
 	return subjects, payloads
 }
 
-// okeReconciler builds a controller.Reconciler pointed at the API stub.
+// okeReconciler returns a Reconciler pointed at api, key, and js.
 func okeReconciler(api *machinetest.APIStub, key string, js nats.JetStreamContext) *controller.Reconciler {
 	return &controller.Reconciler{
 		APIClient:        api.Client,
@@ -88,9 +89,8 @@ func okeReconciler(api *machinetest.APIStub, key string, js nats.JetStreamContex
 	}
 }
 
-// okeInstance builds an OKE runtime instance with ID and Name set. Both are
-// dereferenced by the entry points and the lifecycle constructor, so every
-// fixture must carry them. Tests set additional fields directly.
+// okeInstance returns an OKE runtime instance with ID and Name set.
+// Entry points and newOkeLifecycleProvider dereference both.
 func okeInstance(id uint, name string) *v0.OciOkeKubernetesRuntimeInstance {
 	return &v0.OciOkeKubernetesRuntimeInstance{
 		Common:   v0.Common{ID: util.Ptr(id)},
@@ -98,22 +98,23 @@ func okeInstance(id uint, name string) *v0.OciOkeKubernetesRuntimeInstance {
 	}
 }
 
-// okeInstancePath returns the API path for an OKE runtime instance ID.
+// okeInstancePath returns the API path for an OKE instance id.
 func okeInstancePath(id uint) string {
 	return fmt.Sprintf("%s/%d", v0.PathOciOkeKubernetesRuntimeInstances, id)
 }
 
-// okeRequestRecorder captures PATCH bodies sent to the API stub so tests can
-// assert which reconciliation fields a lifecycle method persisted.
+// okeRequestRecorder is a collector of PATCH bodies on the instance path.
+// Tests assert which reconciliation fields a lifecycle method persisted.
 type okeRequestRecorder struct {
 	mu     sync.Mutex
 	bodies [][]byte
 }
 
-// patchBodies returns the recorded PATCH bodies as strings.
+// patchBodies returns recorded PATCH bodies as strings.
 func (rec *okeRequestRecorder) patchBodies() []string {
 	rec.mu.Lock()
 	defer rec.mu.Unlock()
+	// stringify recorded bodies
 	bodies := make([]string, len(rec.bodies))
 	for i, b := range rec.bodies {
 		bodies[i] = string(b)
@@ -121,17 +122,17 @@ func (rec *okeRequestRecorder) patchBodies() []string {
 	return bodies
 }
 
-// okeServeInstance registers a handler at the instance's path that serves
-// the instance on GET and echoes the patched object on PATCH, recording each
-// PATCH body for assertion.
+// okeServeInstance serves GET of inst and PATCH that echoes the body with inst.ID.
 func okeServeInstance(t *testing.T, api *machinetest.APIStub, inst *v0.OciOkeKubernetesRuntimeInstance) *okeRequestRecorder {
 	t.Helper()
 	rec := &okeRequestRecorder{}
+	// serve GET of inst and PATCH echo at the instance path
 	api.Mux.HandleFunc(okeInstancePath(*inst.ID), func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			okeWriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{*inst})
 		case http.MethodPatch:
+			// record body, echo unmarshaled instance with original ID
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
 			rec.mu.Lock()
@@ -148,44 +149,40 @@ func okeServeInstance(t *testing.T, api *machinetest.APIStub, inst *v0.OciOkeKub
 	return rec
 }
 
-// okeServeGet registers a GET-only handler serving obj at path.
+// okeServeGet serves GET of obj at path and fails on any other method.
 func okeServeGet(t *testing.T, api *machinetest.APIStub, path string, obj apiserver_lib.Object) {
 	t.Helper()
+	// serve GET of obj at path
 	api.Mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		okeWriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{obj})
 	})
 }
 
-// okeServeError registers a handler returning the given status with an empty
-// response envelope so the client error path parses cleanly.
+// okeServeError serves status with an empty Response envelope at path.
 func okeServeError(t *testing.T, api *machinetest.APIStub, path string, status int) {
 	t.Helper()
+	// serve empty envelope with status
 	api.Mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		okeWriteResponse(t, w, status, nil)
 	})
 }
 
-// okeForbidAPIRequests registers a catch-all handler that fails the test if
-// any API request arrives. OCI-boundary tests use it to prove the method
-// under test returns at the local failure before issuing any API call.
+// okeForbidAPIRequests fails the test on any request that reaches the mux root.
 func okeForbidAPIRequests(t *testing.T, api *machinetest.APIStub) {
 	t.Helper()
+	// fail the test on any request that reaches "/"
 	api.Mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("unexpected API request: %s %s", r.Method, r.URL.Path)
 		okeWriteResponse(t, w, http.StatusInternalServerError, nil)
 	})
 }
 
-// okeLocalFailConfigProvider returns a config provider that every OCI client
-// constructor rejects LOCALLY: the empty region fails the SDK's
-// configuration-validity region check and the non-PEM key fails its PEM
-// decode check, both before any socket is opened. Tenancy, user, and
-// fingerprint are non-empty dummies so the forced failure lands
-// deterministically on the region/PEM checks rather than an earlier
-// empty-field error. Every test that touches a concrete OCI method MUST use
-// this provider: the SDK calls run with context.Background() and no timeout,
-// so a syntactically valid config would dial the real OCI endpoint and hang.
+// okeLocalFailConfigProvider returns dummy OCI credentials that fail client construction.
+// IsConfigurationProviderValid (oci-go-sdk/v65@v65.101.0 common/configuration.go)
+// rejects an empty Region() before PrivateRSAKey(); tenancy, user, and fingerprint
+// are non-empty so that check is the first failure. not-a-pem-key would fail PEM
+// decode if Region were set. Construction never opens a socket.
 func okeLocalFailConfigProvider() common.ConfigurationProvider {
 	return common.NewRawConfigurationProvider(
 		"dummy-tenancy",
@@ -197,8 +194,7 @@ func okeLocalFailConfigProvider() common.ConfigurationProvider {
 	)
 }
 
-// okeLocalFailInfra builds an OKE infra whose concrete OCI methods all fail
-// locally at client construction, guaranteeing no network dial.
+// okeLocalFailInfra returns OKE infra whose OCI clients fail at construction.
 func okeLocalFailInfra(name string) *provider.KubernetesRuntimeInfraOKE {
 	return &provider.KubernetesRuntimeInfraOKE{
 		PulumiWorkspace: provider.PulumiWorkspace{RuntimeInstanceName: name},
@@ -207,12 +203,11 @@ func okeLocalFailInfra(name string) *provider.KubernetesRuntimeInfraOKE {
 	}
 }
 
-// okeProvider builds an OCI provider record whose PrivateKey decrypts
-// successfully but yields a non-PEM plaintext, so the infra build passes the
-// decrypt phase and then fails LOCALLY at OCI identity client construction
-// without reaching the network.
+// okeProvider returns an OciProvider whose PrivateKey decrypts to not-a-pem-key.
+// buildOkeInfra then fails locally at identity client construction.
 func okeProvider(t *testing.T, id uint, encryptionKey string) *v0.OciProvider {
 	t.Helper()
+	// encrypt dummy PEM so decrypt succeeds and identity-client construction fails
 	encryptedKey, err := encryption.Encrypt(encryptionKey, "not-a-pem-key")
 	require.NoError(t, err)
 	return &v0.OciProvider{
@@ -227,8 +222,7 @@ func okeProvider(t *testing.T, id uint, encryptionKey string) *v0.OciProvider {
 	}
 }
 
-// okeDefinition builds an OKE definition carrying the worker-node fields the
-// infra build dereferences.
+// okeDefinition returns an OKE definition with the worker-node fields buildOkeInfra dereferences.
 func okeDefinition(id uint) *v0.OciOkeKubernetesRuntimeDefinition {
 	return &v0.OciOkeKubernetesRuntimeDefinition{
 		Common:                 v0.Common{ID: util.Ptr(id)},

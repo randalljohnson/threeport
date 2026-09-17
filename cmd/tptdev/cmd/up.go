@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	cli "github.com/threeport/threeport/pkg/cli/v0"
+	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
 	"github.com/threeport/threeport/pkg/threeport-installer/v0/tptdev"
 )
 
@@ -107,6 +108,12 @@ func init() {
 	upCmd.Flags().BoolVar(
 		&cliArgs.LocalRegistry,
 		"local-registry", false, "Connects a local container registry to Threeport control plane cluster.  Only applicable with provider 'kind'.",
+	)
+	upCmd.Flags().IntVar(
+		&cliArgs.MachineWorkloadInstanceConcurrentReconciles,
+		"machine-workload-instance-concurrent-reconciles",
+		installer.DefaultMachineWorkloadInstanceConcurrentReconciles,
+		"Number of concurrent machine workload instance reconcile workers.",
 	)
 	cobra.OnInitialize(func() {
 		cli.InitConfig(upCmd, cliArgs.CfgFile)

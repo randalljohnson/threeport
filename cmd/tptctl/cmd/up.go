@@ -231,4 +231,10 @@ func init() {
 			threeport.DefaultLocalAPIPortAuthDisabled,
 		),
 	)
+	UpCmd.Flags().IntVar(
+		&cliArgs.MachineWorkloadInstanceConcurrentReconciles,
+		"machine-workload-instance-concurrent-reconciles",
+		threeport.DefaultMachineWorkloadInstanceConcurrentReconciles,
+		"Number of concurrent machine workload instance reconcile workers.",
+	)
 }

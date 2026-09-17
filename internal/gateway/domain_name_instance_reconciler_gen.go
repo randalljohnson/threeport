@@ -148,8 +148,14 @@ func DomainNameInstanceReconciler(r *controller.Reconciler) {
 			}
 			domainNameInstance = latestDomainNameInstance
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if domainNameInstance.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("domain name instance scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if domainNameInstance.ScheduledForDeletion() != nil {
 					log.Info("domain name instance scheduled for deletion - skipping create")
@@ -202,10 +208,6 @@ func DomainNameInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
-				if domainNameInstance.ScheduledForDeletion() != nil {
-					log.Info("domain name instance scheduled for deletion - skipping update")
-					break
-				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch domainNameInstance.GetVersion() {
@@ -343,7 +345,7 @@ func DomainNameInstanceReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledDomainNameInstance := api_v0.DomainNameInstance{
 					Common:         api_v0.Common{ID: util.Ptr(domainNameInstance.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

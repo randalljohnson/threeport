@@ -28,20 +28,10 @@ import (
 
 func main() {
 	// flags
-	var gatewayDefinitionConcurrentReconciles = flag.Int(
-		"gateway-definition-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for gateway definitions",
-	)
-	var gatewayInstanceConcurrentReconciles = flag.Int(
-		"gateway-instance-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for gateway instances",
-	)
-	var domainNameInstanceConcurrentReconciles = flag.Int(
-		"domain-name-instance-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for domain name instances",
+	var concurrentReconciles = flag.Int(
+		"concurrent-reconciles",
+		2,
+		"Number of concurrent reconcile workers to run for each object type",
 	)
 
 	var apiServer = flag.String("api-server", "threeport-api-server.threeport-control-plane.svc.cluster.local", "Threepoort REST API server endpoint")
@@ -137,19 +127,19 @@ func main() {
 	// configure and start reconcilers
 	var reconcilerConfigs []controller.ReconcilerConfig
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *gatewayDefinitionConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "GatewayDefinitionReconciler",
 		NotifSubject:         notif.GatewayDefinitionSubject,
 		ReconcileFunc:        gateway.GatewayDefinitionReconciler,
 	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *gatewayInstanceConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "GatewayInstanceReconciler",
 		NotifSubject:         notif.GatewayInstanceSubject,
 		ReconcileFunc:        gateway.GatewayInstanceReconciler,
 	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *domainNameInstanceConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "DomainNameInstanceReconciler",
 		NotifSubject:         notif.DomainNameInstanceSubject,
 		ReconcileFunc:        gateway.DomainNameInstanceReconciler,
@@ -183,10 +173,6 @@ func main() {
 		ready.Store(true)
 		readyFlags = append(readyFlags, ready)
 
-		// create exit channel
-		shutdownChan := make(chan bool, 1)
-		shutdownChans = append(shutdownChans, shutdownChan)
-
 		// create reconciler
 		reconciler := controller.Reconciler{
 			APIClient:     apiClient,
@@ -203,13 +189,12 @@ func main() {
 			Log:              &log,
 			Name:             r.Name,
 			Ready:            ready,
-			Shutdown:         shutdownChan,
 			ShutdownWait:     &shutdownWait,
 			Sub:              sub,
 		}
 
-		// start reconciler
-		go r.ReconcileFunc(&reconciler)
+		// start reconcile workers sharing this pull subscription
+		controller.StartReconcileWorkers(r, reconciler, &shutdownChans)
 	}
 
 	log.Info(

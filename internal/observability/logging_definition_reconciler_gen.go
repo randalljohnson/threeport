@@ -148,8 +148,14 @@ func LoggingDefinitionReconciler(r *controller.Reconciler) {
 			}
 			loggingDefinition = latestLoggingDefinition
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if loggingDefinition.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("logging definition scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if loggingDefinition.ScheduledForDeletion() != nil {
 					log.Info("logging definition scheduled for deletion - skipping create")
@@ -202,10 +208,6 @@ func LoggingDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
-				if loggingDefinition.ScheduledForDeletion() != nil {
-					log.Info("logging definition scheduled for deletion - skipping update")
-					break
-				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch loggingDefinition.GetVersion() {
@@ -343,7 +345,7 @@ func LoggingDefinitionReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledLoggingDefinition := api_v0.LoggingDefinition{
 					Common:         api_v0.Common{ID: util.Ptr(loggingDefinition.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

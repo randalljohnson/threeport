@@ -148,8 +148,14 @@ func HelmWorkloadDefinitionReconciler(r *controller.Reconciler) {
 			}
 			helmWorkloadDefinition = latestHelmWorkloadDefinition
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if helmWorkloadDefinition.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("helm workload definition scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if helmWorkloadDefinition.ScheduledForDeletion() != nil {
 					log.Info("helm workload definition scheduled for deletion - skipping create")
@@ -202,10 +208,6 @@ func HelmWorkloadDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
-				if helmWorkloadDefinition.ScheduledForDeletion() != nil {
-					log.Info("helm workload definition scheduled for deletion - skipping update")
-					break
-				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch helmWorkloadDefinition.GetVersion() {
@@ -343,7 +345,7 @@ func HelmWorkloadDefinitionReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledHelmWorkloadDefinition := api_v0.HelmWorkloadDefinition{
 					Common:         api_v0.Common{ID: util.Ptr(helmWorkloadDefinition.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

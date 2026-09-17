@@ -148,8 +148,14 @@ func OciOkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 			}
 			ociOkeKubernetesRuntimeInstance = latestOciOkeKubernetesRuntimeInstance
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if ociOkeKubernetesRuntimeInstance.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("oci oke kubernetes runtime instance scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if ociOkeKubernetesRuntimeInstance.ScheduledForDeletion() != nil {
 					log.Info("oci oke kubernetes runtime instance scheduled for deletion - skipping create")
@@ -202,10 +208,6 @@ func OciOkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
-				if ociOkeKubernetesRuntimeInstance.ScheduledForDeletion() != nil {
-					log.Info("oci oke kubernetes runtime instance scheduled for deletion - skipping update")
-					break
-				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch ociOkeKubernetesRuntimeInstance.GetVersion() {
@@ -343,7 +345,7 @@ func OciOkeKubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledOciOkeKubernetesRuntimeInstance := api_v0.OciOkeKubernetesRuntimeInstance{
 					Common:         api_v0.Common{ID: util.Ptr(ociOkeKubernetesRuntimeInstance.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

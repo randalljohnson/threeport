@@ -148,8 +148,14 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 			}
 			gatewayDefinition = latestGatewayDefinition
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if gatewayDefinition.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("gateway definition scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if gatewayDefinition.ScheduledForDeletion() != nil {
 					log.Info("gateway definition scheduled for deletion - skipping create")
@@ -202,10 +208,6 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
-				if gatewayDefinition.ScheduledForDeletion() != nil {
-					log.Info("gateway definition scheduled for deletion - skipping update")
-					break
-				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch gatewayDefinition.GetVersion() {
@@ -343,7 +345,7 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledGatewayDefinition := api_v0.GatewayDefinition{
 					Common:         api_v0.Common{ID: util.Ptr(gatewayDefinition.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

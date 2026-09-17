@@ -28,15 +28,10 @@ import (
 
 func main() {
 	// flags
-	var terraformDefinitionConcurrentReconciles = flag.Int(
-		"terraform-definition-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for terraform definitions",
-	)
-	var terraformInstanceConcurrentReconciles = flag.Int(
-		"terraform-instance-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for terraform instances",
+	var concurrentReconciles = flag.Int(
+		"concurrent-reconciles",
+		2,
+		"Number of concurrent reconcile workers to run for each object type",
 	)
 
 	var apiServer = flag.String("api-server", "threeport-api-server.threeport-control-plane.svc.cluster.local", "Threepoort REST API server endpoint")
@@ -132,13 +127,13 @@ func main() {
 	// configure and start reconcilers
 	var reconcilerConfigs []controller.ReconcilerConfig
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *terraformDefinitionConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "TerraformDefinitionReconciler",
 		NotifSubject:         notif.TerraformDefinitionSubject,
 		ReconcileFunc:        terraform.TerraformDefinitionReconciler,
 	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *terraformInstanceConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "TerraformInstanceReconciler",
 		NotifSubject:         notif.TerraformInstanceSubject,
 		ReconcileFunc:        terraform.TerraformInstanceReconciler,
@@ -172,10 +167,6 @@ func main() {
 		ready.Store(true)
 		readyFlags = append(readyFlags, ready)
 
-		// create exit channel
-		shutdownChan := make(chan bool, 1)
-		shutdownChans = append(shutdownChans, shutdownChan)
-
 		// create reconciler
 		reconciler := controller.Reconciler{
 			APIClient:     apiClient,
@@ -192,13 +183,12 @@ func main() {
 			Log:              &log,
 			Name:             r.Name,
 			Ready:            ready,
-			Shutdown:         shutdownChan,
 			ShutdownWait:     &shutdownWait,
 			Sub:              sub,
 		}
 
-		// start reconciler
-		go r.ReconcileFunc(&reconciler)
+		// start reconcile workers sharing this pull subscription
+		controller.StartReconcileWorkers(r, reconciler, &shutdownChans)
 	}
 
 	log.Info(

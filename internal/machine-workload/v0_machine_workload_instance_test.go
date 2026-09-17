@@ -379,6 +379,19 @@ func (f *fixture) patchedReconciled() []*bool {
 	return out
 }
 
+// patchedCreationFailed returns each PATCH body's CreationFailed pointer.
+func (f *fixture) patchedCreationFailed() []*bool {
+	f.patchesMu.Lock()
+	defer f.patchesMu.Unlock()
+	out := make([]*bool, 0, len(f.patches))
+	for _, body := range f.patches {
+		var mwi v0.MachineWorkloadInstance
+		require.NoError(f.t, json.Unmarshal(body, &mwi))
+		out = append(out, mwi.CreationFailed)
+	}
+	return out
+}
+
 // TestMachineWorkloadInstanceCreated_HappyPath confirms the Created
 // reconciler runs the create script, persists Reconciled=true with a
 // Healthy status, and logs the successful completion. The wrapper's
@@ -449,6 +462,12 @@ func TestMachineWorkloadInstanceCreated_ScriptFails(t *testing.T) {
 	reconciled := f.patchedReconciled()
 	require.Len(t, reconciled, 1)
 	assert.False(t, *reconciled[0], "failed create must patch Reconciled=false")
+
+	// CreationFailed is set so a failed create is visible without reading Status
+	creationFailed := f.patchedCreationFailed()
+	require.Len(t, creationFailed, 1)
+	require.NotNil(t, creationFailed[0])
+	assert.True(t, *creationFailed[0], "failed create must set CreationFailed=true")
 
 	// error carries the specific-reason event the wrapper will substitute
 	// for the generic FailedCreate row

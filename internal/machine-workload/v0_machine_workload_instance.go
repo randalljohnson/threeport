@@ -78,11 +78,14 @@ func v0MachineWorkloadInstanceCreated(
 	// run the create script and record results
 	wlStatus, scriptErr := runScript(r, machineWorkloadInstance, mri, mwd, *mwd.CreateScript, "create", log)
 
-	// patch Status; always send Reconciled so PATCH cannot keep a prior true
+	// patch Status; always send Reconciled and CreationFailed so PATCH cannot keep a prior value
 	patch := v0.MachineWorkloadInstance{
-		Common:         v0.Common{ID: machineWorkloadInstance.ID},
-		Status:         util.Ptr(string(wlStatus)),
-		Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(scriptErr == nil)},
+		Common: v0.Common{ID: machineWorkloadInstance.ID},
+		Status: util.Ptr(string(wlStatus)),
+		Reconciliation: v0.Reconciliation{
+			Reconciled:     util.Ptr(scriptErr == nil),
+			CreationFailed: util.Ptr(scriptErr != nil),
+		},
 	}
 	if _, err := client.UpdateMachineWorkloadInstance(r.APIClient, r.APIServer, &patch); err != nil {
 		return controller.Done, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
@@ -138,11 +141,14 @@ func v0MachineWorkloadInstanceUpdated(
 	// run the update script and record results
 	wlStatus, scriptErr := runScript(r, machineWorkloadInstance, mri, mwd, *mwd.UpdateScript, "update", log)
 
-	// patch Status; always send Reconciled so PATCH cannot keep a prior true
+	// patch Status; always send Reconciled and CreationFailed so PATCH cannot keep a prior value
 	patch := v0.MachineWorkloadInstance{
-		Common:         v0.Common{ID: machineWorkloadInstance.ID},
-		Status:         util.Ptr(string(wlStatus)),
-		Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(scriptErr == nil)},
+		Common: v0.Common{ID: machineWorkloadInstance.ID},
+		Status: util.Ptr(string(wlStatus)),
+		Reconciliation: v0.Reconciliation{
+			Reconciled:     util.Ptr(scriptErr == nil),
+			CreationFailed: util.Ptr(scriptErr != nil),
+		},
 	}
 	if _, err := client.UpdateMachineWorkloadInstance(r.APIClient, r.APIServer, &patch); err != nil {
 		return controller.Done, fmt.Errorf("failed to update machine workload instance with run result: %w", err)

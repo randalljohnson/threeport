@@ -302,23 +302,23 @@ func TestReconcilerDispatchesEachOperation(t *testing.T) {
 	}
 }
 
-// TestUpdateSkippedWhenDeletionScheduled covers an update that must not run
-// after DeletionScheduled is set, and a delete that still must.
-func TestUpdateSkippedWhenDeletionScheduled(t *testing.T) {
+// TestUpdateDispatchesDeleteWhenDeletionScheduled covers an Updated
+// notification that runs as delete after DeletionScheduled is set.
+func TestUpdateDispatchesDeleteWhenDeletionScheduled(t *testing.T) {
 	h := newHarness(t)
-	// fail the update handler if it runs, so a missed skip would requeue forever
+	// fail the update handler if it runs, so a missed rewrite would requeue forever
 	h.spy.SetResult("update", Result{RequeueDelay: 1, Err: fmt.Errorf("update handler failed")})
 	h.scheduleDeletion()
 
-	// update must not dispatch
+	// updated notification must run as delete
 	h.publish(notifications.NotificationOperationUpdated)
 
-	assert.Empty(t, h.spy.Calls(), "update ran on an object already scheduled for deletion")
+	assert.Equal(t, []string{"delete"}, h.spy.Calls())
 
-	// delete still must
+	// deleted notification still runs as delete
 	h.publish(notifications.NotificationOperationDeleted)
 
-	assert.Contains(t, h.spy.Calls(), "delete", "delete never reached its handler")
+	assert.Equal(t, []string{"delete", "delete"}, h.spy.Calls())
 }
 
 // TestCreateSkippedWhenDeletionScheduled covers a create that must not run

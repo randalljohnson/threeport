@@ -410,13 +410,18 @@ func TestMachineWorkloadInstanceCreated_HappyPath(t *testing.T) {
 
 	// status persists as Healthy so consumers see the current state
 	assert.Equal(t, []string{string(wlstatus.WorkloadInstanceStatusHealthy)}, f.patchedStatuses())
-
 	// Reconciled flips to true only on the success path, keeping the
 	// owner-wait chain honest
 	reconciled := f.patchedReconciled()
 	require.Len(t, reconciled, 1)
 	require.NotNil(t, reconciled[0])
 	assert.True(t, *reconciled[0], "successful create should mark Reconciled=true")
+
+	// CreationFailed clears on success so a later retry is not stuck failed
+	creationFailed := f.patchedCreationFailed()
+	require.Len(t, creationFailed, 1)
+	require.NotNil(t, creationFailed[0])
+	assert.False(t, *creationFailed[0], "successful create must set CreationFailed=false")
 
 	// successful script emits no event; the wrapper's SuccessfulCreate
 	// event carries the outcome and the log line covers the diagnostic

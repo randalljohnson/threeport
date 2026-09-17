@@ -32,8 +32,6 @@ func persistedModels() []interface{} {
 		&v0.GatewayHttpPort{},
 		&v0.GatewayInstance{},
 		&v0.GatewayTcpPort{},
-		&v0.GcpGceMachineRuntimeDefinition{},
-		&v0.GcpGceMachineRuntimeInstance{},
 		&v0.GcpGkeKubernetesRuntimeDefinition{},
 		&v0.GcpGkeKubernetesRuntimeInstance{},
 		&v0.GcpProvider{},

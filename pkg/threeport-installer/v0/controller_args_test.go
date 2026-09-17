@@ -2,8 +2,6 @@ package v0
 
 import (
 	"testing"
-
-	api "github.com/threeport/threeport/pkg/api/v0"
 )
 
 // TestGetControllerArgsPassesConcurrentReconciles covers every
@@ -13,12 +11,12 @@ func TestGetControllerArgsPassesConcurrentReconciles(t *testing.T) {
 	cpi.Opts.AuthEnabled = true
 	cpi.Opts.ConcurrentReconciles = 4
 
-	for _, name := range []string{
-		ThreeportMachineWorkloadControllerName,
-		ThreeportSecretControllerName,
-	} {
-		args := cpi.getControllerArgs(api.ControlPlaneComponent{Name: name})
-		want := "-concurrent-reconciles=4"
+	if len(ThreeportControllerList) == 0 {
+		t.Fatal("ThreeportControllerList is empty")
+	}
+	want := "-concurrent-reconciles=4"
+	for _, controller := range ThreeportControllerList {
+		args := cpi.getControllerArgs(*controller)
 		found := false
 		for _, arg := range args {
 			if arg == want {
@@ -27,7 +25,7 @@ func TestGetControllerArgsPassesConcurrentReconciles(t *testing.T) {
 			}
 		}
 		if !found {
-			t.Fatalf("%s got args %v, want %s", name, args, want)
+			t.Fatalf("%s got args %v, want %s", controller.Name, args, want)
 		}
 	}
 }

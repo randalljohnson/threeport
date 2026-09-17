@@ -312,8 +312,7 @@ func (h Handler) UpdateKubernetesRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
 	prevReconciliation := existingKubernetesRuntimeDefinition.Reconciliation
 
 	// update object in database
@@ -553,8 +552,9 @@ func (h Handler) DeleteKubernetesRuntimeDefinition(c echo.Context) error {
 			// if deletion scheduled but not reconciled, return 409 - deletion
 			// already underway
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
-				"object with ID %d already being deleted",
+				"object with ID %d %s",
 				*kubernetesRuntimeDefinition.ID,
+				api_v0.ErrMsgAlreadyBeingDeleted,
 			)), fullyQualifiedType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
@@ -892,8 +892,7 @@ func (h Handler) UpdateKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
 	prevReconciliation := existingKubernetesRuntimeInstance.Reconciliation
 
 	// update object in database
@@ -1127,8 +1126,9 @@ func (h Handler) DeleteKubernetesRuntimeInstance(c echo.Context) error {
 			// if deletion scheduled but not reconciled, return 409 - deletion
 			// already underway
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
-				"object with ID %d already being deleted",
+				"object with ID %d %s",
 				*kubernetesRuntimeInstance.ID,
+				api_v0.ErrMsgAlreadyBeingDeleted,
 			)), fullyQualifiedType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted

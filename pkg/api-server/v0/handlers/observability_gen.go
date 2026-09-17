@@ -312,8 +312,7 @@ func (h Handler) UpdateLoggingDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
 	prevReconciliation := existingLoggingDefinition.Reconciliation
 
 	// update object in database
@@ -553,8 +552,9 @@ func (h Handler) DeleteLoggingDefinition(c echo.Context) error {
 			// if deletion scheduled but not reconciled, return 409 - deletion
 			// already underway
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
-				"object with ID %d already being deleted",
+				"object with ID %d %s",
 				*loggingDefinition.ID,
+				api_v0.ErrMsgAlreadyBeingDeleted,
 			)), fullyQualifiedType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
@@ -892,8 +892,7 @@ func (h Handler) UpdateLoggingInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
 	prevReconciliation := existingLoggingInstance.Reconciliation
 
 	// update object in database
@@ -1127,8 +1126,9 @@ func (h Handler) DeleteLoggingInstance(c echo.Context) error {
 			// if deletion scheduled but not reconciled, return 409 - deletion
 			// already underway
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
-				"object with ID %d already being deleted",
+				"object with ID %d %s",
 				*loggingInstance.ID,
+				api_v0.ErrMsgAlreadyBeingDeleted,
 			)), fullyQualifiedType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
@@ -1466,8 +1466,7 @@ func (h Handler) UpdateMetricsDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
 	prevReconciliation := existingMetricsDefinition.Reconciliation
 
 	// update object in database
@@ -1707,8 +1706,9 @@ func (h Handler) DeleteMetricsDefinition(c echo.Context) error {
 			// if deletion scheduled but not reconciled, return 409 - deletion
 			// already underway
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
-				"object with ID %d already being deleted",
+				"object with ID %d %s",
 				*metricsDefinition.ID,
+				api_v0.ErrMsgAlreadyBeingDeleted,
 			)), fullyQualifiedType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
@@ -2046,8 +2046,7 @@ func (h Handler) UpdateMetricsInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
 	prevReconciliation := existingMetricsInstance.Reconciliation
 
 	// update object in database
@@ -2281,8 +2280,9 @@ func (h Handler) DeleteMetricsInstance(c echo.Context) error {
 			// if deletion scheduled but not reconciled, return 409 - deletion
 			// already underway
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
-				"object with ID %d already being deleted",
+				"object with ID %d %s",
 				*metricsInstance.ID,
+				api_v0.ErrMsgAlreadyBeingDeleted,
 			)), fullyQualifiedType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
@@ -2620,8 +2620,7 @@ func (h Handler) UpdateObservabilityDashboardDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
 	prevReconciliation := existingObservabilityDashboardDefinition.Reconciliation
 
 	// update object in database
@@ -2861,8 +2860,9 @@ func (h Handler) DeleteObservabilityDashboardDefinition(c echo.Context) error {
 			// if deletion scheduled but not reconciled, return 409 - deletion
 			// already underway
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
-				"object with ID %d already being deleted",
+				"object with ID %d %s",
 				*observabilityDashboardDefinition.ID,
+				api_v0.ErrMsgAlreadyBeingDeleted,
 			)), fullyQualifiedType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
@@ -3200,8 +3200,7 @@ func (h Handler) UpdateObservabilityDashboardInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
 	prevReconciliation := existingObservabilityDashboardInstance.Reconciliation
 
 	// update object in database
@@ -3435,8 +3434,9 @@ func (h Handler) DeleteObservabilityDashboardInstance(c echo.Context) error {
 			// if deletion scheduled but not reconciled, return 409 - deletion
 			// already underway
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
-				"object with ID %d already being deleted",
+				"object with ID %d %s",
 				*observabilityDashboardInstance.ID,
+				api_v0.ErrMsgAlreadyBeingDeleted,
 			)), fullyQualifiedType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
@@ -3774,8 +3774,7 @@ func (h Handler) UpdateObservabilityStackDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
 	prevReconciliation := existingObservabilityStackDefinition.Reconciliation
 
 	// update object in database
@@ -4015,8 +4014,9 @@ func (h Handler) DeleteObservabilityStackDefinition(c echo.Context) error {
 			// if deletion scheduled but not reconciled, return 409 - deletion
 			// already underway
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
-				"object with ID %d already being deleted",
+				"object with ID %d %s",
 				*observabilityStackDefinition.ID,
+				api_v0.ErrMsgAlreadyBeingDeleted,
 			)), fullyQualifiedType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
@@ -4354,8 +4354,7 @@ func (h Handler) UpdateObservabilityStackInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
 	prevReconciliation := existingObservabilityStackInstance.Reconciliation
 
 	// update object in database
@@ -4589,8 +4588,9 @@ func (h Handler) DeleteObservabilityStackInstance(c echo.Context) error {
 			// if deletion scheduled but not reconciled, return 409 - deletion
 			// already underway
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
-				"object with ID %d already being deleted",
+				"object with ID %d %s",
 				*observabilityStackInstance.ID,
+				api_v0.ErrMsgAlreadyBeingDeleted,
 			)), fullyQualifiedType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted

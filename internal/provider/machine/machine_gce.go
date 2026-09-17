@@ -30,9 +30,6 @@ import (
 	gcpauth "github.com/threeport/threeport/pkg/auth/v0"
 )
 
-// gceNameRe is GCE's RFC1035 instance-name pattern, 1 to 63 characters.
-var gceNameRe = regexp.MustCompile(`^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$`)
-
 // compile-time guarantees that GceMachineInfra satisfies the infra provider
 // lifecycle contract plus the optional streaming, refresh, and adopt seams.
 // The three streaming and refresh methods (GetStateFilePath, ReadStateFile,
@@ -45,6 +42,10 @@ var (
 	_ provider.RefreshableProvider = (*GceMachineInfra)(nil)
 	_ provider.AdoptableProvider   = (*GceMachineInfra)(nil)
 )
+
+// gceNameRe is GCE's RFC1035 instance-name pattern, 1 to 59 characters.
+// The SSH firewall name is {name}-ssh and is also capped at 63.
+var gceNameRe = regexp.MustCompile(`^[a-z]([-a-z0-9]{0,57}[a-z0-9])?$`)
 
 // adoptResourceKind identifies which deterministically named GCE resource an
 // adopt target refers to, so the discover helper can branch on kind without
@@ -205,11 +206,22 @@ func (i *GceMachineInfra) ensurePulumiProjectDefaults() {
 	}
 }
 
+// gcpRegion returns Region, or the zone prefix when Region is empty.
+func (i *GceMachineInfra) gcpRegion() string {
+	if i.Region != "" {
+		return i.Region
+	}
+	if idx := strings.LastIndex(i.Zone, "-"); idx > 0 {
+		return i.Zone[:idx]
+	}
+	return ""
+}
+
 // syncStackConfigs updates stack config keys from the current ProjectID and Region.
 func (i *GceMachineInfra) syncStackConfigs() {
 	i.StackConfigs = map[string]string{
 		"gcp:project": i.ProjectID,
-		"gcp:region":  i.Region,
+		"gcp:region":  i.gcpRegion(),
 	}
 }
 
@@ -222,6 +234,8 @@ func (i *GceMachineInfra) validateRequiredFields() error {
 	var missing []string
 	if i.RuntimeInstanceName == "" {
 		missing = append(missing, "RuntimeInstanceName")
+	} else if !gceNameRe.MatchString(i.RuntimeInstanceName) {
+		return fmt.Errorf("RuntimeInstanceName %q is not a valid GCE instance name", i.RuntimeInstanceName)
 	}
 	if i.ProjectID == "" {
 		missing = append(missing, "ProjectID")
@@ -366,7 +380,7 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 		// env var, so concurrent creates for different accounts stay isolated
 		providerArgs := &gcp.ProviderArgs{
 			Project: pulumi.String(i.ProjectID),
-			Region:  pulumi.String(i.Region),
+			Region:  pulumi.String(i.gcpRegion()),
 		}
 		if i.ServiceAccountCredentials != "" {
 			providerArgs.Credentials = pulumi.String(i.ServiceAccountCredentials)
@@ -697,7 +711,6 @@ func (i *GceMachineInfra) ensureSSHKeyPair() error {
 
 	return nil
 }
-
 
 // captureOutputs maps the hostname and externalIP entries from the Pulumi up
 // outputs onto the receiver, tolerating missing keys rather than panicking.

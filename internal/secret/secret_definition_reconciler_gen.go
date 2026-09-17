@@ -7,6 +7,7 @@ import (
 	"fmt"
 	tpapi_lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	api_v0 "github.com/threeport/threeport/pkg/api/v0"
+	tpclient_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	event "github.com/threeport/threeport/pkg/event/v0"
@@ -118,6 +119,9 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 				continue
 			}
 
+			// capture pre-pass reconciled state to gate the success-event emit
+			wasReconciled := false
+
 			// treat a deletion-scheduled update as a delete
 			operation := notif.Operation
 			if secretDefinition.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
@@ -130,6 +134,23 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 				if secretDefinition.ScheduledForDeletion() != nil {
 					log.Info("secret definition scheduled for deletion - skipping create")
 					break
+				}
+				// record in-progress before the custom handler so a later failure still has a start event
+				progressNote := "creating"
+				// type-assert so types without relationship-tagged foreign keys still emit creating
+				if owner, ok := secretDefinition.(api_v0.RelationshipTaggedForeignKeyProvider); ok {
+					progressNote = event.CreateNote(owner)
+				}
+				if recordErr := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(progressNote),
+						Reason: util.Ptr(event.ReasonCreateInProgress),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					secretDefinition.GetId(),
+					secretDefinition.GetFullyQualifiedType(),
+				); recordErr != nil {
+					log.Error(recordErr, "failed to record in-progress event")
 				}
 				var operationErr error
 				var customRequeueDelay int64
@@ -151,8 +172,8 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedCreate),
-							Type:   util.Ptr(event.TypeNormal),
+							Reason: util.Ptr(event.ReasonCreateFailed),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						secretDefinition.GetId(),
 						secretDefinition.GetFullyQualifiedType(),
@@ -178,6 +199,23 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
+				if secretDefinition.ScheduledForDeletion() != nil {
+					log.Info("secret definition scheduled for deletion - skipping update")
+					break
+				}
+				// record in-progress before the custom handler so a later failure still has a start event
+				progressNote := event.UpdateNote()
+				if recordErr := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(progressNote),
+						Reason: util.Ptr(event.ReasonUpdateInProgress),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					secretDefinition.GetId(),
+					secretDefinition.GetFullyQualifiedType(),
+				); recordErr != nil {
+					log.Error(recordErr, "failed to record in-progress event")
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch secretDefinition.GetVersion() {
@@ -198,8 +236,8 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedUpdate),
-							Type:   util.Ptr(event.TypeNormal),
+							Reason: util.Ptr(event.ReasonUpdateFailed),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						secretDefinition.GetId(),
 						secretDefinition.GetFullyQualifiedType(),
@@ -225,6 +263,23 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationDeleted:
+				// record in-progress before the custom handler so a later failure still has a start event
+				progressNote := "deleting"
+				// type-assert so types without relationship-tagged foreign keys still emit deleting
+				if owner, ok := secretDefinition.(api_v0.RelationshipTaggedForeignKeyProvider); ok {
+					progressNote = event.DeleteNote(owner)
+				}
+				if recordErr := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(progressNote),
+						Reason: util.Ptr(event.ReasonDeleteInProgress),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					secretDefinition.GetId(),
+					secretDefinition.GetFullyQualifiedType(),
+				); recordErr != nil {
+					log.Error(recordErr, "failed to record in-progress event")
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch secretDefinition.GetVersion() {
@@ -240,13 +295,27 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of secret definition encountered for delete operation")
 				}
 				if operationErr != nil {
+					if errors.Is(operationErr, tpclient_lib.ErrDeleteInProgress) || errors.Is(operationErr, tpclient_lib.ErrDeleteBlocked) {
+						log.Info(
+							"conflict reconciling deleted secret definition object, requeueing",
+							"cause", operationErr.Error(),
+						)
+						// in-progress event already recorded before the handler
+						r.UnlockAndRequeue(
+							secretDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					errorMsg := "failed to reconcile deleted secret definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonFailedDelete),
-							Type:   util.Ptr(event.TypeNormal),
+							Reason: util.Ptr(event.ReasonDeleteFailed),
+							Type:   util.Ptr(event.TypeWarning),
 						},
 						secretDefinition.GetId(),
 						secretDefinition.GetFullyQualifiedType(),
@@ -296,6 +365,20 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 					secretDefinition.GetId(),
 				)
 				if err != nil {
+					if errors.Is(err, tpclient_lib.ErrDeleteInProgress) || errors.Is(err, tpclient_lib.ErrDeleteBlocked) {
+						log.Info(
+							"conflict deleting secret definition, requeueing",
+							"cause", err.Error(),
+						)
+						// in-progress event already recorded before the handler
+						r.UnlockAndRequeue(
+							secretDefinition,
+							int64(30),
+							lockReleased,
+							msg,
+						)
+						continue
+					}
 					log.Error(err, "failed to delete secret definition")
 					r.UnlockAndRequeue(secretDefinition, requeueDelay, lockReleased, msg)
 					continue
@@ -343,23 +426,25 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 				log.V(1).Info("secret definition unlocked")
 			}
 
-			// log and record event for successful reconciliation
-			successMsg := fmt.Sprintf(
-				"secret definition successfully reconciled for %s operation",
-				strings.ToLower(string(notif.Operation)),
-			)
-			if err := r.EventsRecorder.RecordEvent(
-				&api_v0.Event{
-					Note:   util.Ptr(successMsg),
-					Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
-					Type:   util.Ptr(event.TypeNormal),
-				},
-				secretDefinition.GetId(),
-				secretDefinition.GetFullyQualifiedType(),
-			); err != nil {
-				log.Error(err, "failed to record event for successful secret definition reconciliation")
+			// emit success event only on the first-successful transition; skip on redelivery
+			if !wasReconciled {
+				successMsg := fmt.Sprintf(
+					"secret definition successfully reconciled for %s operation",
+					strings.ToLower(string(notif.Operation)),
+				)
+				if err := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(successMsg),
+						Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					secretDefinition.GetId(),
+					secretDefinition.GetFullyQualifiedType(),
+				); err != nil {
+					log.Error(err, "failed to record event for successful secret definition reconciliation")
+				}
+				log.Info(successMsg)
 			}
-			log.Info(successMsg)
 		}
 	}
 

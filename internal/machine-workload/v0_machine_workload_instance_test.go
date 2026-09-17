@@ -386,6 +386,11 @@ func TestMachineWorkloadInstanceCreated_HappyPath(t *testing.T) {
 	require.NotNil(t, reconciled[0])
 	assert.True(t, *reconciled[0], "successful create should mark Reconciled=true")
 
+	failed := f.patchedCreationFailed()
+	require.Len(t, failed, 1)
+	require.NotNil(t, failed[0])
+	assert.False(t, *failed[0], "successful create must set CreationFailed=false")
+
 	assert.Empty(t, f.recorder.GetReasons(), "successful script emits no event; the wrapper's SuccessfulCreate event carries the outcome and the log line covers the diagnostic detail")
 }
 

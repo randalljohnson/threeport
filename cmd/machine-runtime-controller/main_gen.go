@@ -128,12 +128,6 @@ func main() {
 	var reconcilerConfigs []controller.ReconcilerConfig
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
 		ConcurrentReconciles: *concurrentReconciles,
-		Name:                 "MachineRuntimeDefinitionReconciler",
-		NotifSubject:         notif.MachineRuntimeDefinitionSubject,
-		ReconcileFunc:        machineruntime.MachineRuntimeDefinitionReconciler,
-	})
-	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "MachineRuntimeInstanceReconciler",
 		NotifSubject:         notif.MachineRuntimeInstanceSubject,
 		ReconcileFunc:        machineruntime.MachineRuntimeInstanceReconciler,

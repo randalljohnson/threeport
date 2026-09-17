@@ -44,8 +44,7 @@ func (k *KubernetesRuntimeInstanceConfig) Get(
 	kubernetesRuntimeInstanceValues := k.KubernetesRuntimeInstance
 	// get API objects
 	var kubernetesRuntimeInstances *[]api_v0.KubernetesRuntimeInstance
-	// listPath is true when the caller asked for all instances; used to select
-	// a single prefetch over per-row definition fetches to avoid N+1.
+	// set listPath on the all-instances branch to prefetch definition names
 	listPath := false
 	switch {
 	// if name is provided, get kubernetes runtime instance by name
@@ -65,10 +64,10 @@ func (k *KubernetesRuntimeInstanceConfig) Get(
 		listPath = true
 	}
 
-	// prefetch kubernetes runtime definitions once on the list path so
-	// per-row definition lookups become map hits instead of N GETs.
+	// prefetch definition names once on the list path
 	var definitionNamesByID map[uint]*string
 	if listPath {
+		// get all kubernetes runtime definitions
 		allDefs, err := client_v0.GetKubernetesRuntimeDefinitions(apiClient, apiEndpoint)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get kubernetes runtime definitions from Threeport API: %w", err)
@@ -88,8 +87,6 @@ func (k *KubernetesRuntimeInstanceConfig) Get(
 		// related objects
 		var kubernetesRuntimeDefinition *KubernetesRuntimeDefinitionValues
 
-		// resolve kubernetes runtime definition name from the prefetched map
-		// on the list path, or a single ByID lookup on the single-name path
 		if kubernetesRuntimeInstance.KubernetesRuntimeDefinitionID != nil {
 			if listPath {
 				if name, ok := definitionNamesByID[*kubernetesRuntimeInstance.KubernetesRuntimeDefinitionID]; ok {
@@ -98,6 +95,7 @@ func (k *KubernetesRuntimeInstanceConfig) Get(
 					}
 				}
 			} else {
+				// get kubernetes runtime definition by ID
 				krd, err := client_v0.GetKubernetesRuntimeDefinitionByID(apiClient, apiEndpoint, *kubernetesRuntimeInstance.KubernetesRuntimeDefinitionID)
 				if err == nil {
 					kubernetesRuntimeDefinition = &KubernetesRuntimeDefinitionValues{

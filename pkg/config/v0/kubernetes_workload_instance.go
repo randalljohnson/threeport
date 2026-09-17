@@ -216,9 +216,7 @@ func (w *KubernetesWorkloadInstanceConfig) Create(
 		return nil, fmt.Errorf("failed to create kubernetes workload instance in threeport API: %w", err)
 	}
 
-	// construct kubernetes workload instance config. the status is carried
-	// over as it stands: it is filled in by reconciliation, so it is still
-	// unset on the object the create returns
+	// construct created kubernetes workload instance config
 	createdK8sWorkloadInstanceConfig := &KubernetesWorkloadInstanceConfig{
 		KubernetesWorkloadInstance: KubernetesWorkloadInstanceValues{
 			Name:                         createdK8sWorkloadInstance.Name,
@@ -306,9 +304,7 @@ func (w *KubernetesWorkloadInstanceConfig) Replace(
 		return nil, fmt.Errorf("failed to replace kubernetes workload instance in threeport API: %w", err)
 	}
 
-	// construct updated kubernetes workload instance config. the status is
-	// carried over as it stands: it is filled in by reconciliation, so it is
-	// unset on the object the replace returns until the workload is reconciled
+	// construct updated kubernetes workload instance config
 	updatedK8sWorkloadInstanceConfig := &KubernetesWorkloadInstanceConfig{
 		KubernetesWorkloadInstance: KubernetesWorkloadInstanceValues{
 			Name:                         replacedK8sWorkloadInstance.Name,

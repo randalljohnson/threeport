@@ -71,8 +71,7 @@ func (m *MachineRuntimeInstanceConfig) Get(
 		machineRuntimeInstances = allMachineRuntimeInstances
 	}
 
-	// cache resolved definition names by ID so a shared definition across
-	// many instances only costs one API call, not one per instance
+	// cache definition names by ID so a shared definition costs one API call
 	definitionNameByID := make(map[uint]*string)
 
 	// assemble config objects from API objects
@@ -90,19 +89,19 @@ func (m *MachineRuntimeInstanceConfig) Get(
 			machineRuntimeInstance = *(a.(*api_v0.MachineRuntimeInstance))
 		}
 
-		// get related machine runtime definition if present.
-		// MachineRuntimeDefinitionID is optional; imported machines may not
-		// have an associated definition. Look up each unique ID once and
-		// reuse the resolved name for every subsequent instance sharing it.
+		// get related machine runtime definition if present
+		// imported machines may omit MachineRuntimeDefinitionID
 		var machineRuntimeDefinition *MachineRuntimeDefinitionValues
 		if machineRuntimeInstance.MachineRuntimeDefinitionID != nil {
 			id := *machineRuntimeInstance.MachineRuntimeDefinitionID
 			name, cached := definitionNameByID[id]
 			if !cached {
+				// fetch definition name on cache miss
 				mrd, err := client_v0.GetMachineRuntimeDefinitionByID(apiClient, apiEndpoint, id)
 				if err == nil {
 					name = mrd.Name
 				}
+				// store nil name on lookup failure so later instances skip the API
 				definitionNameByID[id] = name
 			}
 			if name != nil {
@@ -112,6 +111,7 @@ func (m *MachineRuntimeInstanceConfig) Get(
 			}
 		}
 
+		// construct machine runtime instance config
 		machineRuntimeInstanceConfig := MachineRuntimeInstanceConfig{
 			MachineRuntimeInstance: MachineRuntimeInstanceValues{
 				Name:                     machineRuntimeInstance.Name,

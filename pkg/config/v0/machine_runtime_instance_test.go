@@ -19,25 +19,18 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// TestMachineRuntimeInstanceGetDedupesDefinitionLookups covers the client-side
-// fix for the definition-fetch N+1 in `tptctl get machine-runtime-instances`:
-// three instances that share the same MachineRuntimeDefinitionID must trigger
-// exactly one GET /v0/machine-runtime-definitions/{id}, not one per instance.
-// A distinct definition ID on another instance still adds one call, so a set
-// of three sharing one definition plus one distinct definition totals two
-// definition GETs.
+// TestMachineRuntimeInstanceGetDedupesDefinitionLookups covers Get listing
+// instances that share a definition ID without repeating that ID fetch.
 func TestMachineRuntimeInstanceGetDedupesDefinitionLookups(t *testing.T) {
-	// track per-ID definition fetch counts so we can assert on dedupe behavior
 	var (
 		mu          sync.Mutex
 		defHitsByID = map[uint]int{}
 	)
 
+	// setup three instances on definition 100 and one on 200
 	sharedDefName := util.Ptr("shared-def")
 	otherDefName := util.Ptr("other-def")
 
-	// build a mock threeport API that returns three instances sharing one
-	// definition plus a fourth pointing at a different definition
 	instances := []api_v0.MachineRuntimeInstance{
 		makeInstance(1, "mri-a", 100),
 		makeInstance(2, "mri-b", 100),
@@ -45,11 +38,12 @@ func TestMachineRuntimeInstanceGetDedupesDefinitionLookups(t *testing.T) {
 		makeInstance(4, "mri-d", 200),
 	}
 
-	// list requests are counted to verify only one list call happens
 	var listHits int32
 
+	// serve instance list and definition-by-id
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v0/machine-runtime-instances", func(w http.ResponseWriter, r *http.Request) {
+		// count list hits and return all fixtures
 		atomic.AddInt32(&listHits, 1)
 		data := make([]apiserver_lib.Object, 0, len(instances))
 		for i := range instances {
@@ -58,7 +52,7 @@ func TestMachineRuntimeInstanceGetDedupesDefinitionLookups(t *testing.T) {
 		writeResponse(t, w, data)
 	})
 	mux.HandleFunc("/v0/machine-runtime-definitions/", func(w http.ResponseWriter, r *http.Request) {
-		// path is /v0/machine-runtime-definitions/{id}
+		// count the id in the path and return that definition
 		idStr := strings.TrimPrefix(r.URL.Path, "/v0/machine-runtime-definitions/")
 		var id uint
 		if _, err := fmt.Sscan(idStr, &id); err != nil {
@@ -89,27 +83,23 @@ func TestMachineRuntimeInstanceGetDedupesDefinitionLookups(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
-	// pkg/client/lib/v0 prepends "http://" when the transport is a stock
-	// http.Transport with no TLS config, so pass the host:port without scheme
+	// strip scheme; GetResponse prepends http:// on a stock client
 	apiEndpoint := strings.TrimPrefix(srv.URL, "http://")
 
-	// exercise the Get code path that used to fan out one definition GET per
-	// instance
+	// call Get with empty encryption key
 	cfg := &MachineRuntimeInstanceConfig{}
 	got, err := cfg.Get(srv.Client(), apiEndpoint, "")
 	require.NoError(t, err)
 	require.NotNil(t, got)
 
-	// assert one config per instance came back with the expected definition
-	// name populated from the cache
+	// assert each config carries the definition name for its ID
 	assert.Len(t, *got, 4)
 	assert.Equal(t, sharedDefName, (*got)[0].MachineRuntimeInstance.MachineRuntimeDefinition.Name)
 	assert.Equal(t, sharedDefName, (*got)[1].MachineRuntimeInstance.MachineRuntimeDefinition.Name)
 	assert.Equal(t, sharedDefName, (*got)[2].MachineRuntimeInstance.MachineRuntimeDefinition.Name)
 	assert.Equal(t, otherDefName, (*got)[3].MachineRuntimeInstance.MachineRuntimeDefinition.Name)
 
-	// core assertion: each unique definition ID is fetched exactly once, not
-	// once per instance sharing it
+	// assert the list ran once and each definition ID was fetched once
 	assert.Equal(t, int32(1), atomic.LoadInt32(&listHits), "list endpoint should be hit once")
 	mu.Lock()
 	defer mu.Unlock()
@@ -117,11 +107,9 @@ func TestMachineRuntimeInstanceGetDedupesDefinitionLookups(t *testing.T) {
 	assert.Equal(t, 1, defHitsByID[200], "distinct definition id 200 should be fetched exactly once")
 }
 
-// makeInstance builds a minimal MachineRuntimeInstance sufficient for the
-// enrichment loop under test.
+// makeInstance returns a MachineRuntimeInstance for id, name, and definition id.
 func makeInstance(id uint, name string, defID uint) api_v0.MachineRuntimeInstance {
-	// GetAgeFormatted panics on a nil CreatedAt, so give every fixture a
-	// concrete timestamp
+	// set CreatedAt; GetAge dereferences the pointer
 	createdAt := time.Now().Add(-time.Hour)
 	return api_v0.MachineRuntimeInstance{
 		Common:                     api_v0.Common{ID: util.Ptr(id), CreatedAt: &createdAt},
@@ -132,10 +120,10 @@ func makeInstance(id uint, name string, defID uint) api_v0.MachineRuntimeInstanc
 	}
 }
 
-// writeResponse encodes the given objects as an apiserver_lib.Response body,
-// matching what pkg/client/lib/v0.GetResponse expects.
+// writeResponse encodes data as an api-server Response envelope.
 func writeResponse(t *testing.T, w http.ResponseWriter, data []apiserver_lib.Object) {
 	t.Helper()
+	// write JSON envelope with HTTP 200
 	resp := apiserver_lib.Response{Data: data}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

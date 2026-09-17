@@ -38,6 +38,34 @@ type ReconcilerConfig struct {
 	NotifSubject string
 }
 
+// ReconcileWorkerCount returns how many reconcile loops to start.
+func ReconcileWorkerCount(concurrentReconciles int) int {
+	// treat a missing or invalid count as a single worker
+	if concurrentReconciles < 1 {
+		return 1
+	}
+	return concurrentReconciles
+}
+
+// StartReconcileWorkers starts ConcurrentReconciles copies of the
+// reconcile function, each with its own shutdown channel.
+func StartReconcileWorkers(
+	config ReconcilerConfig,
+	template Reconciler,
+	shutdownChans *[]chan bool,
+) {
+	count := ReconcileWorkerCount(config.ConcurrentReconciles)
+
+	// start one loop per worker with a dedicated shutdown channel
+	for worker := 0; worker < count; worker++ {
+		shutdownChan := make(chan bool, 1)
+		*shutdownChans = append(*shutdownChans, shutdownChan)
+		instance := template
+		instance.Shutdown = shutdownChan
+		go config.ReconcileFunc(&instance)
+	}
+}
+
 // Reconciler contains the assets needed by reconcilers to recieve subscription
 // messages and update the key-value store in order to lock reconciliation of
 // objects.

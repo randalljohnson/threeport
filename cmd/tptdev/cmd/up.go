@@ -140,10 +140,10 @@ func init() {
 		"apis", "", "Optional. Comma-separated list of sdk-config api object group names (e.g. kubernetes_workload,gateway) to limit the install to those apis' controllers. Use none to install zero optional controllers. Defaults to empty, which installs all controllers.",
 	)
 	upCmd.Flags().IntVar(
-		&cliArgs.MachineWorkloadInstanceConcurrentReconciles,
-		"machine-workload-instance-concurrent-reconciles",
-		installer.DefaultMachineWorkloadInstanceConcurrentReconciles,
-		"Number of concurrent machine workload instance reconcile workers.",
+		&cliArgs.ConcurrentReconciles,
+		"concurrent-reconciles",
+		installer.DefaultConcurrentReconciles,
+		"Number of concurrent reconcile workers per object type.",
 	)
 	cobra.OnInitialize(func() {
 		cli.InitConfig(upCmd, cliArgs.CfgFile)

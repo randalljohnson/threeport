@@ -265,9 +265,9 @@ func init() {
 		"api-server-host-port", 443, "Host port to bind the threeport API to when using kind provider. Overrides the default of 443. Useful when 443 is already in use on the host.",
 	)
 	UpCmd.Flags().IntVar(
-		&cliArgs.MachineWorkloadInstanceConcurrentReconciles,
-		"machine-workload-instance-concurrent-reconciles",
-		threeport.DefaultMachineWorkloadInstanceConcurrentReconciles,
-		"Number of concurrent machine workload instance reconcile workers.",
+		&cliArgs.ConcurrentReconciles,
+		"concurrent-reconciles",
+		threeport.DefaultConcurrentReconciles,
+		"Number of concurrent reconcile workers per object type.",
 	)
 }

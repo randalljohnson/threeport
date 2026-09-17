@@ -121,3 +121,13 @@ func TestValidateServiceAccountCredentialsAcceptsWellFormedKey(t *testing.T) {
 	// assert the document is accepted
 	assert.NoError(t, err)
 }
+
+func TestEnsureGCPAuth_NoCredentials_DoesNotHang(t *testing.T) {
+	t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "")
+	t.Setenv("CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE", "")
+	err := EnsureGCPAuth("")
+	if err == nil {
+		t.Skip("ambient application default credentials present")
+	}
+	assert.Contains(t, err.Error(), "gcp authentication unavailable")
+}

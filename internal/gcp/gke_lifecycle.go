@@ -429,6 +429,13 @@ func buildGkeInfra(
 		return nil, errors.New("GCP provider missing required field ProjectID")
 	}
 
+	if gcpProvider.ServiceAccountCredentials == nil || *gcpProvider.ServiceAccountCredentials == "" {
+		if gcpProvider.ID == nil {
+			return nil, errors.New("gcp provider has no service account credentials")
+		}
+		return nil, fmt.Errorf("gcp provider %d has no service account credentials", *gcpProvider.ID)
+	}
+
 	infraGKE := &provider.KubernetesRuntimeInfraGKE{
 		PulumiWorkspace: provider.PulumiWorkspace{
 			RuntimeInstanceName: *instance.Name,

@@ -371,6 +371,12 @@ func HandleInfraCreate(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 				return 0, fmt.Errorf("failed to confirm creation: %w", err)
 			}
 
+			// emit provisioning-complete after ConfirmCreation so PersistFailure
+			// cannot mark a confirmed create as failed
+			if err := p.RecordSuccessfulCreate(); err != nil {
+				log.Error(err, "failed to record SuccessfulCreate event")
+			}
+
 			log.Info("creation confirmed")
 			return 0, nil
 		}

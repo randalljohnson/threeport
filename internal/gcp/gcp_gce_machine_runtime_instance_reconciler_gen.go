@@ -154,8 +154,14 @@ func GcpGceMachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 			}
 			gcpGceMachineRuntimeInstance = latestGcpGceMachineRuntimeInstance
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if gcpGceMachineRuntimeInstance.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("gcp gce machine runtime instance scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if gcpGceMachineRuntimeInstance.ScheduledForDeletion() != nil {
 					log.Info("gcp gce machine runtime instance scheduled for deletion - skipping create")
@@ -424,7 +430,7 @@ func GcpGceMachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledGcpGceMachineRuntimeInstance := api_v0.GcpGceMachineRuntimeInstance{
 					Common:         api_v0.Common{ID: util.Ptr(gcpGceMachineRuntimeInstance.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

@@ -154,8 +154,14 @@ func TerraformDefinitionReconciler(r *controller.Reconciler) {
 			}
 			terraformDefinition = latestTerraformDefinition
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if terraformDefinition.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("terraform definition scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if terraformDefinition.ScheduledForDeletion() != nil {
 					log.Info("terraform definition scheduled for deletion - skipping create")
@@ -424,7 +430,7 @@ func TerraformDefinitionReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledTerraformDefinition := api_v0.TerraformDefinition{
 					Common:         api_v0.Common{ID: util.Ptr(terraformDefinition.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

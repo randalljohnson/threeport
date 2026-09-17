@@ -154,8 +154,14 @@ func ControlPlaneInstanceReconciler(r *controller.Reconciler) {
 			}
 			controlPlaneInstance = latestControlPlaneInstance
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if controlPlaneInstance.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("control plane instance scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if controlPlaneInstance.ScheduledForDeletion() != nil {
 					log.Info("control plane instance scheduled for deletion - skipping create")
@@ -424,7 +430,7 @@ func ControlPlaneInstanceReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledControlPlaneInstance := api_v0.ControlPlaneInstance{
 					Common:         api_v0.Common{ID: util.Ptr(controlPlaneInstance.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

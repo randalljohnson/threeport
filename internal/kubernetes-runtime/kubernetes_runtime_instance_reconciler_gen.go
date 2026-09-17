@@ -154,8 +154,14 @@ func KubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 			}
 			kubernetesRuntimeInstance = latestKubernetesRuntimeInstance
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if kubernetesRuntimeInstance.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("kubernetes runtime instance scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if kubernetesRuntimeInstance.ScheduledForDeletion() != nil {
 					log.Info("kubernetes runtime instance scheduled for deletion - skipping create")
@@ -424,7 +430,7 @@ func KubernetesRuntimeInstanceReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledKubernetesRuntimeInstance := api_v0.KubernetesRuntimeInstance{
 					Common:         api_v0.Common{ID: util.Ptr(kubernetesRuntimeInstance.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

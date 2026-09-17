@@ -154,8 +154,14 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 			}
 			observabilityDashboardInstance = latestObservabilityDashboardInstance
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if observabilityDashboardInstance.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("observability dashboard instance scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if observabilityDashboardInstance.ScheduledForDeletion() != nil {
 					log.Info("observability dashboard instance scheduled for deletion - skipping create")
@@ -424,7 +430,7 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledObservabilityDashboardInstance := api_v0.ObservabilityDashboardInstance{
 					Common:         api_v0.Common{ID: util.Ptr(observabilityDashboardInstance.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

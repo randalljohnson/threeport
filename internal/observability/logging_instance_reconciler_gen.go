@@ -154,8 +154,14 @@ func LoggingInstanceReconciler(r *controller.Reconciler) {
 			}
 			loggingInstance = latestLoggingInstance
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if loggingInstance.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("logging instance scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if loggingInstance.ScheduledForDeletion() != nil {
 					log.Info("logging instance scheduled for deletion - skipping create")
@@ -424,7 +430,7 @@ func LoggingInstanceReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledLoggingInstance := api_v0.LoggingInstance{
 					Common:         api_v0.Common{ID: util.Ptr(loggingInstance.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

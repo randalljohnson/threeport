@@ -122,8 +122,14 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 			// capture pre-pass reconciled state to gate the success-event emit
 			wasReconciled := false
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if secretDefinition.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("secret definition scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if secretDefinition.ScheduledForDeletion() != nil {
 					log.Info("secret definition scheduled for deletion - skipping create")
@@ -392,7 +398,7 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledSecretDefinition := api_v0.SecretDefinition{
 					Common:         api_v0.Common{ID: util.Ptr(secretDefinition.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

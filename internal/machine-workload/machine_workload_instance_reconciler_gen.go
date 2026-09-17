@@ -154,8 +154,14 @@ func MachineWorkloadInstanceReconciler(r *controller.Reconciler) {
 			}
 			machineWorkloadInstance = latestMachineWorkloadInstance
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if machineWorkloadInstance.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("machine workload instance scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if machineWorkloadInstance.ScheduledForDeletion() != nil {
 					log.Info("machine workload instance scheduled for deletion - skipping create")
@@ -424,7 +430,7 @@ func MachineWorkloadInstanceReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledMachineWorkloadInstance := api_v0.MachineWorkloadInstance{
 					Common:         api_v0.Common{ID: util.Ptr(machineWorkloadInstance.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

@@ -154,8 +154,14 @@ func ObservabilityStackInstanceReconciler(r *controller.Reconciler) {
 			}
 			observabilityStackInstance = latestObservabilityStackInstance
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if observabilityStackInstance.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("observability stack instance scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if observabilityStackInstance.ScheduledForDeletion() != nil {
 					log.Info("observability stack instance scheduled for deletion - skipping create")
@@ -424,7 +430,7 @@ func ObservabilityStackInstanceReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledObservabilityStackInstance := api_v0.ObservabilityStackInstance{
 					Common:         api_v0.Common{ID: util.Ptr(observabilityStackInstance.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

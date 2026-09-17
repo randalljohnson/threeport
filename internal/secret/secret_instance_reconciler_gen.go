@@ -154,8 +154,14 @@ func SecretInstanceReconciler(r *controller.Reconciler) {
 			}
 			secretInstance = latestSecretInstance
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if secretInstance.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("secret instance scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if secretInstance.ScheduledForDeletion() != nil {
 					log.Info("secret instance scheduled for deletion - skipping create")
@@ -424,7 +430,7 @@ func SecretInstanceReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledSecretInstance := api_v0.SecretInstance{
 					Common:         api_v0.Common{ID: util.Ptr(secretInstance.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

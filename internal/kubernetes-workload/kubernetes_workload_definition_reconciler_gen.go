@@ -154,8 +154,14 @@ func KubernetesWorkloadDefinitionReconciler(r *controller.Reconciler) {
 			}
 			kubernetesWorkloadDefinition = latestKubernetesWorkloadDefinition
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if kubernetesWorkloadDefinition.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("kubernetes workload definition scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if kubernetesWorkloadDefinition.ScheduledForDeletion() != nil {
 					log.Info("kubernetes workload definition scheduled for deletion - skipping create")
@@ -424,7 +430,7 @@ func KubernetesWorkloadDefinitionReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledKubernetesWorkloadDefinition := api_v0.KubernetesWorkloadDefinition{
 					Common:         api_v0.Common{ID: util.Ptr(kubernetesWorkloadDefinition.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

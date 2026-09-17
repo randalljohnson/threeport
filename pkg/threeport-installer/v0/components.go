@@ -532,9 +532,9 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControllers(
 		// WI principal to ensure RBAC applies to the actual pod identity.
 		if cpi.Opts.InfraProvider == v0.KubernetesRuntimeInfraProviderGKE && cpi.Opts.GcpProjectId != "" {
 			threeportWorkloadSubjects = append(threeportWorkloadSubjects, map[string]interface{}{
-				"kind":      "User",
-				"name":      fmt.Sprintf("serviceAccount:%s.svc.id.goog[%s/%s]", cpi.Opts.GcpProjectId, cpi.Opts.Namespace, controller.ServiceAccountName),
-				"apiGroup":  "rbac.authorization.k8s.io",
+				"kind":     "User",
+				"name":     fmt.Sprintf("serviceAccount:%s.svc.id.goog[%s/%s]", cpi.Opts.GcpProjectId, cpi.Opts.Namespace, controller.ServiceAccountName),
+				"apiGroup": "rbac.authorization.k8s.io",
 			})
 		}
 		threeportWorkloadClusterRoleBinding := &unstructured.Unstructured{

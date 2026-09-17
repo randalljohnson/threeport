@@ -82,3 +82,66 @@ func TestStartReconcileWorkersTreatsZeroAsOne(t *testing.T) {
 	}
 	shutdownChans[0] <- true
 }
+
+// TestStartReconcileWorkersHandleJobsConcurrently covers N workers
+// overlapping on a shared job queue so more than one job is in flight.
+func TestStartReconcileWorkersHandleJobsConcurrently(t *testing.T) {
+	const workers = 3
+	const jobs = 6
+	const hold = 80 * time.Millisecond
+
+	var inFlight atomic.Int32
+	var maxInFlight atomic.Int32
+	var completed atomic.Int32
+	jobsCh := make(chan struct{}, jobs)
+	for i := 0; i < jobs; i++ {
+		jobsCh <- struct{}{}
+	}
+
+	// start workers that hold each job long enough to overlap
+	config := ReconcilerConfig{
+		ConcurrentReconciles: workers,
+		ReconcileFunc: func(r *Reconciler) {
+			for {
+				select {
+				case <-r.Shutdown:
+					return
+				case <-jobsCh:
+					n := inFlight.Add(1)
+					for {
+						old := maxInFlight.Load()
+						if n <= old || maxInFlight.CompareAndSwap(old, n) {
+							break
+						}
+					}
+					time.Sleep(hold)
+					inFlight.Add(-1)
+					completed.Add(1)
+				}
+			}
+		},
+	}
+	var shutdownChans []chan bool
+	StartReconcileWorkers(config, Reconciler{}, &shutdownChans)
+
+	// wait until every job has been handled
+	deadline := time.Now().Add(2 * time.Second)
+	for completed.Load() < int32(jobs) {
+		if time.Now().After(deadline) {
+			t.Fatalf("completed %d jobs, want %d", completed.Load(), jobs)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	// assert the workers overlapped rather than taking jobs one at a time
+	if got := maxInFlight.Load(); got < int32(workers) {
+		t.Fatalf("max in-flight %d, want %d concurrent workers", got, workers)
+	}
+	if got := completed.Load(); got != int32(jobs) {
+		t.Fatalf("completed %d jobs, want %d", got, jobs)
+	}
+
+	for _, shutdownChan := range shutdownChans {
+		shutdownChan <- true
+	}
+}

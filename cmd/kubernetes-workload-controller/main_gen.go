@@ -28,15 +28,10 @@ import (
 
 func main() {
 	// flags
-	var kubernetesWorkloadDefinitionConcurrentReconciles = flag.Int(
-		"kubernetes-workload-definition-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for kubernetes workload definitions",
-	)
-	var kubernetesWorkloadInstanceConcurrentReconciles = flag.Int(
-		"kubernetes-workload-instance-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for kubernetes workload instances",
+	var concurrentReconciles = flag.Int(
+		"concurrent-reconciles",
+		2,
+		"Number of concurrent reconcile workers to run for each object type",
 	)
 
 	var apiServer = flag.String("api-server", "threeport-api-server.threeport-control-plane.svc.cluster.local", "Threepoort REST API server endpoint")
@@ -132,13 +127,13 @@ func main() {
 	// configure and start reconcilers
 	var reconcilerConfigs []controller.ReconcilerConfig
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *kubernetesWorkloadDefinitionConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "KubernetesWorkloadDefinitionReconciler",
 		NotifSubject:         notif.KubernetesWorkloadDefinitionSubject,
 		ReconcileFunc:        kubernetesworkload.KubernetesWorkloadDefinitionReconciler,
 	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *kubernetesWorkloadInstanceConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "KubernetesWorkloadInstanceReconciler",
 		NotifSubject:         notif.KubernetesWorkloadInstanceSubject,
 		ReconcileFunc:        kubernetesworkload.KubernetesWorkloadInstanceReconciler,

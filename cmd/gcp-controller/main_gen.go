@@ -28,15 +28,10 @@ import (
 
 func main() {
 	// flags
-	var gcpGkeKubernetesRuntimeInstanceConcurrentReconciles = flag.Int(
-		"gcp-gke-kubernetes-runtime-instance-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for gcp gke kubernetes runtime instances",
-	)
-	var gcpGceMachineRuntimeInstanceConcurrentReconciles = flag.Int(
-		"gcp-gce-machine-runtime-instance-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for gcp gce machine runtime instances",
+	var concurrentReconciles = flag.Int(
+		"concurrent-reconciles",
+		2,
+		"Number of concurrent reconcile workers to run for each object type",
 	)
 
 	var apiServer = flag.String("api-server", "threeport-api-server.threeport-control-plane.svc.cluster.local", "Threepoort REST API server endpoint")
@@ -132,13 +127,13 @@ func main() {
 	// configure and start reconcilers
 	var reconcilerConfigs []controller.ReconcilerConfig
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *gcpGkeKubernetesRuntimeInstanceConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "GcpGkeKubernetesRuntimeInstanceReconciler",
 		NotifSubject:         notif.GcpGkeKubernetesRuntimeInstanceSubject,
 		ReconcileFunc:        gcp.GcpGkeKubernetesRuntimeInstanceReconciler,
 	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *gcpGceMachineRuntimeInstanceConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "GcpGceMachineRuntimeInstanceReconciler",
 		NotifSubject:         notif.GcpGceMachineRuntimeInstanceSubject,
 		ReconcileFunc:        gcp.GcpGceMachineRuntimeInstanceReconciler,

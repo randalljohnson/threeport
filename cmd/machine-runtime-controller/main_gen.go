@@ -28,15 +28,10 @@ import (
 
 func main() {
 	// flags
-	var machineRuntimeDefinitionConcurrentReconciles = flag.Int(
-		"machine-runtime-definition-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for machine runtime definitions",
-	)
-	var machineRuntimeInstanceConcurrentReconciles = flag.Int(
-		"machine-runtime-instance-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for machine runtime instances",
+	var concurrentReconciles = flag.Int(
+		"concurrent-reconciles",
+		2,
+		"Number of concurrent reconcile workers to run for each object type",
 	)
 
 	var apiServer = flag.String("api-server", "threeport-api-server.threeport-control-plane.svc.cluster.local", "Threepoort REST API server endpoint")
@@ -132,13 +127,13 @@ func main() {
 	// configure and start reconcilers
 	var reconcilerConfigs []controller.ReconcilerConfig
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *machineRuntimeDefinitionConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "MachineRuntimeDefinitionReconciler",
 		NotifSubject:         notif.MachineRuntimeDefinitionSubject,
 		ReconcileFunc:        machineruntime.MachineRuntimeDefinitionReconciler,
 	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *machineRuntimeInstanceConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "MachineRuntimeInstanceReconciler",
 		NotifSubject:         notif.MachineRuntimeInstanceSubject,
 		ReconcileFunc:        machineruntime.MachineRuntimeInstanceReconciler,

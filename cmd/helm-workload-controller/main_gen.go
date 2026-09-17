@@ -28,15 +28,10 @@ import (
 
 func main() {
 	// flags
-	var helmWorkloadDefinitionConcurrentReconciles = flag.Int(
-		"helm-workload-definition-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for helm workload definitions",
-	)
-	var helmWorkloadInstanceConcurrentReconciles = flag.Int(
-		"helm-workload-instance-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for helm workload instances",
+	var concurrentReconciles = flag.Int(
+		"concurrent-reconciles",
+		2,
+		"Number of concurrent reconcile workers to run for each object type",
 	)
 
 	var apiServer = flag.String("api-server", "threeport-api-server.threeport-control-plane.svc.cluster.local", "Threepoort REST API server endpoint")
@@ -132,13 +127,13 @@ func main() {
 	// configure and start reconcilers
 	var reconcilerConfigs []controller.ReconcilerConfig
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *helmWorkloadDefinitionConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "HelmWorkloadDefinitionReconciler",
 		NotifSubject:         notif.HelmWorkloadDefinitionSubject,
 		ReconcileFunc:        helmworkload.HelmWorkloadDefinitionReconciler,
 	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *helmWorkloadInstanceConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "HelmWorkloadInstanceReconciler",
 		NotifSubject:         notif.HelmWorkloadInstanceSubject,
 		ReconcileFunc:        helmworkload.HelmWorkloadInstanceReconciler,

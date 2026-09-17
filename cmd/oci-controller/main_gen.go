@@ -28,10 +28,10 @@ import (
 
 func main() {
 	// flags
-	var ociOkeKubernetesRuntimeInstanceConcurrentReconciles = flag.Int(
-		"oci-oke-kubernetes-runtime-instance-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for oci oke kubernetes runtime instances",
+	var concurrentReconciles = flag.Int(
+		"concurrent-reconciles",
+		2,
+		"Number of concurrent reconcile workers to run for each object type",
 	)
 
 	var apiServer = flag.String("api-server", "threeport-api-server.threeport-control-plane.svc.cluster.local", "Threepoort REST API server endpoint")
@@ -127,7 +127,7 @@ func main() {
 	// configure and start reconcilers
 	var reconcilerConfigs []controller.ReconcilerConfig
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *ociOkeKubernetesRuntimeInstanceConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "OciOkeKubernetesRuntimeInstanceReconciler",
 		NotifSubject:         notif.OciOkeKubernetesRuntimeInstanceSubject,
 		ReconcileFunc:        oci.OciOkeKubernetesRuntimeInstanceReconciler,

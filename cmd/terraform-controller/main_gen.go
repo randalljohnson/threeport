@@ -28,15 +28,10 @@ import (
 
 func main() {
 	// flags
-	var terraformDefinitionConcurrentReconciles = flag.Int(
-		"terraform-definition-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for terraform definitions",
-	)
-	var terraformInstanceConcurrentReconciles = flag.Int(
-		"terraform-instance-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for terraform instances",
+	var concurrentReconciles = flag.Int(
+		"concurrent-reconciles",
+		2,
+		"Number of concurrent reconcile workers to run for each object type",
 	)
 
 	var apiServer = flag.String("api-server", "threeport-api-server.threeport-control-plane.svc.cluster.local", "Threepoort REST API server endpoint")
@@ -132,13 +127,13 @@ func main() {
 	// configure and start reconcilers
 	var reconcilerConfigs []controller.ReconcilerConfig
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *terraformDefinitionConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "TerraformDefinitionReconciler",
 		NotifSubject:         notif.TerraformDefinitionSubject,
 		ReconcileFunc:        terraform.TerraformDefinitionReconciler,
 	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *terraformInstanceConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "TerraformInstanceReconciler",
 		NotifSubject:         notif.TerraformInstanceSubject,
 		ReconcileFunc:        terraform.TerraformInstanceReconciler,

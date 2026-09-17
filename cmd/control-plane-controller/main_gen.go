@@ -28,15 +28,10 @@ import (
 
 func main() {
 	// flags
-	var controlPlaneDefinitionConcurrentReconciles = flag.Int(
-		"control-plane-definition-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for control plane definitions",
-	)
-	var controlPlaneInstanceConcurrentReconciles = flag.Int(
-		"control-plane-instance-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for control plane instances",
+	var concurrentReconciles = flag.Int(
+		"concurrent-reconciles",
+		2,
+		"Number of concurrent reconcile workers to run for each object type",
 	)
 
 	var apiServer = flag.String("api-server", "threeport-api-server.threeport-control-plane.svc.cluster.local", "Threepoort REST API server endpoint")
@@ -132,13 +127,13 @@ func main() {
 	// configure and start reconcilers
 	var reconcilerConfigs []controller.ReconcilerConfig
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *controlPlaneDefinitionConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "ControlPlaneDefinitionReconciler",
 		NotifSubject:         notif.ControlPlaneDefinitionSubject,
 		ReconcileFunc:        controlplane.ControlPlaneDefinitionReconciler,
 	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *controlPlaneInstanceConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "ControlPlaneInstanceReconciler",
 		NotifSubject:         notif.ControlPlaneInstanceSubject,
 		ReconcileFunc:        controlplane.ControlPlaneInstanceReconciler,

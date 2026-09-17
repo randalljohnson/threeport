@@ -28,45 +28,10 @@ import (
 
 func main() {
 	// flags
-	var observabilityStackDefinitionConcurrentReconciles = flag.Int(
-		"observability-stack-definition-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for observability stack definitions",
-	)
-	var observabilityStackInstanceConcurrentReconciles = flag.Int(
-		"observability-stack-instance-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for observability stack instances",
-	)
-	var observabilityDashboardDefinitionConcurrentReconciles = flag.Int(
-		"observability-dashboard-definition-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for observability dashboard definitions",
-	)
-	var observabilityDashboardInstanceConcurrentReconciles = flag.Int(
-		"observability-dashboard-instance-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for observability dashboard instances",
-	)
-	var metricsDefinitionConcurrentReconciles = flag.Int(
-		"metrics-definition-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for metrics definitions",
-	)
-	var metricsInstanceConcurrentReconciles = flag.Int(
-		"metrics-instance-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for metrics instances",
-	)
-	var loggingDefinitionConcurrentReconciles = flag.Int(
-		"logging-definition-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for logging definitions",
-	)
-	var loggingInstanceConcurrentReconciles = flag.Int(
-		"logging-instance-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for logging instances",
+	var concurrentReconciles = flag.Int(
+		"concurrent-reconciles",
+		2,
+		"Number of concurrent reconcile workers to run for each object type",
 	)
 
 	var apiServer = flag.String("api-server", "threeport-api-server.threeport-control-plane.svc.cluster.local", "Threepoort REST API server endpoint")
@@ -162,49 +127,49 @@ func main() {
 	// configure and start reconcilers
 	var reconcilerConfigs []controller.ReconcilerConfig
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *observabilityStackDefinitionConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "ObservabilityStackDefinitionReconciler",
 		NotifSubject:         notif.ObservabilityStackDefinitionSubject,
 		ReconcileFunc:        observability.ObservabilityStackDefinitionReconciler,
 	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *observabilityStackInstanceConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "ObservabilityStackInstanceReconciler",
 		NotifSubject:         notif.ObservabilityStackInstanceSubject,
 		ReconcileFunc:        observability.ObservabilityStackInstanceReconciler,
 	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *observabilityDashboardDefinitionConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "ObservabilityDashboardDefinitionReconciler",
 		NotifSubject:         notif.ObservabilityDashboardDefinitionSubject,
 		ReconcileFunc:        observability.ObservabilityDashboardDefinitionReconciler,
 	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *observabilityDashboardInstanceConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "ObservabilityDashboardInstanceReconciler",
 		NotifSubject:         notif.ObservabilityDashboardInstanceSubject,
 		ReconcileFunc:        observability.ObservabilityDashboardInstanceReconciler,
 	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *metricsDefinitionConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "MetricsDefinitionReconciler",
 		NotifSubject:         notif.MetricsDefinitionSubject,
 		ReconcileFunc:        observability.MetricsDefinitionReconciler,
 	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *metricsInstanceConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "MetricsInstanceReconciler",
 		NotifSubject:         notif.MetricsInstanceSubject,
 		ReconcileFunc:        observability.MetricsInstanceReconciler,
 	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *loggingDefinitionConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "LoggingDefinitionReconciler",
 		NotifSubject:         notif.LoggingDefinitionSubject,
 		ReconcileFunc:        observability.LoggingDefinitionReconciler,
 	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *loggingInstanceConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "LoggingInstanceReconciler",
 		NotifSubject:         notif.LoggingInstanceSubject,
 		ReconcileFunc:        observability.LoggingInstanceReconciler,

@@ -28,15 +28,10 @@ import (
 
 func main() {
 	// flags
-	var secretDefinitionConcurrentReconciles = flag.Int(
-		"secret-definition-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for secret definitions",
-	)
-	var secretInstanceConcurrentReconciles = flag.Int(
-		"secret-instance-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for secret instances",
+	var concurrentReconciles = flag.Int(
+		"concurrent-reconciles",
+		2,
+		"Number of concurrent reconcile workers to run for each object type",
 	)
 
 	var apiServer = flag.String("api-server", "threeport-api-server.threeport-control-plane.svc.cluster.local", "Threepoort REST API server endpoint")
@@ -132,13 +127,13 @@ func main() {
 	// configure and start reconcilers
 	var reconcilerConfigs []controller.ReconcilerConfig
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *secretDefinitionConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "SecretDefinitionReconciler",
 		NotifSubject:         notif.SecretDefinitionSubject,
 		ReconcileFunc:        secret.SecretDefinitionReconciler,
 	})
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *secretInstanceConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "SecretInstanceReconciler",
 		NotifSubject:         notif.SecretInstanceSubject,
 		ReconcileFunc:        secret.SecretInstanceReconciler,

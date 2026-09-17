@@ -360,6 +360,19 @@ func (f *fixture) patchedStatuses() []string {
 	return out
 }
 
+// patchedCreationFailed returns each PATCH body's CreationFailed pointer.
+func (f *fixture) patchedCreationFailed() []*bool {
+	f.patchesMu.Lock()
+	defer f.patchesMu.Unlock()
+	out := make([]*bool, 0, len(f.patches))
+	for _, body := range f.patches {
+		var mwi v0.MachineWorkloadInstance
+		require.NoError(f.t, json.Unmarshal(body, &mwi))
+		out = append(out, mwi.CreationFailed)
+	}
+	return out
+}
+
 // TestMachineWorkloadInstanceCreated_HappyPath confirms the Created
 // reconciler runs the create script, persists Reconciled=true with a
 // Healthy status, and records a ScriptSucceeded event.
@@ -401,6 +414,10 @@ func TestMachineWorkloadInstanceCreated_ScriptFails(t *testing.T) {
 	assert.Equal(t, int64(30), delay)
 	assert.Equal(t, []string{string(wlstatus.WorkloadInstanceStatusUnhealthy)}, f.patchedStatuses())
 	assert.Equal(t, []string{"ScriptFailed"}, f.recorder.GetReasons())
+	failed := f.patchedCreationFailed()
+	if len(failed) != 1 || failed[0] == nil || !*failed[0] {
+		t.Fatalf("script failure must set CreationFailed=true, got %v", failed)
+	}
 }
 
 // TestMachineWorkloadInstanceCreated_GetDefinitionFails covers the

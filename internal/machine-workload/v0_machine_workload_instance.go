@@ -76,16 +76,20 @@ func v0MachineWorkloadInstanceCreated(
 	wlStatus := runScript(r, machineWorkloadInstance, mri, mwd, *mwd.CreateScript, "create", log)
 
 	// update the instance with the final status
+	healthy := wlStatus == status.WorkloadInstanceStatusHealthy
 	if _, err := client.UpdateMachineWorkloadInstance(r.APIClient, r.APIServer, &v0.MachineWorkloadInstance{
-		Common:         v0.Common{ID: machineWorkloadInstance.ID},
-		Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(true)},
-		Status:         util.Ptr(string(wlStatus)),
+		Common: v0.Common{ID: machineWorkloadInstance.ID},
+		Reconciliation: v0.Reconciliation{
+			Reconciled:     util.Ptr(healthy),
+			CreationFailed: util.Ptr(!healthy),
+		},
+		Status: util.Ptr(string(wlStatus)),
 	}); err != nil {
 		return 0, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
 	}
 
 	// requeue in 30s on failure so the script is retried
-	if wlStatus != status.WorkloadInstanceStatusHealthy {
+	if !healthy {
 		return 30, fmt.Errorf("create script failed with status %s", wlStatus)
 	}
 
@@ -135,16 +139,20 @@ func v0MachineWorkloadInstanceUpdated(
 	wlStatus := runScript(r, machineWorkloadInstance, mri, mwd, *mwd.UpdateScript, "update", log)
 
 	// update the instance with the final status
+	healthy := wlStatus == status.WorkloadInstanceStatusHealthy
 	if _, err := client.UpdateMachineWorkloadInstance(r.APIClient, r.APIServer, &v0.MachineWorkloadInstance{
-		Common:         v0.Common{ID: machineWorkloadInstance.ID},
-		Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(true)},
-		Status:         util.Ptr(string(wlStatus)),
+		Common: v0.Common{ID: machineWorkloadInstance.ID},
+		Reconciliation: v0.Reconciliation{
+			Reconciled:     util.Ptr(healthy),
+			CreationFailed: util.Ptr(!healthy),
+		},
+		Status: util.Ptr(string(wlStatus)),
 	}); err != nil {
 		return 0, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
 	}
 
 	// requeue in 30s on failure so the script is retried
-	if wlStatus != status.WorkloadInstanceStatusHealthy {
+	if !healthy {
 		return 30, fmt.Errorf("update script failed with status %s", wlStatus)
 	}
 

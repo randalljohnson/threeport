@@ -1650,17 +1650,12 @@ func (cpi *ControlPlaneInstaller) getControllerArgs(controller v0.ControlPlaneCo
 		args = append(args, "-verbose=true")
 	}
 
-	// pass worker count only to the machine-workload controller
-	if controller.Name == ThreeportMachineWorkloadControllerName {
-		count := cpi.Opts.MachineWorkloadInstanceConcurrentReconciles
-		if count < 1 {
-			count = DefaultMachineWorkloadInstanceConcurrentReconciles
-		}
-		args = append(args, fmt.Sprintf(
-			"-machine-workload-instance-concurrent-reconciles=%d",
-			count,
-		))
+	// pass the shared worker count to every controller
+	count := cpi.Opts.ConcurrentReconciles
+	if count < 1 {
+		count = DefaultConcurrentReconciles
 	}
+	args = append(args, fmt.Sprintf("-concurrent-reconciles=%d", count))
 	return args
 }
 

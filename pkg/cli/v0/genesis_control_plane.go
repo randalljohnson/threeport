@@ -40,37 +40,37 @@ var ErrThreeportConfigAlreadyExists = errors.New("threeport config already conta
 // GenesisControlPlaneCLIArgs is the set of control plane arguments passed to one of
 // the CLI tools.
 type GenesisControlPlaneCLIArgs struct {
-	AuthEnabled                                 bool
-	AwsConfigProfile                            string
-	AwsConfigEnv                                bool
-	AwsRegion                                   string
-	OciRegion                                   string
-	OciConfigProfile                            string
-	GcpProjectId                                string
-	GcpRegion                                   string
-	CfgFile                                     string
-	ControlPlaneImageRepo                       string
-	ControlPlaneImageTag                        string
-	CreateRootDomain                            string
-	CreateAdminEmail                            string
-	DevEnvironment                              bool
-	ForceOverwriteConfig                        bool
-	ControlPlaneName                            string
-	InfraProvider                               string
-	Tier                                        string
-	KubeconfigPath                              string
-	NumWorkerNodes                              int
-	ProviderConfigDir                           string
-	ThreeportPath                               string
-	Debug                                       bool
-	Verbose                                     bool
-	TeardownOnFailure                           bool
-	ControlPlaneOnly                            bool
-	ClusterName                                 string
-	InfraOnly                                   bool
-	KindPortMappings                            []string
-	LocalRegistry                               bool
-	MachineWorkloadInstanceConcurrentReconciles int
+	AuthEnabled           bool
+	AwsConfigProfile      string
+	AwsConfigEnv          bool
+	AwsRegion             string
+	OciRegion             string
+	OciConfigProfile      string
+	GcpProjectId          string
+	GcpRegion             string
+	CfgFile               string
+	ControlPlaneImageRepo string
+	ControlPlaneImageTag  string
+	CreateRootDomain      string
+	CreateAdminEmail      string
+	DevEnvironment        bool
+	ForceOverwriteConfig  bool
+	ControlPlaneName      string
+	InfraProvider         string
+	Tier                  string
+	KubeconfigPath        string
+	NumWorkerNodes        int
+	ProviderConfigDir     string
+	ThreeportPath         string
+	Debug                 bool
+	Verbose               bool
+	TeardownOnFailure     bool
+	ControlPlaneOnly      bool
+	ClusterName           string
+	InfraOnly             bool
+	KindPortMappings      []string
+	LocalRegistry         bool
+	ConcurrentReconciles  int
 }
 
 // Uninstaller contains the necessary information to uninstall a control plane
@@ -178,7 +178,7 @@ func (a *GenesisControlPlaneCLIArgs) CreateInstaller() (*threeport.ControlPlaneI
 	cpi.Opts.TeardownOnFailure = a.TeardownOnFailure
 	cpi.Opts.LocalRegistry = a.LocalRegistry
 	cpi.Opts.KindPortMappings = a.KindPortMappings
-	cpi.Opts.MachineWorkloadInstanceConcurrentReconciles = a.MachineWorkloadInstanceConcurrentReconciles
+	cpi.Opts.ConcurrentReconciles = a.ConcurrentReconciles
 
 	return cpi, nil
 }

@@ -7,7 +7,6 @@ import (
 
 	"github.com/dave/jennifer/jen"
 	. "github.com/dave/jennifer/jen"
-	"github.com/gertd/go-pluralize"
 	"github.com/iancoleman/strcase"
 
 	cli "github.com/threeport/threeport/pkg/cli/v0"
@@ -18,7 +17,6 @@ import (
 
 // GenControllerMain generates source code for controllers' main packages.
 func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
-	pluralize := pluralize.NewClient()
 	for _, objGroup := range gen.ApiObjectGroups {
 		if len(objGroup.ReconciledObjects) > 0 {
 			f := NewFile("main")
@@ -32,25 +30,16 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 			f.ImportAlias("github.com/threeport/threeport/pkg/util/v0", "util")
 
 			concurrencyFlags := &Statement{}
-			for _, obj := range objGroup.ReconciledObjects {
-				concurrencyFlags.Var().Id(
-					fmt.Sprintf("%sConcurrentReconciles", strcase.ToLowerCamel(obj.Name)),
-				).Op("=").Qual(
-					"github.com/namsral/flag",
-					"Int",
-				).Call(
-					Line().Lit(
-						fmt.Sprintf("%s-concurrent-reconciles", strcase.ToKebab(obj.Name)),
-					),
-					Line().Lit(concurrentReconcilesDefault(obj.Name)),
-					Line().Lit(fmt.Sprintf(
-						"Number of concurrent reconcilers to run for %s",
-						pluralize.Pluralize(strcase.ToDelimited(obj.Name, ' '), 2, false),
-					)),
-					Line(),
-				)
-				concurrencyFlags.Line()
-			}
+			concurrencyFlags.Var().Id("concurrentReconciles").Op("=").Qual(
+				"github.com/namsral/flag",
+				"Int",
+			).Call(
+				Line().Lit("concurrent-reconciles"),
+				Line().Lit(2),
+				Line().Lit("Number of concurrent reconcile workers to run for each object type"),
+				Line(),
+			)
+			concurrencyFlags.Line()
 
 			reconcilerConfigs := &Statement{}
 			durable := true
@@ -72,9 +61,7 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						fmt.Sprintf("%s/internal/%s", gen.ModulePath, objGroup.ControllerShortName),
 						fmt.Sprintf("%sReconciler", obj.Name),
 					),
-					Id("ConcurrentReconciles"): Op("*").Id(
-						fmt.Sprintf("%sConcurrentReconciles", strcase.ToLowerCamel(obj.Name)),
-					),
+					Id("ConcurrentReconciles"): Op("*").Id("concurrentReconciles"),
 					Id("NotifSubject"): Qual(
 						fmt.Sprintf("%s/internal/%s/notif", gen.ModulePath, objGroup.ControllerShortName),
 						fmt.Sprintf("%sSubject", obj.Name),
@@ -477,15 +464,6 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 	}
 
 	return nil
-}
-
-// concurrentReconcilesDefault returns the flag default for an object's
-// concurrent reconcile workers.
-func concurrentReconcilesDefault(objectName string) int {
-	if objectName == "MachineWorkloadInstance" {
-		return 2
-	}
-	return 1
 }
 
 // ConfigurePullSubscription adds a durable consumer to a controller's main package.

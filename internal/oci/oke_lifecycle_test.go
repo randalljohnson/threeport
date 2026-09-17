@@ -17,21 +17,15 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// Coverage boundaries in this file:
-//
-// The concrete OCI methods on the OKE infra type (connection fetch, cluster
-// OCID lookup, compartment delete) and the compartment listing inside the
-// infra build live behind the real OCI SDK with context.Background() and no
-// timeout. Their success paths and everything after them are
-// integration-only; unit tests here exercise only the LOCAL failure boundary
-// using okeLocalFailConfigProvider() so no test ever opens a socket.
-//
-// Known-unreachable branch, documented rather than tested: the
-// notification-payload error in both publish methods only fires when JSON
-// marshalling of a pointer/string struct fails, which cannot be forced.
+// GetConnection, GetClusterOCID, DeleteCompartment, and ListCompartments call
+// the OCI SDK with context.Background and no timeout. Unit tests here stop at
+// the local client constructor: okeLocalFailConfigProvider or a decrypted
+// non-PEM private key, so no socket opens. Paths after those constructors are
+// integration-only. NotificationPayload errors in both publish methods are
+// unforced: encoding a pointer/string struct cannot fail.
 
-// TestOkeGetReconciliation_Success asserts the reconciliation snapshot maps
-// 1:1 from the instance returned by the API.
+// TestOkeGetReconciliation_Success covers GetReconciliation field copies when
+// timestamps and inventory are set and when they are unset.
 func TestOkeGetReconciliation_Success(t *testing.T) {
 	baseTime := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	creationAck := baseTime
@@ -83,6 +77,7 @@ func TestOkeGetReconciliation_Success(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// serve mutated instance and snapshot reconciliation
 			inst := okeInstance(42, "oke-snapshot")
 			tt.mutate(inst)
 			api := okeNewAPIStub(t)
@@ -105,8 +100,8 @@ func TestOkeGetReconciliation_Success(t *testing.T) {
 	}
 }
 
-// okeReconciliationSnapshotCheck mirrors the snapshot fields so table cases can
-// assert against them without importing the provider package in each case.
+// okeReconciliationSnapshotCheck is a copy of ReconciliationSnapshot fields
+// so table cases can assert without importing the provider package.
 type okeReconciliationSnapshotCheck struct {
 	creationAcknowledged *time.Time
 	creationConfirmed    *time.Time
@@ -117,9 +112,8 @@ type okeReconciliationSnapshotCheck struct {
 	resourceInventory    *datatypes.JSON
 }
 
-// TestOkeGetReconciliation_CreationFailedNilVsSet asserts a nil
-// CreationFailed defaults to false in the snapshot and a set value
-// propagates.
+// TestOkeGetReconciliation_CreationFailedNilVsSet covers CreationFailed mapping
+// from nil, true, and false instance values.
 func TestOkeGetReconciliation_CreationFailedNilVsSet(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -132,6 +126,7 @@ func TestOkeGetReconciliation_CreationFailedNilVsSet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// serve instance with CreationFailed and snapshot it
 			inst := okeInstance(7, "oke-creation-failed")
 			inst.CreationFailed = tt.creationFailed
 			api := okeNewAPIStub(t)
@@ -146,8 +141,10 @@ func TestOkeGetReconciliation_CreationFailedNilVsSet(t *testing.T) {
 	}
 }
 
-// TestOkeGetReconciliation_APIError asserts the client error is wrapped.
+// TestOkeGetReconciliation_APIError covers a GET 500 wrapping as failed to get
+// latest OKE instance.
 func TestOkeGetReconciliation_APIError(t *testing.T) {
+	// serve GET error and call GetReconciliation
 	inst := okeInstance(8, "oke-snapshot-error")
 	api := okeNewAPIStub(t)
 	okeServeError(t, api, okeInstancePath(8), http.StatusInternalServerError)
@@ -160,8 +157,7 @@ func TestOkeGetReconciliation_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to get latest OKE instance")
 }
 
-// TestOkeIsCreateComplete covers the nil, empty, and set cluster OCID
-// branches plus the API error wrap.
+// TestOkeIsCreateComplete covers ClusterOCID nil, empty, set, and a GET error.
 func TestOkeIsCreateComplete(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -177,6 +173,7 @@ func TestOkeIsCreateComplete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// serve instance or GET error and check IsCreateComplete
 			inst := okeInstance(9, "oke-create-complete")
 			inst.ClusterOCID = tt.clusterOCID
 			api := okeNewAPIStub(t)
@@ -200,9 +197,10 @@ func TestOkeIsCreateComplete(t *testing.T) {
 	}
 }
 
-// TestOkeAckCreation_SetsAckClearsFailed asserts the PATCH body carries a
-// creation acknowledgement and explicitly clears the failed flag.
+// TestOkeAckCreation_SetsAckClearsFailed covers AckCreation patching
+// CreationAcknowledged and CreationFailed false.
 func TestOkeAckCreation_SetsAckClearsFailed(t *testing.T) {
+	// ack creation and inspect the PATCH body
 	inst := okeInstance(10, "oke-ack-creation")
 	api := okeNewAPIStub(t)
 	rec := okeServeInstance(t, api, inst)
@@ -217,8 +215,9 @@ func TestOkeAckCreation_SetsAckClearsFailed(t *testing.T) {
 	assert.Contains(t, bodies[0], `"CreationFailed":false`)
 }
 
-// TestOkeAckCreation_UpdateError asserts the update error propagates.
+// TestOkeAckCreation_UpdateError covers AckCreation wrapping a PATCH 500.
 func TestOkeAckCreation_UpdateError(t *testing.T) {
+	// serve PATCH error and call AckCreation
 	inst := okeInstance(11, "oke-ack-creation-error")
 	api := okeNewAPIStub(t)
 	okeServeError(t, api, okeInstancePath(11), http.StatusInternalServerError)
@@ -230,9 +229,10 @@ func TestOkeAckCreation_UpdateError(t *testing.T) {
 	assert.Contains(t, err.Error(), "call to threeport API returned unexpected response")
 }
 
-// TestOkeRefreshCreationAck_SetsAckOnly asserts the refresh PATCH carries
-// only the acknowledgement, leaving the failed flag untouched.
+// TestOkeRefreshCreationAck_SetsAckOnly covers RefreshCreationAck patching
+// CreationAcknowledged without CreationFailed or CreationConfirmed.
 func TestOkeRefreshCreationAck_SetsAckOnly(t *testing.T) {
+	// refresh creation ack and inspect the PATCH body
 	inst := okeInstance(12, "oke-refresh-creation-ack")
 	api := okeNewAPIStub(t)
 	rec := okeServeInstance(t, api, inst)
@@ -248,9 +248,10 @@ func TestOkeRefreshCreationAck_SetsAckOnly(t *testing.T) {
 	assert.NotContains(t, bodies[0], `"CreationConfirmed"`)
 }
 
-// TestOkeSetCreationFailed_SetsTrue asserts the PATCH body marks creation
-// failed without touching the acknowledgement.
+// TestOkeSetCreationFailed_SetsTrue covers SetCreationFailed patching
+// CreationFailed true without CreationAcknowledged.
 func TestOkeSetCreationFailed_SetsTrue(t *testing.T) {
+	// set creation failed and inspect the PATCH body
 	inst := okeInstance(13, "oke-set-creation-failed")
 	api := okeNewAPIStub(t)
 	rec := okeServeInstance(t, api, inst)
@@ -265,10 +266,10 @@ func TestOkeSetCreationFailed_SetsTrue(t *testing.T) {
 	assert.NotContains(t, bodies[0], `"CreationAcknowledged"`)
 }
 
-// TestOkeConfirmCreation_SetsReconciledAndConfirmed asserts the PATCH body
-// carries both the confirmation timestamp and Reconciled=true so the
-// resulting update notification does not retrigger reconciliation.
+// TestOkeConfirmCreation_SetsReconciledAndConfirmed covers ConfirmCreation
+// patching Reconciled true and CreationConfirmed.
 func TestOkeConfirmCreation_SetsReconciledAndConfirmed(t *testing.T) {
+	// confirm creation and inspect the PATCH body
 	inst := okeInstance(14, "oke-confirm-creation")
 	api := okeNewAPIStub(t)
 	rec := okeServeInstance(t, api, inst)
@@ -283,9 +284,10 @@ func TestOkeConfirmCreation_SetsReconciledAndConfirmed(t *testing.T) {
 	assert.Contains(t, bodies[0], `"CreationConfirmed"`)
 }
 
-// TestOkeAckDeletion_SetsTimestamp asserts the PATCH body carries a deletion
-// acknowledgement.
+// TestOkeAckDeletion_SetsTimestamp covers AckDeletion patching
+// DeletionAcknowledged without DeletionConfirmed.
 func TestOkeAckDeletion_SetsTimestamp(t *testing.T) {
+	// ack deletion and inspect the PATCH body
 	inst := okeInstance(15, "oke-ack-deletion")
 	api := okeNewAPIStub(t)
 	rec := okeServeInstance(t, api, inst)
@@ -300,9 +302,10 @@ func TestOkeAckDeletion_SetsTimestamp(t *testing.T) {
 	assert.NotContains(t, bodies[0], `"DeletionConfirmed"`)
 }
 
-// TestOkeRefreshDeletionAck_SetsTimestamp asserts the refresh PATCH carries
-// only the deletion acknowledgement.
+// TestOkeRefreshDeletionAck_SetsTimestamp covers RefreshDeletionAck patching
+// DeletionAcknowledged without DeletionConfirmed.
 func TestOkeRefreshDeletionAck_SetsTimestamp(t *testing.T) {
+	// refresh deletion ack and inspect the PATCH body
 	inst := okeInstance(16, "oke-refresh-deletion-ack")
 	api := okeNewAPIStub(t)
 	rec := okeServeInstance(t, api, inst)
@@ -317,9 +320,10 @@ func TestOkeRefreshDeletionAck_SetsTimestamp(t *testing.T) {
 	assert.NotContains(t, bodies[0], `"DeletionConfirmed"`)
 }
 
-// TestOkeConfirmDeletion_SetsTimestamp asserts the PATCH body carries the
-// deletion confirmation.
+// TestOkeConfirmDeletion_SetsTimestamp covers ConfirmDeletion patching
+// DeletionConfirmed.
 func TestOkeConfirmDeletion_SetsTimestamp(t *testing.T) {
+	// confirm deletion and inspect the PATCH body
 	inst := okeInstance(17, "oke-confirm-deletion")
 	api := okeNewAPIStub(t)
 	rec := okeServeInstance(t, api, inst)
@@ -333,9 +337,10 @@ func TestOkeConfirmDeletion_SetsTimestamp(t *testing.T) {
 	assert.Contains(t, bodies[0], `"DeletionConfirmed"`)
 }
 
-// TestOkeSaveState_PersistsInventory asserts the passed state lands in the
-// PATCH body as the resource inventory.
+// TestOkeSaveState_PersistsInventory covers SaveState patching ResourceInventory
+// with the supplied JSON.
 func TestOkeSaveState_PersistsInventory(t *testing.T) {
+	// save state and inspect the PATCH body
 	inst := okeInstance(18, "oke-save-state")
 	api := okeNewAPIStub(t)
 	rec := okeServeInstance(t, api, inst)
@@ -351,9 +356,10 @@ func TestOkeSaveState_PersistsInventory(t *testing.T) {
 	assert.Contains(t, bodies[0], `"vcn":"test-vcn-ocid"`)
 }
 
-// TestOkeClearInventory_SetsEmptyObject asserts the PATCH body resets the
-// resource inventory to an empty JSON object, the destroy-complete signal.
+// TestOkeClearInventory_SetsEmptyObject covers ClearInventory patching
+// ResourceInventory to {}, the destroy-complete signal.
 func TestOkeClearInventory_SetsEmptyObject(t *testing.T) {
+	// clear inventory and inspect the PATCH body
 	inst := okeInstance(19, "oke-clear-inventory")
 	api := okeNewAPIStub(t)
 	rec := okeServeInstance(t, api, inst)
@@ -367,14 +373,10 @@ func TestOkeClearInventory_SetsEmptyObject(t *testing.T) {
 	assert.Contains(t, bodies[0], `"ResourceInventory":{}`)
 }
 
-// TestOkeOnCreateConfirmed_GetConnectionError covers the only reachable
-// branch of OnCreateConfirmed(): its first call is GetConnection() on the
-// concrete OKE infra, which needs a real OCI endpoint. The local-fail config
-// provider makes the OCI client constructor reject the credentials before
-// any socket opens. The instance-get, KRI-get, KRI-update, and success
-// branches all sit after GetConnection() and are integration-only. The
-// forbid-all stub proves no API call is issued before the failure.
+// TestOkeOnCreateConfirmed_GetConnectionError covers OnCreateConfirmed wrapping
+// GetConnection's local client-constructor failure; later branches are untested.
 func TestOkeOnCreateConfirmed_GetConnectionError(t *testing.T) {
+	// forbid API and call OnCreateConfirmed with failing infra
 	inst := okeInstance(20, "oke-create-confirmed")
 	api := okeNewAPIStub(t)
 	okeForbidAPIRequests(t, api)
@@ -386,12 +388,10 @@ func TestOkeOnCreateConfirmed_GetConnectionError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to get Kubernetes API connection info")
 }
 
-// TestOkeSaveCreateOutputs_GetClusterOCIDError covers the only reachable
-// branch of SaveCreateOutputs(): its first call is GetClusterOCID() on the
-// concrete OKE infra. The local-fail config provider forces a local client
-// construction failure with zero sockets; the update/success path after it
-// is integration-only. The forbid-all stub proves no PATCH is issued.
+// TestOkeSaveCreateOutputs_GetClusterOCIDError covers SaveCreateOutputs wrapping
+// GetClusterOCID's local client-constructor failure; the PATCH path is untested.
 func TestOkeSaveCreateOutputs_GetClusterOCIDError(t *testing.T) {
+	// forbid API and call SaveCreateOutputs with failing infra
 	inst := okeInstance(21, "oke-save-outputs")
 	api := okeNewAPIStub(t)
 	okeForbidAPIRequests(t, api)
@@ -404,16 +404,10 @@ func TestOkeSaveCreateOutputs_GetClusterOCIDError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to get OKE cluster OCID")
 }
 
-// TestOkeOnDeleteConfirmed_CompartmentErrorPropagates is the critical
-// delete-path guard: a compartment delete failure means cloud resources are
-// orphaned, so OnDeleteConfirmed() must RETURN the error, never swallow it.
-// The local-fail config provider makes the OCI identity client constructor
-// fail locally (asserted via the inner wrap), so no socket opens and the
-// method returns before the post-compartment cleanup. The cleanup branches
-// (stack-state delete, instance get, KRI update/delete) run only after a
-// successful compartment delete and are integration-only. The forbid-all
-// stub proves no API call is issued.
+// TestOkeOnDeleteConfirmed_CompartmentErrorPropagates covers OnDeleteConfirmed
+// returning DeleteCompartment's local identity-client failure, not swallowing it.
 func TestOkeOnDeleteConfirmed_CompartmentErrorPropagates(t *testing.T) {
+	// forbid API and call OnDeleteConfirmed with failing infra
 	inst := okeInstance(22, "oke-delete-confirmed")
 	api := okeNewAPIStub(t)
 	okeForbidAPIRequests(t, api)
@@ -426,11 +420,10 @@ func TestOkeOnDeleteConfirmed_CompartmentErrorPropagates(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to create identity client")
 }
 
-// TestOkePublishCreateNotification_Success asserts the create subject and a
-// payload built from the in-memory instance; no API call is involved. The
-// payload-error branch is known-unreachable: marshalling a pointer/string
-// struct cannot fail.
+// TestOkePublishCreateNotification_Success covers PublishCreateNotification
+// publishing Operation Created from the in-memory instance with no API call.
 func TestOkePublishCreateNotification_Success(t *testing.T) {
+	// publish create notification and inspect JetStream
 	inst := okeInstance(30, "oke-notify-create")
 	js := &okeFakeJetStream{}
 	api := okeNewAPIStub(t)
@@ -447,9 +440,10 @@ func TestOkePublishCreateNotification_Success(t *testing.T) {
 	assert.Contains(t, string(payloads[0]), `"oke-notify-create"`)
 }
 
-// TestOkePublishCreateNotification_PublishError asserts the publish error
-// wrap.
+// TestOkePublishCreateNotification_PublishError covers PublishCreateNotification
+// wrapping a JetStream publish error.
 func TestOkePublishCreateNotification_PublishError(t *testing.T) {
+	// publish create with JetStream error
 	inst := okeInstance(31, "oke-notify-create-error")
 	js := &okeFakeJetStream{publishErr: errors.New("nats unavailable")}
 	api := okeNewAPIStub(t)
@@ -461,9 +455,10 @@ func TestOkePublishCreateNotification_PublishError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to publish create notification")
 }
 
-// TestOkePublishDeleteNotification_Success asserts the delete subject and
-// payload operation.
+// TestOkePublishDeleteNotification_Success covers PublishDeleteNotification
+// publishing Operation Deleted on the delete subject.
 func TestOkePublishDeleteNotification_Success(t *testing.T) {
+	// publish delete notification and inspect JetStream
 	inst := okeInstance(32, "oke-notify-delete")
 	js := &okeFakeJetStream{}
 	api := okeNewAPIStub(t)
@@ -480,9 +475,10 @@ func TestOkePublishDeleteNotification_Success(t *testing.T) {
 	assert.Contains(t, string(payloads[0]), `"oke-notify-delete"`)
 }
 
-// TestOkePublishDeleteNotification_PublishError asserts the publish error
-// wrap.
+// TestOkePublishDeleteNotification_PublishError covers PublishDeleteNotification
+// wrapping a JetStream publish error.
 func TestOkePublishDeleteNotification_PublishError(t *testing.T) {
+	// publish delete with JetStream error
 	inst := okeInstance(33, "oke-notify-delete-error")
 	js := &okeFakeJetStream{publishErr: errors.New("nats unavailable")}
 	api := okeNewAPIStub(t)
@@ -494,8 +490,10 @@ func TestOkePublishDeleteNotification_PublishError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to publish delete notification")
 }
 
-// TestBuildOkeInfra_ProviderGetError asserts the provider fetch error wrap.
+// TestBuildOkeInfra_ProviderGetError covers buildOkeInfra wrapping a GET 500
+// for the OCI provider.
 func TestBuildOkeInfra_ProviderGetError(t *testing.T) {
+	// serve provider GET error and call buildOkeInfra
 	inst := okeInstance(40, "oke-build-provider-error")
 	inst.OciProviderID = util.Ptr(uint(400))
 	api := okeNewAPIStub(t)
@@ -508,9 +506,10 @@ func TestBuildOkeInfra_ProviderGetError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to retrieve OCI provider by ID")
 }
 
-// TestBuildOkeInfra_DecryptError asserts the private key decrypt error wrap
-// when the stored key is not valid ciphertext for the reconciler's key.
+// TestBuildOkeInfra_DecryptError covers buildOkeInfra wrapping decrypt of a
+// non-ciphertext PrivateKey.
 func TestBuildOkeInfra_DecryptError(t *testing.T) {
+	// serve provider with plaintext PrivateKey and call buildOkeInfra
 	key := okeNewEncryptionKey(t)
 	inst := okeInstance(42, "oke-build-decrypt-error")
 	inst.OciProviderID = util.Ptr(uint(402))
@@ -526,17 +525,8 @@ func TestBuildOkeInfra_DecryptError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to decrypt OCI provider private key")
 }
 
-// TestBuildOkeInfra_RegionFallback drives all three region-selection
-// variants through the provider-fetch, decrypt, and region-resolution
-// phases. The selected region is NOT observable from a unit test: the
-// provider's private key decrypts to a non-PEM plaintext, so the OCI
-// identity client constructor rejects the config LOCALLY before any socket
-// opens, and the constructed infra carrying the resolved region is
-// discarded. Asserting the error is the identity-client wrap, not an
-// earlier provider/decrypt wrap, proves each variant got through region
-// resolution without a nil-deref panic. The compartment listing and its
-// fallback branch after client construction need a real OCI call and are
-// integration-only.
+// TestBuildOkeInfra_RegionFallback covers nil, empty, and set Region reaching
+// identity-client construction after decrypt; the resolved region is discarded.
 func TestBuildOkeInfra_RegionFallback(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -548,6 +538,7 @@ func TestBuildOkeInfra_RegionFallback(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// serve provider and call buildOkeInfra with the case region
 			key := okeNewEncryptionKey(t)
 			inst := okeInstance(44, "oke-build-region")
 			inst.OciProviderID = util.Ptr(uint(404))
@@ -564,10 +555,10 @@ func TestBuildOkeInfra_RegionFallback(t *testing.T) {
 	}
 }
 
-// TestBuildOkeInfra_DefinitionGetError drives the definition fetch error
-// through BuildInfra(), which resolves the definition before delegating to
-// the infra build.
+// TestBuildOkeInfra_DefinitionGetError covers BuildInfra wrapping a GET 500 for
+// the OKE definition.
 func TestBuildOkeInfra_DefinitionGetError(t *testing.T) {
+	// serve instance and definition GET error and call BuildInfra
 	inst := okeInstance(46, "oke-build-definition-error")
 	inst.OciOkeKubernetesRuntimeDefinitionID = util.Ptr(uint(460))
 	api := okeNewAPIStub(t)
@@ -582,9 +573,10 @@ func TestBuildOkeInfra_DefinitionGetError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to get OKE definition")
 }
 
-// TestOkeBuildInfra_InstanceGetError asserts the instance fetch error wrap
-// on BuildInfra's first call.
+// TestOkeBuildInfra_InstanceGetError covers BuildInfra wrapping a GET 500 for
+// the OKE instance.
 func TestOkeBuildInfra_InstanceGetError(t *testing.T) {
+	// serve instance GET error and call BuildInfra
 	inst := okeInstance(47, "oke-build-instance-error")
 	api := okeNewAPIStub(t)
 	okeServeError(t, api, okeInstancePath(47), http.StatusInternalServerError)
@@ -597,8 +589,10 @@ func TestOkeBuildInfra_InstanceGetError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to get OKE instance for infra build")
 }
 
-// TestOkeEntryUpdated_NoOp asserts the update entry point is a no-op.
+// TestOkeEntryUpdated_NoOp covers v0OciOkeKubernetesRuntimeInstanceUpdated
+// returning delay 0 with no API calls.
 func TestOkeEntryUpdated_NoOp(t *testing.T) {
+	// forbid API and call the updated entry
 	inst := okeInstance(50, "oke-entry-updated")
 	api := okeNewAPIStub(t)
 	okeForbidAPIRequests(t, api)
@@ -609,12 +603,10 @@ func TestOkeEntryUpdated_NoOp(t *testing.T) {
 	assert.Equal(t, int64(0), delay)
 }
 
-// TestOkeEntryCreated_DelegatesToHandleInfraCreate proves the create entry
-// point wires the lifecycle provider into the shared state machine. The
-// served instance is already creation-confirmed, so the state machine
-// short-circuits right after the reconciliation fetch: no goroutine
-// launches and no OCI code runs.
+// TestOkeEntryCreated_DelegatesToHandleInfraCreate covers the created entry
+// calling HandleInfraCreate, which returns delay 0 once CreationConfirmed is set.
 func TestOkeEntryCreated_DelegatesToHandleInfraCreate(t *testing.T) {
+	// serve confirmed instance and call the created entry
 	inst := okeInstance(51, "oke-entry-created")
 	confirmed := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	inst.CreationConfirmed = &confirmed
@@ -627,10 +619,10 @@ func TestOkeEntryCreated_DelegatesToHandleInfraCreate(t *testing.T) {
 	assert.Equal(t, int64(0), delay)
 }
 
-// TestOkeEntryDeleted_NotScheduledError proves the delete entry point
-// wiring via the OCI-free guard: a delete notification for an instance with
-// no deletion scheduled is an error.
+// TestOkeEntryDeleted_NotScheduledError covers the deleted entry wrapping
+// deletion notification received but not scheduled.
 func TestOkeEntryDeleted_NotScheduledError(t *testing.T) {
+	// serve instance without DeletionScheduled and call the deleted entry
 	inst := okeInstance(52, "oke-entry-deleted")
 	api := okeNewAPIStub(t)
 	okeServeInstance(t, api, inst)
@@ -641,9 +633,10 @@ func TestOkeEntryDeleted_NotScheduledError(t *testing.T) {
 	assert.Contains(t, err.Error(), "deletion notification received but not scheduled")
 }
 
-// TestOkeEntryDeleted_AlreadyConfirmed asserts a deletion-confirmed instance
-// short-circuits the delete state machine with no OCI work.
+// TestOkeEntryDeleted_AlreadyConfirmed covers the deleted entry returning delay
+// 0 once DeletionScheduled and DeletionConfirmed are set, with no OCI work.
 func TestOkeEntryDeleted_AlreadyConfirmed(t *testing.T) {
+	// serve scheduled and confirmed instance and call the deleted entry
 	inst := okeInstance(53, "oke-entry-deleted-confirmed")
 	scheduled := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	confirmed := scheduled.Add(time.Minute)

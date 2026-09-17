@@ -110,10 +110,10 @@ func init() {
 		"local-registry", false, "Connects a local container registry to Threeport control plane cluster.  Only applicable with provider 'kind'.",
 	)
 	upCmd.Flags().IntVar(
-		&cliArgs.MachineWorkloadInstanceConcurrentReconciles,
-		"machine-workload-instance-concurrent-reconciles",
-		installer.DefaultMachineWorkloadInstanceConcurrentReconciles,
-		"Number of concurrent machine workload instance reconcile workers.",
+		&cliArgs.ConcurrentReconciles,
+		"concurrent-reconciles",
+		installer.DefaultConcurrentReconciles,
+		"Number of concurrent reconcile workers per object type.",
 	)
 	cobra.OnInitialize(func() {
 		cli.InitConfig(upCmd, cliArgs.CfgFile)

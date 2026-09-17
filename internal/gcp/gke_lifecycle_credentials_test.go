@@ -37,11 +37,14 @@ func gkeCredsServer(t *testing.T, provider *v0.GcpProvider) *httptest.Server {
 	mux := http.NewServeMux()
 	inst := &v0.GcpGkeKubernetesRuntimeInstance{
 		Common:                              v0.Common{ID: util.Ptr(gkeCredsInstanceID)},
+		Name:                                util.Ptr("gke-creds"),
+		Region:                              util.Ptr("us-central1"),
 		GcpGkeKubernetesRuntimeDefinitionID: util.Ptr(gkeCredsDefinitionID),
 		GcpProviderID:                       util.Ptr(gkeCredsProviderID),
 	}
 	def := &v0.GcpGkeKubernetesRuntimeDefinition{
-		Common: v0.Common{ID: util.Ptr(gkeCredsDefinitionID)},
+		Common:                      v0.Common{ID: util.Ptr(gkeCredsDefinitionID)},
+		DefaultNodeGroupInitialSize: util.Ptr(1),
 	}
 	mux.HandleFunc(fmt.Sprintf("%s/%d", v0.PathGcpGkeKubernetesRuntimeInstances, gkeCredsInstanceID), func(w http.ResponseWriter, r *http.Request) {
 		gkeCredsWrite(t, w, []apiserver_lib.Object{inst})
@@ -60,6 +63,7 @@ func TestGkeLifecycleBuildInfraRejectsEmptyServiceAccountCredentials(t *testing.
 	for _, creds := range []*string{nil, &empty} {
 		srv := gkeCredsServer(t, &v0.GcpProvider{
 			Common:                    v0.Common{ID: util.Ptr(gkeCredsProviderID)},
+			ProjectID:                 util.Ptr("proj"),
 			ServiceAccountCredentials: creds,
 		})
 		log := logr.Discard()

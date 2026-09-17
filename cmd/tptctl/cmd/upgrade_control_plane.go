@@ -277,16 +277,6 @@ func updateImageTagInDeployment(deployment *unstructured.Unstructured, imageTag 
 	return nil
 }
 
-// retagImage returns repository:tag from a current image string.
-func retagImage(current interface{}, tag string) string {
-	image, ok := current.(string)
-	if !ok {
-		return tag
-	}
-	parts := strings.Split(image, ":")
-	return fmt.Sprintf("%s:%s", parts[0], tag)
-}
-
 func init() {
 	UpgradeCmd.AddCommand(UpgradeControlPlaneCmd)
 

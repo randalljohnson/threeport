@@ -446,13 +446,6 @@ func buildGkeInfra(
 		WorkerNodeInitialCount: int32(*definition.DefaultNodeGroupInitialSize),
 	}
 
-	// require service account credentials so a missing key fails at BuildInfra
-	if gcpProvider.ServiceAccountCredentials == nil || *gcpProvider.ServiceAccountCredentials == "" {
-		if gcpProvider.ID == nil {
-			return nil, errors.New("gcp provider has no service account credentials")
-		}
-		return nil, fmt.Errorf("gcp provider %d has no service account credentials", *gcpProvider.ID)
-	}
 	decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)

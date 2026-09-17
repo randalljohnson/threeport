@@ -329,9 +329,6 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					Id("_").Op(",").Id("r").Op(":=").Range().Id("reconcilerConfigs"),
 				).BlockFunc(func(g *jen.Group) {
 					ConfigurePullSubscription(g, objGroup, durable, gen.ModulePath)
-					g.Line().Comment("create exit channel")
-					g.Id("shutdownChan").Op(":=").Make(Chan().Bool(), Lit(1))
-					g.Id("shutdownChans").Op("=").Append(Id("shutdownChans"), Id("shutdownChan"))
 
 					g.Line().Comment("create reconciler")
 					g.Id("reconciler").Op(":=").Id("controller").Dot("Reconciler").Values(Dict{
@@ -344,7 +341,6 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						Id("KeyValue"):         Id("kv"),
 						Id("ControllerID"):     Id("controllerID"),
 						Id("Log"):              Op("&").Id("log"),
-						Id("Shutdown"):         Id("shutdownChan"),
 						Id("ShutdownWait"):     Op("&").Id("shutdownWait"),
 						Id("EncryptionKey"):    Id("encryptionKey"),
 						Id("EventsRecorder"): Op("&").Qual(
@@ -359,8 +355,12 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						}),
 					})
 
-					g.Line().Comment("start reconciler")
-					g.Id("go").Id("r").Dot("ReconcileFunc").Call(Op("&").Id("reconciler"))
+					g.Line().Comment("start reconcile workers sharing this pull subscription")
+					g.Id("controller").Dot("StartReconcileWorkers").Call(
+						Id("r"),
+						Id("reconciler"),
+						Op("&").Id("shutdownChans"),
+					)
 				}),
 				Line(),
 

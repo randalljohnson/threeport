@@ -34,9 +34,19 @@ type Package mg.Namespace
 
 // Unit runs the unit tests across the threeport packages.
 func (Test) Unit() error {
-	if err := util.RunUnitTests(); err != nil {
+	cmd := "go"
+	args := []string{
+		"test",
+		"-count=1",
+		"./pkg/...",
+		"./internal/...",
+		"./cmd/...",
+		"./magefiles/...",
+	}
+	if err := util.RunCommandStreamOutput(cmd, args...); err != nil {
 		return fmt.Errorf("failed to run unit tests: %w", err)
 	}
+
 	return nil
 }
 

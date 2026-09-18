@@ -58,6 +58,11 @@ func (Test) Race() error {
 	return nil
 }
 
+// installDir returns GOBIN if set, otherwise GOPATH/bin.
+func installDir() string {
+	return util.InstallDir()
+}
+
 // ApiBin builds the REST API binary.
 func (Build) ApiBin(arch string) error {
 	workingDir, _, err := getBuildVals()

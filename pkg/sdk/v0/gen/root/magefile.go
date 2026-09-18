@@ -711,7 +711,7 @@ func emitBinFunc(f *File, funcName, displayName, binaryName, packageDir string) 
 	f.Line()
 }
 
-// emitTestUnitFunc writes Test.Unit, which runs go test -race over
+// emitTestUnitFunc writes Test.Unit, which runs go test without -race over
 // pkg, internal, cmd, and magefiles.
 func emitTestUnitFunc(f *File) {
 	f.Comment("Unit runs the unit tests across the threeport packages.")
@@ -720,7 +720,6 @@ func emitTestUnitFunc(f *File) {
 		Id("args").Op(":=").Index().String().Values(
 			Line().Lit("test"),
 			Line().Lit("-count=1"),
-			Line().Lit("-race"),
 			Line().Qual("fmt", "Sprintf").Call(
 				Lit("-p=%d"),
 				Qual("github.com/threeport/threeport/pkg/util/v0", "BuildParallelism").Call(),

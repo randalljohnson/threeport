@@ -451,7 +451,7 @@ func (h Handler) DeleteGcpGceMachineRuntimeDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(gcpGceMachineRuntimeDefinition.GcpGceMachineRuntimeInstances) != 0 {
-		err := errors.New("gcp gce machine runtime definition has related gcp gce machine runtime instances - cannot be deleted")
+		err := errors.New("gcp gce machine runtime definition has related gcp gce machine runtime instances - " + api_v0.ErrMsgDeleteBlocked)
 		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 

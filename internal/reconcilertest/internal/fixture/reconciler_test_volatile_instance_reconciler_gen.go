@@ -120,8 +120,17 @@ func ReconcilerTestVolatileInstanceReconciler(r *controller.Reconciler) {
 				continue
 			}
 
+			// capture pre-pass reconciled state to gate the success-event emit
+			wasReconciled := false
+
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if reconcilerTestVolatileInstance.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("reconciler test volatile instance scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if reconcilerTestVolatileInstance.ScheduledForDeletion() != nil {
 					log.Info("reconciler test volatile instance scheduled for deletion - skipping create")
@@ -129,6 +138,7 @@ func ReconcilerTestVolatileInstanceReconciler(r *controller.Reconciler) {
 				}
 				// record in-progress before the custom handler so a later failure still has a start event
 				progressNote := "creating"
+				// type-assert so types without relationship-tagged foreign keys still emit creating
 				if owner, ok := reconcilerTestVolatileInstance.(tpapi_v0.RelationshipTaggedForeignKeyProvider); ok {
 					progressNote = event.CreateNote(owner)
 				}
@@ -256,6 +266,7 @@ func ReconcilerTestVolatileInstanceReconciler(r *controller.Reconciler) {
 			case notifications.NotificationOperationDeleted:
 				// record in-progress before the custom handler so a later failure still has a start event
 				progressNote := "deleting"
+				// type-assert so types without relationship-tagged foreign keys still emit deleting
 				if owner, ok := reconcilerTestVolatileInstance.(tpapi_v0.RelationshipTaggedForeignKeyProvider); ok {
 					progressNote = event.DeleteNote(owner)
 				}
@@ -388,7 +399,7 @@ func ReconcilerTestVolatileInstanceReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledReconcilerTestVolatileInstance := api_v0.ReconcilerTestVolatileInstance{
 					Common:         tpapi_v0.Common{ID: util.Ptr(reconcilerTestVolatileInstance.GetId())},
 					Reconciliation: tpapi_v0.Reconciliation{Reconciled: util.Ptr(true)},
@@ -416,23 +427,25 @@ func ReconcilerTestVolatileInstanceReconciler(r *controller.Reconciler) {
 				log.V(1).Info("reconciler test volatile instance unlocked")
 			}
 
-			// log and record event for successful reconciliation
-			successMsg := fmt.Sprintf(
-				"reconciler test volatile instance successfully reconciled for %s operation",
-				strings.ToLower(string(notif.Operation)),
-			)
-			if err := r.EventsRecorder.RecordEvent(
-				&tpapi_v0.Event{
-					Note:   util.Ptr(successMsg),
-					Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
-					Type:   util.Ptr(event.TypeNormal),
-				},
-				reconcilerTestVolatileInstance.GetId(),
-				reconcilerTestVolatileInstance.GetFullyQualifiedType(),
-			); err != nil {
-				log.Error(err, "failed to record event for successful reconciler test volatile instance reconciliation")
+			// emit success event only on the first-successful transition; skip on redelivery
+			if !wasReconciled {
+				successMsg := fmt.Sprintf(
+					"reconciler test volatile instance successfully reconciled for %s operation",
+					strings.ToLower(string(notif.Operation)),
+				)
+				if err := r.EventsRecorder.RecordEvent(
+					&tpapi_v0.Event{
+						Note:   util.Ptr(successMsg),
+						Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					reconcilerTestVolatileInstance.GetId(),
+					reconcilerTestVolatileInstance.GetFullyQualifiedType(),
+				); err != nil {
+					log.Error(err, "failed to record event for successful reconciler test volatile instance reconciliation")
+				}
+				log.Info(successMsg)
 			}
-			log.Info(successMsg)
 		}
 	}
 

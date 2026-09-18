@@ -54,7 +54,8 @@ func v0MachineWorkloadInstanceCreated(
 		*machineWorkloadInstance.MachineWorkloadDefinitionID,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get machine workload definition: %w", err)
+		// controller.Done is a readability trial for return 0; follow-up PR to use named delays everywhere
+		return controller.Done, fmt.Errorf("failed to get machine workload definition: %w", err)
 	}
 
 	// get related machine runtime instance
@@ -69,7 +70,8 @@ func v0MachineWorkloadInstanceCreated(
 
 	// wait for the runtime to be reconciled before running workloads against it
 	if mri.Reconciled == nil || !*mri.Reconciled {
-		return 30, nil
+		// controller.Requeue30s is a readability trial for return 30; follow-up PR to use named delays everywhere
+		return controller.Requeue30s, nil
 	}
 
 	// run the create script and record results
@@ -88,9 +90,9 @@ func v0MachineWorkloadInstanceCreated(
 		return 0, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
 	}
 
-	// requeue the script failure after the status is persisted
+	// requeue on failure so the script is retried
 	if scriptErr != nil {
-		return 30, scriptErr
+		return controller.Requeue30s, scriptErr
 	}
 
 	return controller.Done, nil
@@ -147,9 +149,9 @@ func v0MachineWorkloadInstanceUpdated(
 		return 0, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
 	}
 
-	// requeue the script failure after the status is persisted
+	// requeue on failure so the script is retried
 	if scriptErr != nil {
-		return 30, scriptErr
+		return controller.Requeue30s, scriptErr
 	}
 
 	return 0, nil
@@ -265,8 +267,10 @@ func v0MachineWorkloadInstanceDeleted(
 			return 0, nil
 		}
 
-		// requeue while the delete script is still failing
-		return 30, scriptErr
+		// within the grace period, requeue in 30s so the script is retried,
+		// propagating the ErrWithEvent so the wrapper substitutes the specific
+		// reason for the generic FailedDelete event
+		return controller.Requeue30s, scriptErr
 	}
 
 	return 0, nil

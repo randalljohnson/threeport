@@ -451,7 +451,7 @@ func (h Handler) DeleteDomainNameDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(domainNameDefinition.DomainNameInstances) != 0 {
-		err := errors.New("domain name definition has related domain name instances - cannot be deleted")
+		err := errors.New("domain name definition has related domain name instances - " + api_v0.ErrMsgDeleteBlocked)
 		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 
@@ -1551,7 +1551,7 @@ func (h Handler) DeleteGatewayDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(gatewayDefinition.GatewayInstances) != 0 {
-		err := errors.New("gateway definition has related gateway instances - cannot be deleted")
+		err := errors.New("gateway definition has related gateway instances - " + api_v0.ErrMsgDeleteBlocked)
 		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 

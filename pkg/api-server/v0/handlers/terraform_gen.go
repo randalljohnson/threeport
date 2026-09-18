@@ -502,7 +502,7 @@ func (h Handler) DeleteTerraformDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(terraformDefinition.TerraformInstances) != 0 {
-		err := errors.New("terraform definition has related terraform instances - cannot be deleted")
+		err := errors.New("terraform definition has related terraform instances - " + api_v0.ErrMsgDeleteBlocked)
 		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 

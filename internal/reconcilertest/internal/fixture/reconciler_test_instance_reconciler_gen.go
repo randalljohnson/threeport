@@ -120,9 +120,6 @@ func ReconcilerTestInstanceReconciler(r *controller.Reconciler) {
 				continue
 			}
 
-			// capture pre-pass reconciled state to gate the success-event emit
-			wasReconciled := false
-
 			// retrieve latest version of object
 			var latestReconcilerTestInstance tpapi_lib.ReconciledThreeportApiObject
 			var getLatestErr error
@@ -133,9 +130,6 @@ func ReconcilerTestInstanceReconciler(r *controller.Reconciler) {
 					r.APIServer,
 					reconcilerTestInstance.GetId(),
 				)
-				if latestObject != nil && latestObject.Reconciled != nil && *latestObject.Reconciled {
-					wasReconciled = true
-				}
 				latestReconcilerTestInstance = latestObject
 				getLatestErr = err
 			default:
@@ -155,14 +149,8 @@ func ReconcilerTestInstanceReconciler(r *controller.Reconciler) {
 			}
 			reconcilerTestInstance = latestReconcilerTestInstance
 
-			// treat a deletion-scheduled update as a delete
-			operation := notif.Operation
-			if reconcilerTestInstance.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
-				log.Info("reconciler test instance scheduled for deletion - treating update as delete")
-				operation = notifications.NotificationOperationDeleted
-			}
 			// determine which operation and act accordingly
-			switch operation {
+			switch notif.Operation {
 			case notifications.NotificationOperationCreated:
 				if reconcilerTestInstance.ScheduledForDeletion() != nil {
 					log.Info("reconciler test instance scheduled for deletion - skipping create")
@@ -170,7 +158,6 @@ func ReconcilerTestInstanceReconciler(r *controller.Reconciler) {
 				}
 				// record in-progress before the custom handler so a later failure still has a start event
 				progressNote := "creating"
-				// type-assert so types without relationship-tagged foreign keys still emit creating
 				if owner, ok := reconcilerTestInstance.(tpapi_v0.RelationshipTaggedForeignKeyProvider); ok {
 					progressNote = event.CreateNote(owner)
 				}
@@ -298,7 +285,6 @@ func ReconcilerTestInstanceReconciler(r *controller.Reconciler) {
 			case notifications.NotificationOperationDeleted:
 				// record in-progress before the custom handler so a later failure still has a start event
 				progressNote := "deleting"
-				// type-assert so types without relationship-tagged foreign keys still emit deleting
 				if owner, ok := reconcilerTestInstance.(tpapi_v0.RelationshipTaggedForeignKeyProvider); ok {
 					progressNote = event.DeleteNote(owner)
 				}
@@ -431,7 +417,7 @@ func ReconcilerTestInstanceReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if operation != notifications.NotificationOperationDeleted {
+			if notif.Operation != notifications.NotificationOperationDeleted {
 				reconciledReconcilerTestInstance := api_v0.ReconcilerTestInstance{
 					Common:         tpapi_v0.Common{ID: util.Ptr(reconcilerTestInstance.GetId())},
 					Reconciliation: tpapi_v0.Reconciliation{Reconciled: util.Ptr(true)},
@@ -459,25 +445,23 @@ func ReconcilerTestInstanceReconciler(r *controller.Reconciler) {
 				log.V(1).Info("reconciler test instance unlocked")
 			}
 
-			// emit success event only on the first-successful transition; skip on redelivery
-			if !wasReconciled {
-				successMsg := fmt.Sprintf(
-					"reconciler test instance successfully reconciled for %s operation",
-					strings.ToLower(string(notif.Operation)),
-				)
-				if err := r.EventsRecorder.RecordEvent(
-					&tpapi_v0.Event{
-						Note:   util.Ptr(successMsg),
-						Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
-						Type:   util.Ptr(event.TypeNormal),
-					},
-					reconcilerTestInstance.GetId(),
-					reconcilerTestInstance.GetFullyQualifiedType(),
-				); err != nil {
-					log.Error(err, "failed to record event for successful reconciler test instance reconciliation")
-				}
-				log.Info(successMsg)
+			// log and record event for successful reconciliation
+			successMsg := fmt.Sprintf(
+				"reconciler test instance successfully reconciled for %s operation",
+				strings.ToLower(string(notif.Operation)),
+			)
+			if err := r.EventsRecorder.RecordEvent(
+				&tpapi_v0.Event{
+					Note:   util.Ptr(successMsg),
+					Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
+					Type:   util.Ptr(event.TypeNormal),
+				},
+				reconcilerTestInstance.GetId(),
+				reconcilerTestInstance.GetFullyQualifiedType(),
+			); err != nil {
+				log.Error(err, "failed to record event for successful reconciler test instance reconciliation")
 			}
+			log.Info(successMsg)
 		}
 	}
 

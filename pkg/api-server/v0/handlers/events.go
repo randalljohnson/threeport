@@ -463,9 +463,6 @@ func (h Handler) GetEventsFiltered(c echo.Context) error {
 			h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
 			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
-
-		// total greater than the limit means the client will need to
-		// page through the result set; HasMore signals that
 		pagination.HasMore = int64(len(*records)) > threshold
 
 		switch pagination.HasMore {
@@ -638,15 +635,12 @@ func (h Handler) GetEventsFiltered(c echo.Context) error {
 
 			// use the query ID to find the materialized view name (the view
 			// name is deterministic from the queryId)
-			resolvedViewName, err := h.GetMaterializedViewName(pageParams.QueryId)
+			var err error
+			viewName, err = h.GetMaterializedViewName(pageParams.QueryId)
 			if err != nil {
-				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) {
-					return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
-				}
 				h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
 				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
-			viewName = resolvedViewName
 
 			// a queryid naming no live view means the snapshot is gone,
 			// either dropped with the tail page or swept by the TTL. An
@@ -664,7 +658,6 @@ func (h Handler) GetEventsFiltered(c echo.Context) error {
 				viewBoundClause,
 				pageParams.Limit,
 			)
-
 			// the TTL sweeper can drop the view between the lookup above
 			// and this read, which leaves the client in the same place an
 			// expired snapshot does: restart pagination with no queryid
@@ -753,6 +746,7 @@ func enrichEventsWithObjectInfo(ctx context.Context, db *gorm.DB, events []v0.Ev
 		for id := range idSet {
 			ids = append(ids, id)
 		}
+
 		resolved, err := resolveNamesWithCache(ctx, db, typ, ids)
 		if err != nil {
 			log.Error("failed to resolve object names", zap.String("objectType", typ), zap.Error(err))

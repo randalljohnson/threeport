@@ -451,7 +451,7 @@ func (h Handler) DeleteOciOkeKubernetesRuntimeDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(ociOkeKubernetesRuntimeDefinition.OciOkeKubernetesRuntimeInstances) != 0 {
-		err := errors.New("oci oke kubernetes runtime definition has related oci oke kubernetes runtime instances - cannot be deleted")
+		err := errors.New("oci oke kubernetes runtime definition has related oci oke kubernetes runtime instances - " + api_v0.ErrMsgDeleteBlocked)
 		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 

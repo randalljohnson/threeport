@@ -502,7 +502,7 @@ func (h Handler) DeleteLoggingDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(loggingDefinition.LoggingInstances) != 0 {
-		err := errors.New("logging definition has related logging instances - cannot be deleted")
+		err := errors.New("logging definition has related logging instances - " + api_v0.ErrMsgDeleteBlocked)
 		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 
@@ -1656,7 +1656,7 @@ func (h Handler) DeleteMetricsDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(metricsDefinition.MetricsInstances) != 0 {
-		err := errors.New("metrics definition has related metrics instances - cannot be deleted")
+		err := errors.New("metrics definition has related metrics instances - " + api_v0.ErrMsgDeleteBlocked)
 		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 
@@ -2810,7 +2810,7 @@ func (h Handler) DeleteObservabilityDashboardDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(observabilityDashboardDefinition.ObservabilityDashboardInstances) != 0 {
-		err := errors.New("observability dashboard definition has related observability dashboard instances - cannot be deleted")
+		err := errors.New("observability dashboard definition has related observability dashboard instances - " + api_v0.ErrMsgDeleteBlocked)
 		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 
@@ -3964,7 +3964,7 @@ func (h Handler) DeleteObservabilityStackDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(observabilityStackDefinition.ObservabilityStackInstances) != 0 {
-		err := errors.New("observability stack definition has related observability stack instances - cannot be deleted")
+		err := errors.New("observability stack definition has related observability stack instances - " + api_v0.ErrMsgDeleteBlocked)
 		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 

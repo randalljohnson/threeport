@@ -502,7 +502,7 @@ func (h Handler) DeleteHelmWorkloadDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(helmWorkloadDefinition.HelmWorkloadInstances) != 0 {
-		err := errors.New("helm workload definition has related helm workload instances - cannot be deleted")
+		err := errors.New("helm workload definition has related helm workload instances - " + api_v0.ErrMsgDeleteBlocked)
 		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 

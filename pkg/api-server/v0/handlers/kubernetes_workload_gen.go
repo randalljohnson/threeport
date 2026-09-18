@@ -502,7 +502,7 @@ func (h Handler) DeleteKubernetesWorkloadDefinition(c echo.Context) error {
 
 	// check to make sure no dependent instances exist for this definition
 	if len(kubernetesWorkloadDefinition.KubernetesWorkloadInstances) != 0 {
-		err := errors.New("kubernetes workload definition has related kubernetes workload instances - cannot be deleted")
+		err := errors.New("kubernetes workload definition has related kubernetes workload instances - " + api_v0.ErrMsgDeleteBlocked)
 		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
 	}
 

@@ -79,12 +79,6 @@ func (mrd *MachineRuntimeDefinition) GetFullyQualifiedType() string {
 	return "threeport.io/v0.MachineRuntimeDefinition"
 }
 
-// ScheduledForDeletion returns a pointer to the DeletionScheduled timestamp
-// if scheduled for deletion or nil if not scheduled for deletion.
-func (mrd *MachineRuntimeDefinition) ScheduledForDeletion() *time.Time {
-	return mrd.DeletionScheduled
-}
-
 // AssociationRequiredByTypes returns the fully-qualified type names of children referenced via has-many association slices on MachineRuntimeDefinition.
 func (m *MachineRuntimeDefinition) AssociationRequiredByTypes() []string {
 	return []string{new(MachineRuntimeInstance).GetFullyQualifiedType()}

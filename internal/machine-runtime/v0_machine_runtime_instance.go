@@ -3,9 +3,12 @@
 package machineruntime
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	logr "github.com/go-logr/logr"
+	"golang.org/x/crypto/ssh"
 
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
@@ -15,6 +18,70 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
+// sshRetryDelaySeconds is the requeue delay after an SSH connect or ping failure.
+// A bad credential or unreachable host can be fixed without changing this object.
+var sshRetryDelaySeconds int64 = 30
+
+// unpopulatedRequeueDelaySeconds is the requeue delay when Hostname is still empty.
+// Returning no error leaves Reconciled unset while provisioning fills the field.
+var unpopulatedRequeueDelaySeconds int64 = 15
+
+// sshOperationTimeout bounds GetClient and Ping so a hung handshake cannot hold the reconcile.
+var sshOperationTimeout = 30 * time.Second
+
+// newReconcileContext builds the per-pass timeout. Tests replace it to inject cancellation.
+var newReconcileContext = func() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), sshOperationTimeout)
+}
+
+// getClientResult is the outcome of a GetClient call run in a goroutine.
+// It carries the client, any captured host key, and the connect error.
+type getClientResult struct {
+	client          *ssh.Client
+	capturedHostKey string
+	err             error
+}
+
+// getClientWithContext runs machine.GetClient until it returns or ctx ends.
+// ssh.Dial cannot be interrupted, so on abort a reaper closes a client that arrives later.
+func getClientWithContext(
+	ctx context.Context,
+	machineRuntimeInstance *v0.MachineRuntimeInstance,
+	encryptionKey string,
+) (*ssh.Client, string, error) {
+	done := make(chan getClientResult, 1)
+	go func() {
+		sshClient, capturedHostKey, err := machine.GetClient(machineRuntimeInstance, encryptionKey)
+		done <- getClientResult{sshClient, capturedHostKey, err}
+	}()
+	select {
+	case res := <-done:
+		return res.client, res.capturedHostKey, res.err
+	case <-ctx.Done():
+		go func() {
+			if res := <-done; res.client != nil {
+				res.client.Close()
+			}
+		}()
+		return nil, "", fmt.Errorf("ssh connect aborted: %w", ctx.Err())
+	}
+}
+
+// pingWithContext runs machine.Ping until it returns or ctx ends.
+// An abandoned ping unblocks when the caller closes the SSH client.
+func pingWithContext(ctx context.Context, sshClient *ssh.Client) error {
+	done := make(chan error, 1)
+	go func() {
+		done <- machine.Ping(sshClient)
+	}()
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return fmt.Errorf("ssh ping aborted: %w", ctx.Err())
+	}
+}
+
 // v0MachineRuntimeInstanceCreated performs reconciliation when a v0 MachineRuntimeInstance
 // has been created.  It verifies the machine is reachable via SSH and records
 // an event reflecting the result.
@@ -23,9 +90,19 @@ func v0MachineRuntimeInstanceCreated(
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
+	// requeue without error until hostname is populated
+	if machineRuntimeInstance.Hostname == nil || *machineRuntimeInstance.Hostname == "" {
+		return unpopulatedRequeueDelaySeconds, nil
+	}
+
+	// bound ssh connect and ping for this pass
+	ctx, cancel := newReconcileContext()
+	defer cancel()
+
 	// establish an ssh connection to the machine
-	sshClient, capturedHostKey, err := machine.GetClient(machineRuntimeInstance, r.EncryptionKey)
+	sshClient, capturedHostKey, err := getClientWithContext(ctx, machineRuntimeInstance, r.EncryptionKey)
 	if err != nil {
+		// record connect failure
 		if eventErr := r.EventsRecorder.RecordEvent(
 			&v0.Event{
 				Type:   util.Ptr(event.TypeWarning),
@@ -37,16 +114,12 @@ func v0MachineRuntimeInstanceCreated(
 		); eventErr != nil {
 			log.Error(eventErr, "failed to record event for ssh connect error")
 		}
-		// always retry ssh client failures, since a misconfigured credential
-		// or unreachable host may be fixed externally without any change
-		// to this object, so reconciliation should keep trying
-		return 30, fmt.Errorf("failed to connect to machine runtime instance via ssh: %w", err)
+		// retry ssh client failures
+		return sshRetryDelaySeconds, fmt.Errorf("failed to connect to machine runtime instance via ssh: %w", err)
 	}
 	defer sshClient.Close()
 
-	// save captured host key if this is the first connection; set
-	// Reconciled=true on the update so the resulting update
-	// notification does not trigger another reconciliation pass
+	// persist captured host key and mark reconciled to skip the update notification
 	if capturedHostKey != "" {
 		if _, err := client.UpdateMachineRuntimeInstance(r.APIClient, r.APIServer, &v0.MachineRuntimeInstance{
 			Common:         v0.Common{ID: machineRuntimeInstance.ID},
@@ -55,6 +128,7 @@ func v0MachineRuntimeInstanceCreated(
 		}); err != nil {
 			return controller.RetryOnNetworkErr(err, "failed to save captured host key")
 		}
+		// record host key capture
 		if eventErr := r.EventsRecorder.RecordEvent(
 			&v0.Event{
 				Type:   util.Ptr(event.TypeNormal),
@@ -69,7 +143,8 @@ func v0MachineRuntimeInstanceCreated(
 	}
 
 	// verify the connection is usable
-	if err := machine.Ping(sshClient); err != nil {
+	if err := pingWithContext(ctx, sshClient); err != nil {
+		// record ping failure
 		if eventErr := r.EventsRecorder.RecordEvent(
 			&v0.Event{
 				Type:   util.Ptr(event.TypeWarning),
@@ -81,8 +156,8 @@ func v0MachineRuntimeInstanceCreated(
 		); eventErr != nil {
 			log.Error(eventErr, "failed to record event for ssh ping error")
 		}
-		// always retry, same reasoning as the GetClient path above
-		return 30, fmt.Errorf("failed to ping machine runtime instance: %w", err)
+		// retry ssh ping failures
+		return sshRetryDelaySeconds, fmt.Errorf("failed to ping machine runtime instance: %w", err)
 	}
 
 	// record successful reachability event
@@ -111,12 +186,34 @@ func v0MachineRuntimeInstanceUpdated(
 	return 0, nil
 }
 
-// v0MachineRuntimeInstanceDeleted performs reconciliation when a v0 MachineRuntimeInstance
-// has been deleted.
+// v0MachineRuntimeInstanceDeleted warns when a provisioned instance still holds inventory. This pass does not reclaim provider resources.
 func v0MachineRuntimeInstanceDeleted(
 	r *controller.Reconciler,
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
+	// skip imported machines with no definition
+	if machineRuntimeInstance.MachineRuntimeDefinitionID == nil {
+		return 0, nil
+	}
+
+	// skip when no inventory was recorded
+	if machineRuntimeInstance.ResourceInventory == nil {
+		return 0, nil
+	}
+
+	// warn to reclaim live provider resources, then complete delete
+	if eventErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeWarning),
+			Reason: util.Ptr("ProviderResourcesNotReclaimed"),
+			Note:   util.Ptr(fmt.Sprintf("machine runtime instance %s was deleted while still holding provider resources; reclaim them using the recorded resource inventory to avoid orphaned infrastructure", *machineRuntimeInstance.Name)),
+		},
+		*machineRuntimeInstance.ID,
+		machineRuntimeInstance.GetFullyQualifiedType(),
+	); eventErr != nil {
+		log.Error(eventErr, "failed to record event for unreclaimed provider resources")
+	}
+
 	return 0, nil
 }

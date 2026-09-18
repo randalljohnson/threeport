@@ -7,6 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -22,13 +23,42 @@ func (m *MachineRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
 //     and PUT, handles the DB load internally
+//
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx): values being written
 //   - lib.IsFullReplace(tx): true on PUT (Save shape)
 //   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+//
 // Import:
-//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
+//
+//	lib "github.com/threeport/threeport/pkg/api/lib/v0"
+//
+// InfraProvider, MachineType, and ImageID are immutable after create so
+// derived instances stay aligned with the definition template.
 func (m *MachineRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
+	// reject changes to infra provider, machine type, and image
+	immutableFields := []struct {
+		column string
+		name   string
+	}{
+		{"InfraProvider", "infra provider"},
+		{"MachineType", "machine type"},
+		{"ImageID", "image id"},
+	}
+	for _, field := range immutableFields {
+		changed, err := lib.IsFieldChanged(tx, field.column)
+		if err != nil {
+			return err
+		}
+		if changed {
+			return util.NewBadRequestError(
+				fmt.Sprintf(
+					"machine runtime definition %s cannot be changed after creation",
+					field.name,
+				),
+			)
+		}
+	}
 	return nil
 }
 
@@ -38,10 +68,10 @@ func (m *MachineRuntimeDefinition) beforeDelete(tx *gorm.DB) error {
 }
 
 // beforeCreate validates the MachineRuntimeInstance before create.
-//
-// Why: at least one of SSHKey or SSHPassword must be provided so the
-// reconciler has a credential to authenticate with the machine.
+// At least one of SSHKey or SSHPassword is required to authenticate.
+// A definition with an infra provider also requires the instance Region.
 func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
+	// require an SSH credential
 	if m.SSHKey == nil && m.SSHPassword == nil {
 		return util.NewBadRequestError(
 			fmt.Sprintf(
@@ -50,6 +80,32 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 			),
 		)
 	}
+
+	// load referenced definition when present
+	if m.MachineRuntimeDefinitionID != nil {
+		var def MachineRuntimeDefinition
+		if err := tx.First(&def, *m.MachineRuntimeDefinitionID).Error; err != nil {
+			return util.NewBadRequestError(
+				fmt.Sprintf(
+					"machine runtime instance %s references machine runtime definition %d which does not exist",
+					*m.Name,
+					*m.MachineRuntimeDefinitionID,
+				),
+			)
+		}
+		// require region when the definition has an infra provider
+		if def.InfraProvider != nil && *def.InfraProvider != "" {
+			if m.Region == nil || *m.Region == "" {
+				return util.NewBadRequestError(
+					fmt.Sprintf(
+						"machine runtime instance %s must have a region when the definition specifies an infra provider",
+						*m.Name,
+					),
+				)
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -60,13 +116,42 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 // per-field check is:
 //   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
 //     and PUT, handles the DB load internally
+//
 // Lower-level helpers, useful when IsFieldChanged doesn't fit:
 //   - lib.IncomingValues(tx): values being written
 //   - lib.IsFullReplace(tx): true on PUT (Save shape)
 //   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+//
 // Import:
-//   lib "github.com/threeport/threeport/pkg/api/lib/v0"
+//
+//	lib "github.com/threeport/threeport/pkg/api/lib/v0"
+//
+// Region, NetworkID, and SubnetID are immutable after create. Infra
+// provider, machine type, and image are guarded on the definition.
 func (m *MachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
+	// reject changes to region, network, and subnet
+	immutableFields := []struct {
+		column string
+		name   string
+	}{
+		{"Region", "region"},
+		{"NetworkID", "network id"},
+		{"SubnetID", "subnet id"},
+	}
+	for _, field := range immutableFields {
+		changed, err := lib.IsFieldChanged(tx, field.column)
+		if err != nil {
+			return err
+		}
+		if changed {
+			return util.NewBadRequestError(
+				fmt.Sprintf(
+					"machine runtime instance %s cannot be changed after creation",
+					field.name,
+				),
+			)
+		}
+	}
 	return nil
 }
 

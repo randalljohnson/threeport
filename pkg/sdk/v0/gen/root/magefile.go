@@ -1019,18 +1019,30 @@ func emitWrapHelper(g *Group, repo, tag Code) {
 	)
 }
 
-// emitTestUnitFunc writes func (Test) Unit() error that runs go test
-// -count=1 across pkg, internal, and cmd.
+// emitTestUnitFunc writes Test.Unit, which runs go test without -race over
+// pkg, internal, cmd, and magefiles.
 func emitTestUnitFunc(f *File) {
 	f.Comment("Unit runs the unit tests across the threeport packages.")
 	f.Func().Params(Id("Test")).Id("Unit").Params().Error().Block(
-		If(
-			Err().Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "RunUnitTests").Call(),
-			Err().Op("!=").Nil(),
-		).Block(
+		Id("cmd").Op(":=").Lit("go"),
+		Id("args").Op(":=").Index().String().Values(
+			Line().Lit("test"),
+			Line().Lit("-count=1"),
+			Line().Lit("./pkg/..."),
+			Line().Lit("./internal/..."),
+			Line().Lit("./cmd/..."),
+			Line().Lit("./magefiles/..."),
+			Line(),
+		),
+		If(Err().Op(":=").Qual(
+			"github.com/threeport/threeport/pkg/util/v0",
+			"RunCommandStreamOutput",
+		).Call(Id("cmd"), Id("args").Op("...")).Op(";").Err().Op("!=").Nil()).Block(
 			Return(Qual("fmt", "Errorf").Call(Lit("failed to run unit tests: %w"), Err())),
 		),
-		Return(Nil()),
+		Line(),
+
+		Return().Nil(),
 	)
 	f.Line()
 }

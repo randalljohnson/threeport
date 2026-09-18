@@ -57,6 +57,7 @@ func v0MachineWorkloadInstanceCreated(
 		*machineWorkloadInstance.MachineWorkloadDefinitionID,
 	)
 	if err != nil {
+		// controller.Done is a readability trial for return 0; follow-up PR to use named delays everywhere
 		return controller.Done, fmt.Errorf("failed to get machine workload definition: %w", err)
 	}
 
@@ -72,6 +73,7 @@ func v0MachineWorkloadInstanceCreated(
 
 	// wait for the runtime to be reconciled before running workloads against it
 	if mri.Reconciled == nil || !*mri.Reconciled {
+		// controller.Requeue30s is a readability trial for return 30; follow-up PR to use named delays everywhere
 		return controller.Requeue30s, nil
 	}
 

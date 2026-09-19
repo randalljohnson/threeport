@@ -47,6 +47,9 @@ jobs:
     - name: Unit tests
       run: mage test:unit
 
+    - name: Race tests
+      run: mage test:race
+
     - name: Generate and type-check a module
       run: mage test:moduleGen
 

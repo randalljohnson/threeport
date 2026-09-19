@@ -87,6 +87,7 @@ func GenMagefile(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 
 	// emit test targets
 	emitTestUnitFunc(f)
+	emitTestRaceFunc(f)
 	emitTestIntegrationFunc(f)
 
 	// emit download targets for threeport-sdk and tptctl
@@ -739,6 +740,22 @@ func emitTestUnitFunc(f *File) {
 		Line(),
 
 		Return().Nil(),
+	)
+	f.Line()
+}
+
+// emitTestRaceFunc writes Test.Race, which runs go test -race on packages
+// that contain *_race_test.go files.
+func emitTestRaceFunc(f *File) {
+	f.Comment("Race runs go test -race on packages that contain *_race_test.go files.")
+	f.Func().Params(Id("Test")).Id("Race").Params().Error().Block(
+		If(
+			Err().Op(":=").Qual("github.com/threeport/threeport/pkg/util/v0", "RunRaceTests").Call(),
+			Err().Op("!=").Nil(),
+		).Block(
+			Return(Qual("fmt", "Errorf").Call(Lit("failed to run race tests: %w"), Err())),
+		),
+		Return(Nil()),
 	)
 	f.Line()
 }

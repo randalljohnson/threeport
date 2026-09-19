@@ -68,6 +68,14 @@ func (Test) Unit() error {
 	return nil
 }
 
+// Race runs go test -race on packages that contain *_race_test.go files.
+func (Test) Race() error {
+	if err := util.RunRaceTests(); err != nil {
+		return fmt.Errorf("failed to run race tests: %w", err)
+	}
+	return nil
+}
+
 // Integration runs integration tests against an existing Threeport control plane.
 func (Test) Integration() error {
 	if err := cli.ControlPlaneConfigProblems(); err != nil {

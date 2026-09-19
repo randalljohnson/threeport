@@ -80,6 +80,10 @@ func GetGcpGceMachineRuntimeDefinitionByID(apiClient *http.Client, apiAddr strin
 		return &gcpGceMachineRuntimeDefinition, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
 	}
 
+	if len(response.Data) == 0 {
+		return &gcpGceMachineRuntimeDefinition, errors.New("threeport API returned no object in response data")
+	}
+
 	jsonData, err := json.Marshal(response.Data[0])
 	if err != nil {
 		return &gcpGceMachineRuntimeDefinition, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
@@ -181,6 +185,10 @@ func CreateGcpGceMachineRuntimeDefinition(apiClient *http.Client, apiAddr string
 		return gcpGceMachineRuntimeDefinition, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
 	}
 
+	if len(response.Data) == 0 {
+		return gcpGceMachineRuntimeDefinition, errors.New("threeport API returned no object in response data")
+	}
+
 	jsonData, err := json.Marshal(response.Data[0])
 	if err != nil {
 		return gcpGceMachineRuntimeDefinition, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
@@ -221,6 +229,10 @@ func UpdateGcpGceMachineRuntimeDefinition(apiClient *http.Client, apiAddr string
 	)
 	if err != nil {
 		return gcpGceMachineRuntimeDefinition, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	if len(response.Data) == 0 {
+		return gcpGceMachineRuntimeDefinition, errors.New("threeport API returned no object in response data")
 	}
 
 	jsonData, err := json.Marshal(response.Data[0])
@@ -266,6 +278,10 @@ func ReplaceGcpGceMachineRuntimeDefinition(apiClient *http.Client, apiAddr strin
 		return gcpGceMachineRuntimeDefinition, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
 	}
 
+	if len(response.Data) == 0 {
+		return gcpGceMachineRuntimeDefinition, errors.New("threeport API returned no object in response data")
+	}
+
 	jsonData, err := json.Marshal(response.Data[0])
 	if err != nil {
 		return gcpGceMachineRuntimeDefinition, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
@@ -295,6 +311,10 @@ func DeleteGcpGceMachineRuntimeDefinition(apiClient *http.Client, apiAddr string
 	)
 	if err != nil {
 		return &gcpGceMachineRuntimeDefinition, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	if len(response.Data) == 0 {
+		return &gcpGceMachineRuntimeDefinition, errors.New("threeport API returned no object in response data")
 	}
 
 	jsonData, err := json.Marshal(response.Data[0])
@@ -375,6 +395,10 @@ func GetGcpGceMachineRuntimeInstanceByID(apiClient *http.Client, apiAddr string,
 	)
 	if err != nil {
 		return &gcpGceMachineRuntimeInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	if len(response.Data) == 0 {
+		return &gcpGceMachineRuntimeInstance, errors.New("threeport API returned no object in response data")
 	}
 
 	jsonData, err := json.Marshal(response.Data[0])
@@ -478,6 +502,10 @@ func CreateGcpGceMachineRuntimeInstance(apiClient *http.Client, apiAddr string, 
 		return gcpGceMachineRuntimeInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
 	}
 
+	if len(response.Data) == 0 {
+		return gcpGceMachineRuntimeInstance, errors.New("threeport API returned no object in response data")
+	}
+
 	jsonData, err := json.Marshal(response.Data[0])
 	if err != nil {
 		return gcpGceMachineRuntimeInstance, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
@@ -518,6 +546,10 @@ func UpdateGcpGceMachineRuntimeInstance(apiClient *http.Client, apiAddr string, 
 	)
 	if err != nil {
 		return gcpGceMachineRuntimeInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	if len(response.Data) == 0 {
+		return gcpGceMachineRuntimeInstance, errors.New("threeport API returned no object in response data")
 	}
 
 	jsonData, err := json.Marshal(response.Data[0])
@@ -563,6 +595,10 @@ func ReplaceGcpGceMachineRuntimeInstance(apiClient *http.Client, apiAddr string,
 		return gcpGceMachineRuntimeInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
 	}
 
+	if len(response.Data) == 0 {
+		return gcpGceMachineRuntimeInstance, errors.New("threeport API returned no object in response data")
+	}
+
 	jsonData, err := json.Marshal(response.Data[0])
 	if err != nil {
 		return gcpGceMachineRuntimeInstance, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
@@ -592,6 +628,10 @@ func DeleteGcpGceMachineRuntimeInstance(apiClient *http.Client, apiAddr string, 
 	)
 	if err != nil {
 		return &gcpGceMachineRuntimeInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
+	}
+
+	if len(response.Data) == 0 {
+		return &gcpGceMachineRuntimeInstance, errors.New("threeport API returned no object in response data")
 	}
 
 	jsonData, err := json.Marshal(response.Data[0])

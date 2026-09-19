@@ -396,7 +396,8 @@ func TestGkeLifecycleBuildInfra(t *testing.T) {
 		// seed the credential encrypted with a fresh key so BuildInfra decrypts it
 		key, err := encryption.GenerateKey()
 		require.NoError(t, err)
-		enc, err := encryption.Encrypt(key, `{"type":"service_account"}`)
+		creds := `{"type":"service_account","client_email":"test-sa@proj-x.iam.gserviceaccount.com"}`
+		enc, err := encryption.Encrypt(key, creds)
 		require.NoError(t, err)
 		prov.ServiceAccountCredentials = util.Ptr(enc)
 		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
@@ -415,7 +416,8 @@ func TestGkeLifecycleBuildInfra(t *testing.T) {
 		assert.Equal(t, "proj-x", infraGKE.ProjectID)
 		assert.Equal(t, "us-central1", infraGKE.Region)
 		assert.Equal(t, int32(3), infraGKE.WorkerNodeInitialCount)
-		assert.Equal(t, `{"type":"service_account"}`, infraGKE.ServiceAccountCredentials)
+		assert.Equal(t, creds, infraGKE.ServiceAccountCredentials)
+		assert.Equal(t, "test-sa@proj-x.iam.gserviceaccount.com", infraGKE.ServiceAccountEmail)
 	})
 
 	t.Run("nil credentials rejected", func(t *testing.T) {

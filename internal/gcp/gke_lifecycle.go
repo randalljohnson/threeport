@@ -1,6 +1,7 @@
 package gcp
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -493,6 +494,26 @@ func buildGkeInfra(
 		return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
 	}
 	infraGKE.ServiceAccountCredentials = decryptedCredentials
+	email, err := serviceAccountEmailFromCredentials(decryptedCredentials)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract service account email: %w", err)
+	}
+	infraGKE.ServiceAccountEmail = email
 
 	return infraGKE, nil
+}
+
+// serviceAccountEmailFromCredentials extracts the client_email field from a
+// GCP service account key JSON blob.
+func serviceAccountEmailFromCredentials(credentialsJSON string) (string, error) {
+	var key struct {
+		ClientEmail string `json:"client_email"`
+	}
+	if err := json.Unmarshal([]byte(credentialsJSON), &key); err != nil {
+		return "", fmt.Errorf("failed to parse service account credentials JSON: %w", err)
+	}
+	if key.ClientEmail == "" {
+		return "", fmt.Errorf("service account credentials JSON has no client_email field")
+	}
+	return key.ClientEmail, nil
 }

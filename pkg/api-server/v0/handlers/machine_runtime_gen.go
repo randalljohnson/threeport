@@ -96,6 +96,20 @@ func (h Handler) AddMachineRuntimeDefinition(c echo.Context) error {
 		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
+	// notify controller if reconciliation is required
+	if !*machineRuntimeDefinition.Reconciled {
+		notifPayload, err := machineRuntimeDefinition.NotificationPayload(
+			notifications.NotificationOperationCreated,
+			false,
+			time.Now().Unix(),
+		)
+		if err != nil {
+			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		}
+		h.JS.Publish(notif.MachineRuntimeDefinitionCreateSubject, *notifPayload)
+	}
+
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		machineRuntimeDefinition,

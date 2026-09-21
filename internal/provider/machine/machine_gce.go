@@ -154,6 +154,9 @@ type GceMachineInfra struct {
 	// interface has no access_config and the VM has only an internal IP.
 	AssignPublicIP bool
 
+	// The function that persists the generated SSH private key before Pulumi up
+	PersistSSHKey func(privateKeyPEM string) error
+
 	// The generated RSA private key in PEM form
 	sshPrivateKeyPEM string
 
@@ -284,6 +287,11 @@ func (i *GceMachineInfra) createInfra() error {
 	// generate SSH keys outside the Pulumi program so the program is deterministic
 	if err := i.ensureSSHKeyPair(); err != nil {
 		return fmt.Errorf("failed to ensure SSH key pair: %w", err)
+	}
+
+	// persist the private key before up so a retry can rehydrate it
+	if err := i.persistGeneratedSSHKey(); err != nil {
+		return fmt.Errorf("failed to persist ssh private key: %w", err)
 	}
 
 	// set Pulumi project defaults and stack config
@@ -836,4 +844,12 @@ func gcpLabelsInput(ownerName string) pulumi.StringMap {
 		out[k] = pulumi.String(v)
 	}
 	return out
+}
+
+// persistGeneratedSSHKey writes the in-memory private key when PersistSSHKey is set.
+func (i *GceMachineInfra) persistGeneratedSSHKey() error {
+	if i.PersistSSHKey == nil || i.sshPrivateKeyPEM == "" {
+		return nil
+	}
+	return i.PersistSSHKey(i.sshPrivateKeyPEM)
 }

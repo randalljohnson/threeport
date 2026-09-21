@@ -437,7 +437,11 @@ func TestGceLifecycleBuildInfra(t *testing.T) {
 		latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
 		latest.SSHKey = gcePtr(enc)
 		s.gceHandleInstance(t, gceTestInstanceID, latest)
-		s.gceHandleProvider(t, gceTestProviderID, gceBaseProvider())
+		prov := gceBaseProvider()
+		provEnc, err := encryption.Encrypt(s.encryptionKey, "creds-json")
+		require.NoError(t, err)
+		prov.ServiceAccountCredentials = gcePtr(provEnc)
+		s.gceHandleProvider(t, gceTestProviderID, prov)
 		s.gceHandleDefinition(t, gceTestDefinitionID, gceBaseDefinition())
 
 		g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))

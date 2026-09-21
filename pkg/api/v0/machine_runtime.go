@@ -28,15 +28,6 @@ type MachineRuntimeDefinition struct {
 	// The provider image identifier used to boot the machine
 	ImageID *string `validate:"optional"`
 
-	// The infrastructure provider that provisions machines from this definition
-	InfraProvider *string `validate:"optional"`
-
-	// The provider-specific machine type to provision
-	MachineType *string `validate:"optional"`
-
-	// The provider image identifier used to boot the machine
-	ImageID *string `validate:"optional"`
-
 	// The associated machine runtime instances that are deployed from this
 	// definition.
 	MachineRuntimeInstances []*MachineRuntimeInstance `validate:"optional,association"`

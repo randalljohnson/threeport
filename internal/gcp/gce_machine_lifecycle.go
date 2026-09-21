@@ -561,5 +561,24 @@ func buildGceMachineInfra(
 		}
 	}
 
+	// persist a newly generated key onto the instance before Pulumi up
+	infraGce.PersistSSHKey = func(pem string) error {
+		if instance.ID == nil {
+			return fmt.Errorf("failed to persist GCE SSH key: instance id is empty")
+		}
+		updated := v0.GcpGceMachineRuntimeInstance{
+			Common: v0.Common{ID: instance.ID},
+			SSHKey: &pem,
+		}
+		if _, err := client.UpdateGcpGceMachineRuntimeInstance(
+			r.APIClient,
+			r.APIServer,
+			&updated,
+		); err != nil {
+			return fmt.Errorf("failed to persist GCE SSH key: %w", err)
+		}
+		return nil
+	}
+
 	return infraGce, nil
 }

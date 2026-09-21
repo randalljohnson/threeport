@@ -157,6 +157,9 @@ type GceMachineInfra struct {
 	// The function that persists the generated SSH private key before Pulumi up
 	PersistSSHKey func(privateKeyPEM string) error
 
+	// The function that persists the generated SSH private key before Pulumi up
+	PersistSSHKey func(privateKeyPEM string) error
+
 	// The generated RSA private key in PEM form
 	sshPrivateKeyPEM string
 

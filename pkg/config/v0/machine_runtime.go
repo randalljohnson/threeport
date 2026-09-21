@@ -22,17 +22,17 @@ type MachineRuntimeConfig struct {
 // A *File field is a path whose contents are read at API-call time
 // and encrypted at rest by the server.
 type MachineRuntimeValues struct {
-	Name            *string `json:",omitempty"`
-	Hostname        *string `json:",omitempty"`
-	SSHUser         *string `json:",omitempty"`
-	SSHKey          *string `json:",omitempty"`
-	SSHKeyFile      *string `json:",omitempty"`
-	SSHPassword     *string `json:",omitempty"`
-	SSHPasswordFile *string `json:",omitempty"`
-	Port            *int    `json:",omitempty"`
-	HostKey         *string `json:",omitempty"`
-	Status          *string `json:",omitempty"`
-	Age             *string `json:",omitempty"`
+	Name            *string
+	Hostname        *string
+	SSHUser         *string
+	SSHKey          *string
+	SSHKeyFile      *string
+	SSHPassword     *string
+	SSHPasswordFile *string
+	Port            *int
+	HostKey         *string
+	Status          *string
+	Age             *string
 }
 
 // Get gets a machine runtime definition and instance from the Threeport API.

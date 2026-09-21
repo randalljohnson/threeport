@@ -25,16 +25,15 @@ type OciProviderConfig struct {
 // the OciProvider API object. A *File field is a path whose contents
 // are read at create and replace into the matching inline field.
 type OciProviderValues struct {
-	Name            *string `json:",omitempty"`
-	UserOCID        *string `json:",omitempty"`
-	CompartmentOCID *string `json:",omitempty"`
-	DefaultProvider *bool   `json:",omitempty"`
-	DefaultRegion   *string `json:",omitempty"`
-	KeyFingerprint  *string `json:",omitempty"`
-	PrivateKey      *string `json:",omitempty"`
-	// The path to a file whose contents fill PrivateKey
-	PrivateKeyFile *string `json:",omitempty"`
-	Age            *string `json:",omitempty"`
+	Name            *string
+	UserOCID        *string
+	CompartmentOCID *string
+	DefaultProvider *bool
+	DefaultRegion   *string
+	KeyFingerprint  *string
+	PrivateKey      *string
+	PrivateKeyFile  *string
+	Age             *string
 }
 
 // Get gets oci providers from the Threeport API.

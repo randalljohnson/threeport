@@ -27,44 +27,19 @@ type AwsProviderConfig struct {
 // the AwsProvider API object. A *File field names a path whose contents
 // are read on Create and Replace; the API encrypts those secrets at rest.
 type AwsProviderValues struct {
-	// The unique name of this AWS provider
-	Name *string `json:",omitempty"`
-
-	// The AWS account ID for this provider
-	AccountID *string `json:",omitempty"`
-
-	// If true, this AWS provider is used when a definition names none
-	DefaultProvider *bool `json:",omitempty"`
-
-	// The default AWS region for resources created with this provider
-	DefaultRegion *string `json:",omitempty"`
-
-	// The AWS access key ID, supplied inline
-	AccessKeyID *string `json:",omitempty"`
-
-	// The path to a file read into AccessKeyID when that field is unset
-	AccessKeyIDFile *string `json:",omitempty"`
-
-	// The AWS secret access key, supplied inline
-	SecretAccessKey *string `json:",omitempty"`
-
-	// The path to a file read into SecretAccessKey when that field is unset
-	SecretAccessKeyFile *string `json:",omitempty"`
-
-	// The IAM role ARN to assume for this AWS account
-	RoleArn *string `json:",omitempty"`
-
-	// The path to a local AWS config file used when DefaultRegion is unset
-	LocalConfig *string `json:",omitempty"`
-
-	// The path to a local AWS credentials file used when keys are unset
-	LocalCredentials *string `json:",omitempty"`
-
-	// The profile name in LocalConfig and LocalCredentials
-	LocalProfile *string `json:",omitempty"`
-
-	// Age is a computed field showing how long ago the object was created
-	Age *string `json:",omitempty"`
+	Name                *string
+	AccountID           *string
+	DefaultProvider     *bool
+	DefaultRegion       *string
+	AccessKeyID         *string
+	AccessKeyIDFile     *string
+	SecretAccessKey     *string
+	SecretAccessKeyFile *string
+	RoleArn             *string
+	LocalConfig         *string
+	LocalCredentials    *string
+	LocalProfile        *string
+	Age                 *string
 }
 
 // Get gets aws providers from the Threeport API.

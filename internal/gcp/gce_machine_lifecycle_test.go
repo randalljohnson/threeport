@@ -406,6 +406,11 @@ func TestGceLifecycleBuildInfra(t *testing.T) {
 		assert.Equal(t, "debian-12", gceInfra.ImageID)
 		assert.Equal(t, "threeport", gceInfra.SSHUser)
 		assert.Equal(t, "creds-json", gceInfra.ServiceAccountCredentials)
+		require.NotNil(t, gceInfra.PersistSSHKey)
+		require.NoError(t, gceInfra.PersistSSHKey("PRIVATE-KEY"))
+		patch := s.gceLastPatch(t, gceInstancePath(gceTestInstanceID))
+		require.NotNil(t, patch.SSHKey)
+		assert.Equal(t, "PRIVATE-KEY", *patch.SSHKey)
 	})
 
 	t.Run("instance GET fails", func(t *testing.T) {

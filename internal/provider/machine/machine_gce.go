@@ -815,6 +815,8 @@ func (i *GceMachineInfra) SeedSSHKeyPair(sshPrivateKeyPEM string) error {
 	if sshPrivateKeyPEM == "" {
 		return fmt.Errorf("cannot seed SSH key pair from empty private key")
 	}
+
+	// parse the persisted PEM and derive the public half
 	signer, err := ssh.ParsePrivateKey([]byte(sshPrivateKeyPEM))
 	if err != nil {
 		return fmt.Errorf("failed to parse persisted SSH private key: %w", err)

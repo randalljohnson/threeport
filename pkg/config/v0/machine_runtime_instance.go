@@ -71,8 +71,18 @@ func (m *MachineRuntimeInstanceConfig) Get(
 		machineRuntimeInstances = allMachineRuntimeInstances
 	}
 
-	// cache definition names by ID so a shared definition costs one API call
-	definitionNameByID := make(map[uint]*string)
+	// load definition names once; an instance stores the definition id, not its name
+	allDefs, err := client_v0.GetMachineRuntimeDefinitions(apiClient, apiEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get machine runtime definitions from Threeport API: %w", err)
+	}
+	definitionNameByID := make(map[uint]*string, len(*allDefs))
+	for i := range *allDefs {
+		def := (*allDefs)[i]
+		if def.ID != nil {
+			definitionNameByID[*def.ID] = def.Name
+		}
+	}
 
 	// assemble config objects from API objects
 	var machineRuntimeInstanceConfigs []MachineRuntimeInstanceConfig
@@ -93,18 +103,7 @@ func (m *MachineRuntimeInstanceConfig) Get(
 		// imported machines may omit MachineRuntimeDefinitionID
 		var machineRuntimeDefinition *MachineRuntimeDefinitionValues
 		if machineRuntimeInstance.MachineRuntimeDefinitionID != nil {
-			id := *machineRuntimeInstance.MachineRuntimeDefinitionID
-			name, cached := definitionNameByID[id]
-			if !cached {
-				// fetch definition name on cache miss
-				mrd, err := client_v0.GetMachineRuntimeDefinitionByID(apiClient, apiEndpoint, id)
-				if err == nil {
-					name = mrd.Name
-				}
-				// store nil name on lookup failure so later instances skip the API
-				definitionNameByID[id] = name
-			}
-			if name != nil {
+			if name, ok := definitionNameByID[*machineRuntimeInstance.MachineRuntimeDefinitionID]; ok && name != nil {
 				machineRuntimeDefinition = &MachineRuntimeDefinitionValues{
 					Name: name,
 				}

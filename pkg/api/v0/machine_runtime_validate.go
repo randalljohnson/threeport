@@ -11,29 +11,30 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-const (
-	// MachineRuntimeInfraProviderGCE selects Google Compute Engine as the
-	// machine runtime InfraProvider value.
-	MachineRuntimeInfraProviderGCE = "gce"
-)
-
-// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on
-// MachineRuntimeDefinition. The definition has no relationship-tagged foreign
-// keys, so this satisfies the interface with an empty list so lifecycle emit
-// sites can pass the object as the note owner.
-func (m *MachineRuntimeDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
-	return nil
-}
-
 // beforeCreate validates the MachineRuntimeDefinition before create.
 func (m *MachineRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeUpdate rejects changes to the immutable provisioning template
-// fields. It checks each through lib.IsFieldChanged so immutability is
-// enforced under both PATCH and PUT; the infra provider, machine type, and
-// image must stay fixed once instances derive from the definition.
+// beforeUpdate validates the MachineRuntimeDefinition before update.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+//
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+//
+// Import:
+//
+//	lib "github.com/threeport/threeport/pkg/api/lib/v0"
+//
+// InfraProvider, MachineType, and ImageID are immutable after create so
+// derived instances stay aligned with the definition template.
 func (m *MachineRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	// reject changes to infra provider, machine type, and image
 	immutableFields := []struct {
@@ -47,7 +48,7 @@ func (m *MachineRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	for _, field := range immutableFields {
 		changed, err := lib.IsFieldChanged(tx, field.column)
 		if err != nil {
-			return fmt.Errorf("failed to check %s for changes: %w", field.name, err)
+			return err
 		}
 		if changed {
 			return util.NewBadRequestError(
@@ -67,8 +68,8 @@ func (m *MachineRuntimeDefinition) beforeDelete(tx *gorm.DB) error {
 }
 
 // beforeCreate validates the MachineRuntimeInstance before create.
-// It requires an SSH credential, a live definition ID when one is set, and
-// a location or region when that definition has an infra provider.
+// At least one of SSHKey or SSHPassword is required to authenticate.
+// A definition with an infra provider also requires the instance Region.
 func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 	// require an SSH credential
 	if m.SSHKey == nil && m.SSHPassword == nil {
@@ -94,13 +95,10 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 		}
 		// require region when the definition has an infra provider
 		if def.InfraProvider != nil && *def.InfraProvider != "" {
-			locationEmpty := m.Location == nil || *m.Location == ""
-			regionEmpty := m.Region == nil || *m.Region == ""
-			if locationEmpty && regionEmpty {
-				// reject a provider-backed instance with neither location nor region
+			if m.Region == nil || *m.Region == "" {
 				return util.NewBadRequestError(
 					fmt.Sprintf(
-						"machine runtime instance %s must have a location or region when the definition specifies an infra provider",
+						"machine runtime instance %s must have a region when the definition specifies an infra provider",
 						*m.Name,
 					),
 				)
@@ -111,17 +109,31 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeUpdate rejects changes to the immutable provisioning location
-// fields. It checks each through lib.IsFieldChanged so immutability is
-// enforced under both PATCH and PUT; changing them after creation would
-// orphan the provisioned resources.
+// beforeUpdate validates the MachineRuntimeInstance before update.
+//
+// Receiver semantics depend on the GORM call shape; see
+// pkg/api/lib/v0/update_helpers.go for the full model. The simplest
+// per-field check is:
+//   - lib.IsFieldChanged(tx, "FieldName"): works under both PATCH
+//     and PUT, handles the DB load internally
+//
+// Lower-level helpers, useful when IsFieldChanged doesn't fit:
+//   - lib.IncomingValues(tx): values being written
+//   - lib.IsFullReplace(tx): true on PUT (Save shape)
+//   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
+//
+// Import:
+//
+//	lib "github.com/threeport/threeport/pkg/api/lib/v0"
+//
+// Region, NetworkID, and SubnetID are immutable after create. Infra
+// provider, machine type, and image are guarded on the definition.
 func (m *MachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	// reject changes to region, network, and subnet
 	immutableFields := []struct {
 		column string
 		name   string
 	}{
-		{"Location", "location"},
 		{"Region", "region"},
 		{"NetworkID", "network id"},
 		{"SubnetID", "subnet id"},
@@ -129,7 +141,7 @@ func (m *MachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	for _, field := range immutableFields {
 		changed, err := lib.IsFieldChanged(tx, field.column)
 		if err != nil {
-			return fmt.Errorf("failed to check %s for changes: %w", field.name, err)
+			return err
 		}
 		if changed {
 			return util.NewBadRequestError(
@@ -176,15 +188,4 @@ func (m *MachineRuntimeInstance) afterUpdate(tx *gorm.DB) error {
 // afterDelete runs after the MachineRuntimeInstance is deleted.
 func (m *MachineRuntimeInstance) afterDelete(tx *gorm.DB) error {
 	return nil
-}
-
-// MachineRuntimeMarriedKind returns the concrete married attached-object
-// kind (kebab-case) for the given infra provider and suffix ("definition"
-// or "instance"). Returns "" if the provider is unknown.
-func MachineRuntimeMarriedKind(infraProvider, suffix string) string {
-	cloud, err := CloudProviderForInfraProvider(infraProvider)
-	if err != nil {
-		return ""
-	}
-	return cloud + "-" + infraProvider + "-machine-runtime-" + suffix
 }

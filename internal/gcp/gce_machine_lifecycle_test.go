@@ -1,7 +1,11 @@
 package gcp
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
@@ -170,6 +174,18 @@ func (s *gceAPIStub) gceHandleProvider500(t *testing.T, id uint) {
 // gcePtr returns a pointer to its argument.
 func gcePtr[T any](v T) *T {
 	return &v
+}
+
+// gceTestSSHPrivateKeyPEM returns a PKCS1 PEM for rehydrate tests.
+func gceTestSSHPrivateKeyPEM(t *testing.T) string {
+	t.Helper()
+
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	return string(pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	}))
 }
 
 // gceBaseInstance returns a minimal valid instance referencing the test
@@ -398,6 +414,25 @@ func TestGceLifecycleBuildInfra(t *testing.T) {
 		patch := s.gceLastPatch(t, gceInstancePath(gceTestInstanceID))
 		require.NotNil(t, patch.SSHKey)
 		assert.Equal(t, "PRIVATE-KEY", *patch.SSHKey)
+	})
+
+	t.Run("rehydrates encrypted SSHKey on rebuild", func(t *testing.T) {
+		s := gceNewAPIStub(t)
+		priv := gceTestSSHPrivateKeyPEM(t)
+		enc, err := encryption.Encrypt(s.encryptionKey, priv)
+		require.NoError(t, err)
+		latest := gceBaseInstance(gceTestInstanceID, gceTestInstanceName)
+		latest.SSHKey = gcePtr(enc)
+		s.gceHandleInstance(t, gceTestInstanceID, latest)
+		s.gceHandleProvider(t, gceTestProviderID, gceBaseProvider())
+		s.gceHandleDefinition(t, gceTestDefinitionID, gceBaseDefinition())
+
+		g := gceNewLifecycle(s, gceBaseInstance(gceTestInstanceID, gceTestInstanceName))
+		infra, err := g.BuildInfra()
+		require.NoError(t, err)
+		gceInfra := infra.(*machine.GceMachineInfra)
+		_, _, got := gceInfra.CreateOutputs()
+		assert.Equal(t, priv, got)
 	})
 
 	t.Run("instance GET fails", func(t *testing.T) {

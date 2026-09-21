@@ -393,6 +393,11 @@ func TestGceLifecycleBuildInfra(t *testing.T) {
 		assert.Equal(t, "threeport", gceInfra.SSHUser)
 		assert.Equal(t, []string{"10.0.0.0/8", "192.168.0.0/16"}, gceInfra.SSHSourceRanges)
 		assert.Equal(t, "creds-json", gceInfra.ServiceAccountCredentials)
+		require.NotNil(t, gceInfra.PersistSSHKey)
+		require.NoError(t, gceInfra.PersistSSHKey("PRIVATE-KEY"))
+		patch := s.gceLastPatch(t, gceInstancePath(gceTestInstanceID))
+		require.NotNil(t, patch.SSHKey)
+		assert.Equal(t, "PRIVATE-KEY", *patch.SSHKey)
 	})
 
 	t.Run("instance GET fails", func(t *testing.T) {

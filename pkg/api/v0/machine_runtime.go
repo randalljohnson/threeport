@@ -28,6 +28,15 @@ type MachineRuntimeDefinition struct {
 	// The provider image identifier used to boot the machine
 	ImageID *string `json:",omitempty" validate:"optional"`
 
+	// The infrastructure provider that provisions machines from this definition
+	InfraProvider *string `validate:"optional"`
+
+	// The provider-specific machine type to provision
+	MachineType *string `validate:"optional"`
+
+	// The provider image identifier used to boot the machine
+	ImageID *string `validate:"optional"`
+
 	// The associated machine runtime instances that are deployed from this
 	// definition.
 	MachineRuntimeInstances []*MachineRuntimeInstance `validate:"optional,association"`
@@ -42,20 +51,23 @@ type MachineRuntimeInstance struct {
 	// The hostname or IP address used to reach the machine. Optional at
 	// create so the abstract instance can exist before the machine is
 	// provisioned; populated once the machine is reachable.
+	//
 	// idx_machine_runtime_instance_hostname is a partial unique index that
 	// allows at most one live instance per hostname, so a single machine
 	// cannot be represented by two records that each drive their own
 	// reconciliation against it. The deleted_at predicate keeps
 	// soft-deleted rows out of the unique slot, so the hostname of a
-	// deleted instance is available to a new one right away. Empty and
-	// null hostnames stay out of the unique slot so two unprovisioned
-	// instances can coexist.
-	Hostname *string `validate:"optional" gorm:"uniqueIndex:idx_machine_runtime_instance_hostname,where:deleted_at IS NULL AND hostname IS NOT NULL AND hostname <> ''"`
+	// deleted instance is available to a new one right away. CockroachDB
+	// treats every NULL as distinct in a unique index, so any number of
+	// instances may hold no hostname while they wait on provisioning.
+	// An empty string is excluded the same way, because it is not a
+	// hostname either.
+	Hostname *string `json:",omitempty" validate:"optional" gorm:"uniqueIndex:idx_machine_runtime_instance_hostname,where:deleted_at IS NULL AND hostname IS NOT NULL AND hostname <> ''"`
 
 	// The SSH username for authenticating to the machine. Optional at create
 	// for the same reason as the hostname; populated once the machine is
 	// provisioned.
-	SSHUser *string `validate:"optional"`
+	SSHUser *string `json:",omitempty" validate:"optional"`
 
 	// The SSH private key for authenticating to the machine.
 	SSHKey *string `validate:"optional" encrypt:"true"`

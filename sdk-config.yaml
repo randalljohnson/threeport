@@ -127,10 +127,12 @@ ApiObjectGroups:
       Versions:
         - v0
       ExcludeRoute: true
+      ExcludeFromDb: true
     - Name: Instance
       Versions:
         - v0
       ExcludeRoute: true
+      ExcludeFromDb: true
 - Name: events
   Objects:
     - Name: Event
@@ -341,6 +343,5 @@ ApiObjectGroups:
     - Name: ModuleObject
       Versions:
         - v0
-      AllowDuplicateModelNames: true
       Tptctl:
         Enabled: true

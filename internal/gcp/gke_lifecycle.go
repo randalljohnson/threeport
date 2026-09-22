@@ -1,6 +1,8 @@
 package gcp
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,6 +12,7 @@ import (
 	notif "github.com/threeport/threeport/internal/gcp/notif"
 	"github.com/threeport/threeport/internal/provider"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
+	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	encryption "github.com/threeport/threeport/pkg/encryption/v0"
@@ -159,8 +162,49 @@ func (g *gkeLifecycle) SaveCreateOutputs(_ provider.InfraProvider, state *dataty
 	return nil
 }
 
-// OnDeleteConfirmed performs provider-specific post-deletion cleanup.
+// OnDeleteConfirmed triggers deletion of the parent KubernetesRuntimeInstance
+// if it has not already been scheduled for deletion.  This handles the case
+// where a GcpGkeKubernetesRuntimeInstance is deleted directly (not via the
+// KRI deletion flow), leaving the parent KRI orphaned.  In the normal KRI
+// deletion flow the parent is already hard-deleted by the time this runs, so
+// a not-found response is treated as a no-op.
 func (g *gkeLifecycle) OnDeleteConfirmed(_ provider.InfraProvider) error {
+	latest, err := client.GetGcpGkeKubernetesRuntimeInstanceByID(
+		g.r.APIClient,
+		g.r.APIServer,
+		g.instanceID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to get GKE instance for parent KRI cleanup: %w", err)
+	}
+
+	kri, err := client.GetKubernetesRuntimeInstanceByID(
+		g.r.APIClient,
+		g.r.APIServer,
+		*latest.KubernetesRuntimeInstanceID,
+	)
+	if err != nil {
+		if errors.Is(err, client_lib.ErrObjectNotFound) {
+			// KRI already deleted - normal flow where KRI deletion completes
+			// before the GKE cluster destroy finishes
+			return nil
+		}
+		return fmt.Errorf("failed to get parent KRI: %w", err)
+	}
+
+	if kri.DeletionScheduled != nil {
+		// deletion already in progress via the normal KRI flow
+		return nil
+	}
+
+	if _, err = client.DeleteKubernetesRuntimeInstance(
+		g.r.APIClient,
+		g.r.APIServer,
+		*kri.ID,
+	); err != nil {
+		return fmt.Errorf("failed to trigger parent KRI deletion: %w", err)
+	}
+
 	return nil
 }
 
@@ -342,6 +386,9 @@ func buildGkeInfra(
 		ProjectID:              *gcpProvider.ProjectID,
 		Region:                 *instance.Region,
 		WorkerNodeInitialCount: int32(*definition.DefaultNodeGroupInitialSize),
+		MachineType:            *definition.DefaultNodeGroupInstanceType,
+		MinNodeCount:           int32(*definition.DefaultNodeGroupMinimumSize),
+		MaxNodeCount:           int32(*definition.DefaultNodeGroupMaximumSize),
 	}
 
 	if gcpProvider.ServiceAccountCredentials != nil && *gcpProvider.ServiceAccountCredentials != "" {
@@ -350,7 +397,27 @@ func buildGkeInfra(
 			return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
 		}
 		infraGKE.ServiceAccountCredentials = decryptedCredentials
+		email, err := serviceAccountEmailFromCredentials(decryptedCredentials)
+		if err != nil {
+			return nil, fmt.Errorf("failed to extract service account email: %w", err)
+		}
+		infraGKE.ServiceAccountEmail = email
 	}
 
 	return infraGKE, nil
+}
+
+// serviceAccountEmailFromCredentials extracts the client_email field from a
+// GCP service account key JSON blob.
+func serviceAccountEmailFromCredentials(credentialsJSON string) (string, error) {
+	var key struct {
+		ClientEmail string `json:"client_email"`
+	}
+	if err := json.Unmarshal([]byte(credentialsJSON), &key); err != nil {
+		return "", fmt.Errorf("failed to parse service account credentials JSON: %w", err)
+	}
+	if key.ClientEmail == "" {
+		return "", fmt.Errorf("service account credentials JSON has no client_email field")
+	}
+	return key.ClientEmail, nil
 }

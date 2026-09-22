@@ -13,6 +13,7 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	tp_errors "github.com/threeport/threeport/pkg/errors/v0"
 	event "github.com/threeport/threeport/pkg/event/v0"
 	machine "github.com/threeport/threeport/pkg/machine/v0"
 	mapping "github.com/threeport/threeport/pkg/mapping/v0"
@@ -109,27 +110,24 @@ func v0MachineRuntimeInstanceCreated(
 		return unpopulatedRequeueDelaySeconds, nil
 	}
 
-	// bound ssh operations for this pass
+	// bound ssh connect and ping for this pass
 	ctx, cancel := newReconcileContext()
 	defer cancel()
 
 	// establish an ssh connection to the machine
 	sshClient, capturedHostKey, err := getClientWithContext(ctx, machineRuntimeInstance, r.EncryptionKey)
 	if err != nil {
-		// record connect failure
-		if eventErr := r.EventsRecorder.RecordEvent(
-			&v0.Event{
+		// retry: a credential or host may be fixed without changing this object.
+		note := fmt.Sprintf("failed to connect to machine runtime instance via ssh: %s", err)
+		return sshRetryDelaySeconds, &tp_errors.ErrWithEvent{
+			Message: note,
+			Event: v0.Event{
 				Type:   util.Ptr(event.TypeWarning),
 				Reason: util.Ptr("SSHConnectFailed"),
-				Note:   util.Ptr(fmt.Sprintf("failed to connect to machine runtime instance via ssh: %s", err)),
+				Note:   util.Ptr(note),
 			},
-			*machineRuntimeInstance.ID,
-			machineRuntimeInstance.GetFullyQualifiedType(),
-		); eventErr != nil {
-			log.Error(eventErr, "failed to record event for ssh connect error")
 		}
-		// retry ssh client failures
-		return sshRetryDelaySeconds, fmt.Errorf("failed to connect to machine runtime instance via ssh: %w", err)
+
 	}
 	defer sshClient.Close()
 
@@ -158,34 +156,25 @@ func v0MachineRuntimeInstanceCreated(
 
 	// verify the connection is usable
 	if err := pingWithContext(ctx, sshClient); err != nil {
-		// record ping failure
-		if eventErr := r.EventsRecorder.RecordEvent(
-			&v0.Event{
+		// retry: the host may become reachable without changing this object.
+		note := fmt.Sprintf("failed to ping machine runtime instance: %s", err)
+		return sshRetryDelaySeconds, &tp_errors.ErrWithEvent{
+			Message: note,
+			Event: v0.Event{
 				Type:   util.Ptr(event.TypeWarning),
 				Reason: util.Ptr("SSHPingFailed"),
-				Note:   util.Ptr(fmt.Sprintf("failed to ping machine runtime instance: %s", err)),
+				Note:   util.Ptr(note),
 			},
-			*machineRuntimeInstance.ID,
-			machineRuntimeInstance.GetFullyQualifiedType(),
-		); eventErr != nil {
-			log.Error(eventErr, "failed to record event for ssh ping error")
 		}
-		// retry ssh ping failures
-		return sshRetryDelaySeconds, fmt.Errorf("failed to ping machine runtime instance: %w", err)
+
 	}
 
-	// record successful reachability event
-	if eventErr := r.EventsRecorder.RecordEvent(
-		&v0.Event{
-			Type:   util.Ptr(event.TypeNormal),
-			Reason: util.Ptr("SSHReachable"),
-			Note:   util.Ptr(fmt.Sprintf("machine runtime instance %s is reachable via ssh", *machineRuntimeInstance.Name)),
-		},
-		*machineRuntimeInstance.ID,
-		machineRuntimeInstance.GetFullyQualifiedType(),
-	); eventErr != nil {
-		log.Error(eventErr, "failed to record event for ssh reachable")
-	}
+	// log successful reachability
+	log.Info(
+		"machine runtime instance is reachable via ssh",
+		"machineRuntimeInstance", *machineRuntimeInstance.Name,
+		"id", *machineRuntimeInstance.ID,
+	)
 
 	return 0, nil
 }

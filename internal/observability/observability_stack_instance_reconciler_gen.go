@@ -193,19 +193,6 @@ func ObservabilityStackInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of observability stack instance encountered for create operation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
-							"observability stack instance create deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							observabilityStackInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile created observability stack instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -270,19 +257,6 @@ func ObservabilityStackInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of observability stack instance encountered for update operation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
-							"observability stack instance update deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							observabilityStackInstance,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile updated observability stack instance object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(

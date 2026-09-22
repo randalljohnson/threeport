@@ -193,19 +193,6 @@ func ObservabilityDashboardDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of observability dashboard definition encountered for create operation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
-							"observability dashboard definition create deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							observabilityDashboardDefinition,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile created observability dashboard definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
@@ -270,19 +257,6 @@ func ObservabilityDashboardDefinitionReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of observability dashboard definition encountered for update operation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
-							"observability dashboard definition update deferred pending in-flight deletion, requeueing",
-							"cause", operationErr.Error(),
-						)
-						r.UnlockAndRequeue(
-							observabilityDashboardDefinition,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile updated observability dashboard definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(

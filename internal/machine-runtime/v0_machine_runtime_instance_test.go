@@ -592,7 +592,7 @@ func TestMachineRuntimeInstanceCreated_SSHConnectTimeout_ReturnsErrorWithDelay(t
 	assert.Equal(t, "SSHConnectFailed", *connectEvent.Event.Reason)
 	assert.Equal(t, int64(11), delay)
 	assert.Less(t, elapsed, 5*time.Second, "timeout must fire well before the held handshake would release")
-	assert.Empty(t, recorder.GetReasons())
+	assert.Equal(t, []string{"SSHConnectFailed"}, recorder.GetReasons())
 }
 
 // TestMachineRuntimeInstanceCreated_ConcurrentReconciles_NoRace covers concurrent

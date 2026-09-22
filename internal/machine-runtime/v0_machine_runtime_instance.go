@@ -354,30 +354,6 @@ func v0MachineRuntimeInstanceUpdated(
 	return controller.Done, nil
 }
 
-// marriedInstanceKind loads the instance's parent definition and returns the
-// concrete married attached-object kind, or "" if the instance has no parent,
-// the lookup fails, or the provider is unknown.
-func marriedInstanceKind(
-	r *controller.Reconciler,
-	machineRuntimeInstance *v0.MachineRuntimeInstance,
-) string {
-	if machineRuntimeInstance.MachineRuntimeDefinitionID == nil {
-		return ""
-	}
-	def, err := client.GetMachineRuntimeDefinitionByID(
-		r.APIClient,
-		r.APIServer,
-		*machineRuntimeInstance.MachineRuntimeDefinitionID,
-	)
-	if err != nil {
-		return ""
-	}
-	if def.InfraProvider == nil || *def.InfraProvider == "" {
-		return ""
-	}
-	return v0.MachineRuntimeMarriedKind(*def.InfraProvider, "instance")
-}
-
 // v0MachineRuntimeInstanceDeleted performs reconciliation when a v0 MachineRuntimeInstance
 // has been deleted.
 func v0MachineRuntimeInstanceDeleted(
@@ -385,55 +361,5 @@ func v0MachineRuntimeInstanceDeleted(
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
-	// emit a lifecycle marker so operators can see reconcile has begun;
-	// dedup collapses repeated emits across requeues into a single row
-	var deleteExtras []string
-	if marriedKind := marriedInstanceKind(r, machineRuntimeInstance); marriedKind != "" {
-		deleteExtras = append(deleteExtras, marriedKind)
-	}
-	if recordErr := r.EventsRecorder.RecordEvent(
-		&v0.Event{
-			Type:   util.Ptr(event.TypeNormal),
-			Reason: util.Ptr(event.ReasonDeleteInProgress),
-			Note:   util.Ptr(event.DeleteNote(machineRuntimeInstance, deleteExtras...)),
-		},
-		*machineRuntimeInstance.ID,
-		machineRuntimeInstance.GetFullyQualifiedType(),
-	); recordErr != nil {
-		log.Error(recordErr, "failed to record DeleteInProgress event")
-	}
-
-	// fetch married GCE machine runtime instance(s) owned by this MRI
-	existing, err := client.GetGcpGceMachineRuntimeInstancesByQueryString(
-		r.APIClient,
-		r.APIServer,
-		fmt.Sprintf("machineruntimeinstanceid=%d", *machineRuntimeInstance.ID),
-	)
-	if err != nil {
-		return 0, fmt.Errorf("failed to list married GCE machine runtime instances: %w", err)
-	}
-
-	// nothing left; cascade is complete
-	if len(*existing) == 0 {
-		return controller.Done, nil
-	}
-
-	// issue delete for each; the GCE reconciler runs Pulumi destroy and removes
-	// the row when done. skip rows already scheduled for deletion and tolerate
-	// not-found so the loop stays idempotent across requeues.
-	for _, gceInstance := range *existing {
-		if gceInstance.DeletionScheduled != nil {
-			continue
-		}
-		if _, err := client.DeleteGcpGceMachineRuntimeInstance(
-			r.APIClient,
-			r.APIServer,
-			*gceInstance.ID,
-		); err != nil && !errors.Is(err, client_lib.ErrObjectNotFound) {
-			return 0, fmt.Errorf("failed to delete married GCE machine runtime instance %d: %w", *gceInstance.ID, err)
-		}
-	}
-
-	// requeue until every married GCE instance has cleared
-	return controller.Requeue30s, nil
+	return 0, nil
 }

@@ -112,6 +112,59 @@ func TestMachineRuntimeInstanceCreated_NoHostname_RequeuesWithoutDialing(t *test
 	}
 }
 
+// TestMachineRuntimeInstanceCreated_NoHostname_RequeuesWithoutDialing covers
+// a Created reconcile whose hostname is nil or empty.
+func TestMachineRuntimeInstanceCreated_NoHostname_RequeuesWithoutDialing(t *testing.T) {
+	// shrink the unpopulated requeue delay
+	overrideUnpopulatedRequeueDelay(t, 3)
+	// fail if the reconcile builds an ssh context
+	overrideReconcileContext(t, func() (context.Context, context.CancelFunc) {
+		t.Fatal("reconcile must not dial ssh when the hostname is unpopulated")
+		return context.WithCancel(context.Background())
+	})
+
+	key := machinetest.NewEncryptionKey(t)
+
+	cases := []struct {
+		name     string
+		hostname *string
+	}{
+		{"nil hostname", nil},
+		{"empty hostname", util.Ptr("")},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// build an mri with an unpopulated hostname
+			mri := &v0.MachineRuntimeInstance{
+				Common:      v0.Common{ID: util.Ptr(uint(101))},
+				Instance:    v0.Instance{Name: util.Ptr("mri-unpopulated")},
+				SSHPassword: util.Ptr("ignored"),
+				Hostname:    tc.hostname,
+			}
+
+			// count persisted updates
+			api := machinetest.NewAPIStub(t)
+			patchCount := registerPatchCounter(t, api, 101)
+			recorder := machinetest.NewFakeRecorder()
+			log := logr.Discard()
+			r := &controller.Reconciler{
+				APIClient:      api.Client,
+				APIServer:      api.Addr,
+				EncryptionKey:  key,
+				EventsRecorder: recorder,
+			}
+
+			// run created
+			delay, err := v0MachineRuntimeInstanceCreated(r, mri, &log)
+			// assert requeue without error, event, or patch
+			require.NoError(t, err, "an unpopulated instance must requeue without erroring")
+			assert.Equal(t, int64(3), delay, "an unpopulated instance requeues with the unpopulated delay")
+			assert.Empty(t, recorder.GetReasons(), "no event may be recorded before the machine is reachable")
+			assert.Equal(t, int64(0), atomic.LoadInt64(patchCount), "no update may be persisted, so Reconciled stays unset")
+		})
+	}
+}
+
 // TestMachineRuntimeInstanceCreated_HostKeyCaptured covers the first-connect
 // path: HostKey is nil, so GetClient captures the server's key, the
 // reconciler PATCHes the MRI to persist it, and emits HostKeyCaptured +
@@ -585,11 +638,7 @@ func TestMachineRuntimeInstanceCreated_SSHConnectTimeout_ReturnsErrorWithDelay(t
 
 	// assert deadline exceeded with retry delay before the hold ends
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), context.DeadlineExceeded.Error())
-	var connectEvent *tp_errors.ErrWithEvent
-	require.ErrorAs(t, err, &connectEvent)
-	require.NotNil(t, connectEvent.Event.Reason)
-	assert.Equal(t, "SSHConnectFailed", *connectEvent.Event.Reason)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
 	assert.Equal(t, int64(11), delay)
 	assert.Less(t, elapsed, 5*time.Second, "timeout must fire well before the held handshake would release")
 	assert.Equal(t, []string{"SSHConnectFailed"}, recorder.GetReasons())

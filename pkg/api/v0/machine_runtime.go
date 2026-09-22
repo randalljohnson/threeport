@@ -1,5 +1,7 @@
 package v0
 
+import "gorm.io/datatypes"
+
 // MachineRuntimeDefinition is the configuration for a machine runtime.  It
 // serves as a template for provisioning machine runtime instances.
 type MachineRuntimeDefinition struct {

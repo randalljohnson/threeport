@@ -47,7 +47,7 @@ func (m *MachineRuntimeDefinition) beforeUpdate(tx *gorm.DB) error {
 	for _, field := range immutableFields {
 		changed, err := lib.IsFieldChanged(tx, field.column)
 		if err != nil {
-			return fmt.Errorf("failed to check %s for changes: %w", field.name, err)
+			return err
 		}
 		if changed {
 			return util.NewBadRequestError(
@@ -67,8 +67,8 @@ func (m *MachineRuntimeDefinition) beforeDelete(tx *gorm.DB) error {
 }
 
 // beforeCreate validates the MachineRuntimeInstance before create.
-// It requires an SSH credential, a live definition ID when one is set, and
-// a location or region when that definition has an infra provider.
+// At least one of SSHKey or SSHPassword is required to authenticate.
+// A definition with an infra provider also requires the instance Region.
 func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 	// require an SSH credential
 	if m.SSHKey == nil && m.SSHPassword == nil {
@@ -94,13 +94,10 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 		}
 		// require region when the definition has an infra provider
 		if def.InfraProvider != nil && *def.InfraProvider != "" {
-			locationEmpty := m.Location == nil || *m.Location == ""
-			regionEmpty := m.Region == nil || *m.Region == ""
-			if locationEmpty && regionEmpty {
-				// reject a provider-backed instance with neither location nor region
+			if m.Region == nil || *m.Region == "" {
 				return util.NewBadRequestError(
 					fmt.Sprintf(
-						"machine runtime instance %s must have a location or region when the definition specifies an infra provider",
+						"machine runtime instance %s must have a region when the definition specifies an infra provider",
 						*m.Name,
 					),
 				)
@@ -129,7 +126,7 @@ func (m *MachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
 	for _, field := range immutableFields {
 		changed, err := lib.IsFieldChanged(tx, field.column)
 		if err != nil {
-			return fmt.Errorf("failed to check %s for changes: %w", field.name, err)
+			return err
 		}
 		if changed {
 			return util.NewBadRequestError(

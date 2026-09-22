@@ -11,13 +11,9 @@ import (
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 )
 
-// GetEventsJoinAttachedObjectReferenceByQueryString retrieves events joined to
-// attached object reference by object ID. When max > 0 the caller receives at
-// most max events: the server-side page limit is capped to max so the API stops
-// producing rows once the cap is reached, and the pagination loop exits as soon
-// as the accumulated count meets or exceeds max. Pass max = 0 to fetch every
-// matching event.
-func GetEventsJoinAttachedObjectReferenceByQueryString(
+// GetEventsFilteredByQueryString fetches events matching
+// queryString, paging until the server has no more. max>0 caps the result; 0 fetches all.
+func GetEventsFilteredByQueryString(
 	apiClient *http.Client,
 	apiAddr string,
 	queryString string,
@@ -25,9 +21,7 @@ func GetEventsJoinAttachedObjectReferenceByQueryString(
 ) (*[]v0.Event, error) {
 	var events []v0.Event
 
-	// cap the server-side page limit at max so the API returns only what the
-	// caller asked for; the server enforces its own MaxPaginationLimitValue,
-	// so leave larger caps to the server default.
+	// use max as the page size when it fits the server page cap; larger max keeps the default
 	pageLimit := 0
 	if max > 0 && max <= apiserver_lib.MaxPaginationLimitValue {
 		pageLimit = max
@@ -38,9 +32,12 @@ func GetEventsJoinAttachedObjectReferenceByQueryString(
 	nextCursor := uint(0)
 	queryId := ""
 	for !allPagesReceived {
-		url := fmt.Sprintf("%s/v0/events-join-attached-object-references?%s", apiAddr, queryString)
+		url := fmt.Sprintf("%s%s?%s", apiAddr, v0.PathEventsFiltered, queryString)
 		if queryId != "" {
-			url = fmt.Sprintf("%s/v0/events-join-attached-object-references?%s&queryid=%s&cursor=%d", apiAddr, queryString, queryId, nextCursor)
+			url = fmt.Sprintf("%s%s?%s&queryid=%s&cursor=%d", apiAddr, v0.PathEventsFiltered, queryString, queryId, nextCursor)
+		}
+		if pageLimit > 0 {
+			url = fmt.Sprintf("%s&limit=%d", url, pageLimit)
 		}
 		if pageLimit > 0 {
 			url = fmt.Sprintf("%s&limit=%d", url, pageLimit)
@@ -60,8 +57,7 @@ func GetEventsJoinAttachedObjectReferenceByQueryString(
 
 		allPageData = append(allPageData, response.Data...)
 
-		// stop paginating once the caller's cap is reached; trim any
-		// overshoot from the final page below.
+		// stop once the result has reached max; trim the last page's overshoot
 		if max > 0 && len(allPageData) >= max {
 			allPageData = allPageData[:max]
 			break

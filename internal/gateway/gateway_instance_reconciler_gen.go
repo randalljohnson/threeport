@@ -161,6 +161,23 @@ func GatewayInstanceReconciler(r *controller.Reconciler) {
 					log.Info("gateway instance scheduled for deletion - skipping create")
 					break
 				}
+				// record in-progress before the custom handler so a later failure still has a start event
+				progressNote := "creating"
+				// type-assert so types without relationship-tagged foreign keys still emit creating
+				if owner, ok := gatewayInstance.(api_v0.RelationshipTaggedForeignKeyProvider); ok {
+					progressNote = event.CreateNote(owner)
+				}
+				if recordErr := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(progressNote),
+						Reason: util.Ptr(event.ReasonCreateInProgress),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					gatewayInstance.GetId(),
+					gatewayInstance.GetFullyQualifiedType(),
+				); recordErr != nil {
+					log.Error(recordErr, "failed to record in-progress event")
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch gatewayInstance.GetVersion() {
@@ -225,6 +242,19 @@ func GatewayInstanceReconciler(r *controller.Reconciler) {
 					log.Info("gateway instance scheduled for deletion - skipping update")
 					break
 				}
+				// record in-progress before the custom handler so a later failure still has a start event
+				progressNote := event.UpdateNote()
+				if recordErr := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(progressNote),
+						Reason: util.Ptr(event.ReasonUpdateInProgress),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					gatewayInstance.GetId(),
+					gatewayInstance.GetFullyQualifiedType(),
+				); recordErr != nil {
+					log.Error(recordErr, "failed to record in-progress event")
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch gatewayInstance.GetVersion() {
@@ -285,6 +315,23 @@ func GatewayInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationDeleted:
+				// record in-progress before the custom handler so a later failure still has a start event
+				progressNote := "deleting"
+				// type-assert so types without relationship-tagged foreign keys still emit deleting
+				if owner, ok := gatewayInstance.(api_v0.RelationshipTaggedForeignKeyProvider); ok {
+					progressNote = event.DeleteNote(owner)
+				}
+				if recordErr := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(progressNote),
+						Reason: util.Ptr(event.ReasonDeleteInProgress),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					gatewayInstance.GetId(),
+					gatewayInstance.GetFullyQualifiedType(),
+				); recordErr != nil {
+					log.Error(recordErr, "failed to record in-progress event")
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch gatewayInstance.GetVersion() {
@@ -300,11 +347,12 @@ func GatewayInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of gateway instance encountered for delete operation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
-							"gateway instance delete deferred pending in-flight deletion, requeueing",
+					if errors.Is(operationErr, tpclient_lib.ErrDeleteInProgress) || errors.Is(operationErr, tpclient_lib.ErrDeleteBlocked) {
+						log.Info(
+							"conflict reconciling deleted gateway instance object, requeueing",
 							"cause", operationErr.Error(),
 						)
+						// in-progress event already recorded before the handler
 						r.UnlockAndRequeue(
 							gatewayInstance,
 							int64(30),
@@ -369,11 +417,12 @@ func GatewayInstanceReconciler(r *controller.Reconciler) {
 					gatewayInstance.GetId(),
 				)
 				if err != nil {
-					if errors.Is(err, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
-							"gateway instance deletion already in progress, requeueing",
+					if errors.Is(err, tpclient_lib.ErrDeleteInProgress) || errors.Is(err, tpclient_lib.ErrDeleteBlocked) {
+						log.Info(
+							"conflict deleting gateway instance, requeueing",
 							"cause", err.Error(),
 						)
+						// in-progress event already recorded before the handler
 						r.UnlockAndRequeue(
 							gatewayInstance,
 							int64(30),

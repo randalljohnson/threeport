@@ -146,22 +146,16 @@ func v0MachineRuntimeInstanceCreated(
 		return unpopulatedRequeueDelaySeconds, nil
 	}
 
-	// bound ssh operations for this pass
+	// bound ssh connect and ping for this pass
 	ctx, cancel := newReconcileContext()
 	defer cancel()
 
 	// establish an ssh connection to the machine
 	sshClient, capturedHostKey, err := getClientWithContext(ctx, machineRuntimeInstance, r.EncryptionKey)
 	if err != nil {
-		// always retry ssh client failures, since a misconfigured credential
-		// or unreachable host may be fixed externally without any change
-		// to this object, so reconciliation should keep trying;
-		// return an ErrWithEvent so the wrapper substitutes the specific
-		// reason for the generic FailedCreate event. the requeue delay is the
-		// reconciler wrapper's, since a delay returned alongside an error is
-		// not the one the wrapper acts on
+		// retry: a credential or host may be fixed without changing this object.
 		note := fmt.Sprintf("failed to connect to machine runtime instance via ssh: %s", err)
-		return 0, &tp_errors.ErrWithEvent{
+		return sshRetryDelaySeconds, &tp_errors.ErrWithEvent{
 			Message: note,
 			Event: v0.Event{
 				Type:   util.Ptr(event.TypeWarning),
@@ -169,18 +163,15 @@ func v0MachineRuntimeInstanceCreated(
 				Note:   util.Ptr(note),
 			},
 		}
+
 	}
 	defer sshClient.Close()
 
 	// verify the connection is usable
 	if err := pingWithContext(ctx, sshClient); err != nil {
-		// always retry, same reasoning as the GetClient path above;
-		// return an ErrWithEvent so the wrapper substitutes the specific
-		// reason for the generic FailedCreate event. the requeue delay is the
-		// reconciler wrapper's, since a delay returned alongside an error is
-		// not the one the wrapper acts on
+		// retry: the host may become reachable without changing this object.
 		note := fmt.Sprintf("failed to ping machine runtime instance: %s", err)
-		return 0, &tp_errors.ErrWithEvent{
+		return sshRetryDelaySeconds, &tp_errors.ErrWithEvent{
 			Message: note,
 			Event: v0.Event{
 				Type:   util.Ptr(event.TypeWarning),
@@ -359,30 +350,6 @@ func v0MachineRuntimeInstanceUpdated(
 	}
 
 	return controller.Done, nil
-}
-
-// marriedInstanceKind loads the instance's parent definition and returns the
-// concrete married attached-object kind, or "" if the instance has no parent,
-// the lookup fails, or the provider is unknown.
-func marriedInstanceKind(
-	r *controller.Reconciler,
-	machineRuntimeInstance *v0.MachineRuntimeInstance,
-) string {
-	if machineRuntimeInstance.MachineRuntimeDefinitionID == nil {
-		return ""
-	}
-	def, err := client.GetMachineRuntimeDefinitionByID(
-		r.APIClient,
-		r.APIServer,
-		*machineRuntimeInstance.MachineRuntimeDefinitionID,
-	)
-	if err != nil {
-		return ""
-	}
-	if def.InfraProvider == nil || *def.InfraProvider == "" {
-		return ""
-	}
-	return v0.MachineRuntimeMarriedKind(*def.InfraProvider, "instance")
 }
 
 // v0MachineRuntimeInstanceDeleted performs reconciliation when a v0 MachineRuntimeInstance

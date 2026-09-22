@@ -44,8 +44,6 @@ type MRIInfraOpts struct {
 	// MachineRuntimeDefinitionID, when non-zero, links the instance to a definition.
 	MachineRuntimeDefinitionID uint
 
-	// ResourceInventory is raw JSON stored on the instance.
-	ResourceInventory string
 }
 
 // NewMRIWithInfra builds a *v0.MachineRuntimeInstance like MRIFromAddr,
@@ -70,10 +68,7 @@ func NewMRIWithInfra(
 	if opts.MachineRuntimeDefinitionID != 0 {
 		mri.MachineRuntimeDefinitionID = util.Ptr(opts.MachineRuntimeDefinitionID)
 	}
-	if opts.ResourceInventory != "" {
-		inventory := datatypes.JSON([]byte(opts.ResourceInventory))
-		mri.ResourceInventory = &inventory
-	}
+
 	return mri
 }
 

@@ -180,8 +180,7 @@ func v0KubernetesWorkloadInstanceCreated(
 		// create kube resource
 		_, err = kube.CreateResource(kubeObject, dynamicKubeClient, *mapper)
 		if err != nil {
-			// return an ErrWithEvent so the wrapper substitutes the specific
-			// reason for the generic FailedCreate event
+			// surface the kube create failure as a warning event
 			return 0, &tp_errors.ErrWithEvent{
 				Message: fmt.Sprintf("failed to create Kubernetes resource: %s", err),
 				Event: v0.Event{

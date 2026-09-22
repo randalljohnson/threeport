@@ -52,9 +52,8 @@ func writeJSONResponse(t *testing.T, w http.ResponseWriter, data []apiserver_lib
 	_, _ = w.Write(body)
 }
 
-// TestGetNamesFromModule_HappyPath drives one batched list GET for the
-// whole id set and folds each returned row's Name into the map keyed by
-// its ID.
+// TestGetNamesFromModule_HappyPath covers one batched list GET that maps
+// IDs 1 and 2 to their names.
 func TestGetNamesFromModule_HappyPath(t *testing.T) {
 	var gotURLs []string
 	endpoint, _, restore := fakeModuleServer(t, func(w http.ResponseWriter, r *http.Request) {
@@ -78,9 +77,8 @@ func TestGetNamesFromModule_HappyPath(t *testing.T) {
 	assert.Contains(t, gotURLs[0], apiserver_lib.QueryParamLimit+"=2")
 }
 
-// TestGetNamesFromModule_IncludeDeleted appends the
-// IncludeDeleted query param alongside the batched ids= filter when the
-// caller opts in. Soft-delete gating is otherwise transparent.
+// TestGetNamesFromModule_IncludeDeleted covers forwarding includedeleted=true
+// on the list GET.
 func TestGetNamesFromModule_IncludeDeleted(t *testing.T) {
 	var gotQuery string
 	endpoint, _, restore := fakeModuleServer(t, func(w http.ResponseWriter, r *http.Request) {
@@ -96,17 +94,15 @@ func TestGetNamesFromModule_IncludeDeleted(t *testing.T) {
 	assert.Contains(t, gotQuery, apiserver_lib.QueryParamIncludeDeleted+"=true")
 }
 
-// TestGetNamesFromModule_PartialFailure keeps ids whose row is present
-// in the batched response and drops the rest, returning a map with just
-// the successful entries rather than failing the whole batch.
+// TestGetNamesFromModule_PartialFailure covers a list that returns ID 1
+// of 1,2,3: the map keeps 1, omits 2 and 3, and the call still succeeds.
 func TestGetNamesFromModule_PartialFailure(t *testing.T) {
 	endpoint, _, restore := fakeModuleServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/example.com/v0/widgets" {
 			http.NotFound(w, r)
 			return
 		}
-		// module returns only the row for id 1; ids 2 and 3 are absent
-		// from the response so they drop out of the resolved name map
+		// return ID 1 only
 		writeJSONResponse(t, w, []apiserver_lib.Object{
 			map[string]interface{}{"ID": float64(1), "Name": "widget-one"},
 		})
@@ -156,7 +152,32 @@ func TestGetIDsFromModuleByName_HappyPath(t *testing.T) {
 	ids, err := getIDsFromModuleByName(endpoint, "/example.com/v0/widgets", "example.com/v0.widget", "widget-seven")
 	require.NoError(t, err)
 	assert.Equal(t, []uint{7, 9}, ids, "every matching row's id is collected")
-	assert.Equal(t, "/example.com/v0/widgets?name=widget-seven", gotURL)
+	assert.Equal(
+		t,
+		"/example.com/v0/widgets?name=widget-seven&includedeleted=true",
+		gotURL,
+		"the name lookup asks the module for soft-deleted rows too",
+	)
+}
+
+// TestGetIDsFromModuleByName_ResolvesDeletedSubject covers a name that
+// only matches when includedeleted=true.
+func TestGetIDsFromModuleByName_ResolvesDeletedSubject(t *testing.T) {
+	endpoint, _, restore := fakeModuleServer(t, func(w http.ResponseWriter, r *http.Request) {
+		// return empty unless includedeleted=true
+		if r.URL.Query().Get("includedeleted") != "true" {
+			writeJSONResponse(t, w, []apiserver_lib.Object{})
+			return
+		}
+		writeJSONResponse(t, w, []apiserver_lib.Object{
+			map[string]interface{}{"ID": float64(4), "Name": "widget-gone"},
+		})
+	})
+	defer restore()
+
+	ids, err := getIDsFromModuleByName(endpoint, "/example.com/v0/widgets", "example.com/v0.widget", "widget-gone")
+	require.NoError(t, err)
+	assert.Equal(t, []uint{4}, ids, "a deleted subject still resolves by name")
 }
 
 // TestGetIDsFromModuleByName_Empty handles the empty-result case as a
@@ -221,4 +242,21 @@ func TestParseRowID(t *testing.T) {
 			assert.Equal(t, tc.wantID, id)
 		})
 	}
+}
+
+// TestGetObjectIDsByNameIncludesDeleted covers a core name lookup that
+// omits the deleted_at filter so a deleted row still matches.
+func TestGetObjectIDsByNameIncludesDeleted(t *testing.T) {
+	h, sql := newDryRunHandler(t, apiserver_lib.PaginationModeAsOfSystemTime)
+
+	_, err := GetObjectIDsByName(
+		h.DB,
+		"threeport.io/v0.KubernetesWorkloadInstance",
+		"host-023421",
+	)
+	require.NoError(t, err)
+
+	assert.Contains(t, *sql, "v0_kubernetes_workload_instances", "the core resolver handled the type")
+	assert.Contains(t, *sql, "name = ", "the name reaches the WHERE clause")
+	assert.NotContains(t, *sql, "deleted_at", "a deleted subject still resolves by name")
 }

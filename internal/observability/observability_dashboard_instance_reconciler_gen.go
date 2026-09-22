@@ -161,6 +161,23 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 					log.Info("observability dashboard instance scheduled for deletion - skipping create")
 					break
 				}
+				// record in-progress before the custom handler so a later failure still has a start event
+				progressNote := "creating"
+				// type-assert so types without relationship-tagged foreign keys still emit creating
+				if owner, ok := observabilityDashboardInstance.(api_v0.RelationshipTaggedForeignKeyProvider); ok {
+					progressNote = event.CreateNote(owner)
+				}
+				if recordErr := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(progressNote),
+						Reason: util.Ptr(event.ReasonCreateInProgress),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					observabilityDashboardInstance.GetId(),
+					observabilityDashboardInstance.GetFullyQualifiedType(),
+				); recordErr != nil {
+					log.Error(recordErr, "failed to record in-progress event")
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch observabilityDashboardInstance.GetVersion() {
@@ -225,6 +242,19 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 					log.Info("observability dashboard instance scheduled for deletion - skipping update")
 					break
 				}
+				// record in-progress before the custom handler so a later failure still has a start event
+				progressNote := event.UpdateNote()
+				if recordErr := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(progressNote),
+						Reason: util.Ptr(event.ReasonUpdateInProgress),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					observabilityDashboardInstance.GetId(),
+					observabilityDashboardInstance.GetFullyQualifiedType(),
+				); recordErr != nil {
+					log.Error(recordErr, "failed to record in-progress event")
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch observabilityDashboardInstance.GetVersion() {
@@ -285,6 +315,23 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationDeleted:
+				// record in-progress before the custom handler so a later failure still has a start event
+				progressNote := "deleting"
+				// type-assert so types without relationship-tagged foreign keys still emit deleting
+				if owner, ok := observabilityDashboardInstance.(api_v0.RelationshipTaggedForeignKeyProvider); ok {
+					progressNote = event.DeleteNote(owner)
+				}
+				if recordErr := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(progressNote),
+						Reason: util.Ptr(event.ReasonDeleteInProgress),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					observabilityDashboardInstance.GetId(),
+					observabilityDashboardInstance.GetFullyQualifiedType(),
+				); recordErr != nil {
+					log.Error(recordErr, "failed to record in-progress event")
+				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch observabilityDashboardInstance.GetVersion() {
@@ -300,11 +347,12 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 					operationErr = errors.New("unrecognized version of observability dashboard instance encountered for delete operation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
-							"observability dashboard instance delete deferred pending in-flight deletion, requeueing",
+					if errors.Is(operationErr, tpclient_lib.ErrDeleteInProgress) || errors.Is(operationErr, tpclient_lib.ErrDeleteBlocked) {
+						log.Info(
+							"conflict reconciling deleted observability dashboard instance object, requeueing",
 							"cause", operationErr.Error(),
 						)
+						// in-progress event already recorded before the handler
 						r.UnlockAndRequeue(
 							observabilityDashboardInstance,
 							int64(30),
@@ -369,11 +417,12 @@ func ObservabilityDashboardInstanceReconciler(r *controller.Reconciler) {
 					observabilityDashboardInstance.GetId(),
 				)
 				if err != nil {
-					if errors.Is(err, tpclient_lib.ErrConflict) {
-						log.V(1).Info(
-							"observability dashboard instance deletion already in progress, requeueing",
+					if errors.Is(err, tpclient_lib.ErrDeleteInProgress) || errors.Is(err, tpclient_lib.ErrDeleteBlocked) {
+						log.Info(
+							"conflict deleting observability dashboard instance, requeueing",
 							"cause", err.Error(),
 						)
+						// in-progress event already recorded before the handler
 						r.UnlockAndRequeue(
 							observabilityDashboardInstance,
 							int64(30),

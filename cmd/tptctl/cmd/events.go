@@ -13,9 +13,11 @@ import (
 	strcase "github.com/iancoleman/strcase"
 	cobra "github.com/spf13/cobra"
 
+	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 var (
@@ -28,6 +30,7 @@ var (
 	eventsOutput     string
 	eventsSort       string
 	eventsLimit      int
+	eventsTopLevel   bool
 	eventsWide       bool
 	eventsReverse    bool
 	eventsSince      time.Duration
@@ -37,6 +40,40 @@ var (
 const (
 	eventShortAlias = "ev"
 )
+
+// topLevelObjectKinds lists the core API type names considered
+// top-level for the --top-level filter. Sub-object types
+// (GcpGceMachineRuntimeInstance, KubernetesWorkloadResourceInstance,
+// AwsEksKubernetesRuntimeInstance, etc.) stay off the list.
+//
+// TODO: promote to an SDK-generated manifest driven by a per-type
+// top_level: true field in sdk-config.yaml so modules (Router,
+// RouterFleetInstance) can register their own top-level kinds via
+// IsTopLevel() instead of extending this hardcoded set.
+var topLevelObjectKinds = map[string]bool{
+	"KubernetesRuntimeDefinition":  true,
+	"KubernetesRuntimeInstance":    true,
+	"KubernetesWorkloadDefinition": true,
+	"KubernetesWorkloadInstance":   true,
+	"HelmWorkloadDefinition":       true,
+	"HelmWorkloadInstance":         true,
+	"ControlPlaneDefinition":       true,
+	"ControlPlaneInstance":         true,
+	"GatewayDefinition":            true,
+	"GatewayInstance":              true,
+	"DomainNameDefinition":         true,
+	"DomainNameInstance":           true,
+	"MachineRuntimeDefinition":     true,
+	"MachineRuntimeInstance":       true,
+	"MachineWorkloadDefinition":    true,
+	"MachineWorkloadInstance":      true,
+	"ObservabilityStackDefinition": true,
+	"ObservabilityStackInstance":   true,
+	"SecretDefinition":             true,
+	"SecretInstance":               true,
+	"TerraformDefinition":          true,
+	"TerraformInstance":            true,
+}
 
 // GetEventsCmd represents the command 'tptctl get events'
 var GetEventsCmd = &cobra.Command{

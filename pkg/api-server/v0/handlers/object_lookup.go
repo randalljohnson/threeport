@@ -311,9 +311,7 @@ func getNamesFromModulePerID(ctx context.Context, endpoint, path string, ids []u
 			break
 		}
 
-		// fetch one ID; a miss leaves that ID out of the result
 		g.Go(func() error {
-			// skip the request if cancelled while queued behind the cap
 			if gctx.Err() != nil {
 				return nil
 			}

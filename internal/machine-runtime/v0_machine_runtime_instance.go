@@ -28,6 +28,9 @@ import (
 // Package-level so tests can override it.
 var unpopulatedRequeueDelaySeconds int64 = 15
 
+// sshRetryDelaySeconds is the requeue delay after an SSH connect or ping failure.
+var sshRetryDelaySeconds int64 = 30
+
 // sshOperationTimeout bounds GetClient and Ping so a hung handshake cannot hold the reconcile.
 var sshOperationTimeout = 30 * time.Second
 
@@ -350,6 +353,28 @@ func v0MachineRuntimeInstanceUpdated(
 	}
 
 	return controller.Done, nil
+}
+
+// marriedInstanceKind returns the provider instance kind when this instance has a definition.
+func marriedInstanceKind(
+	r *controller.Reconciler,
+	machineRuntimeInstance *v0.MachineRuntimeInstance,
+) string {
+	if machineRuntimeInstance.MachineRuntimeDefinitionID == nil {
+		return ""
+	}
+	def, err := client.GetMachineRuntimeDefinitionByID(
+		r.APIClient,
+		r.APIServer,
+		*machineRuntimeInstance.MachineRuntimeDefinitionID,
+	)
+	if err != nil {
+		return ""
+	}
+	if def.InfraProvider == nil || *def.InfraProvider == "" {
+		return ""
+	}
+	return v0.MachineRuntimeMarriedKind(*def.InfraProvider, "instance")
 }
 
 // v0MachineRuntimeInstanceDeleted performs reconciliation when a v0 MachineRuntimeInstance

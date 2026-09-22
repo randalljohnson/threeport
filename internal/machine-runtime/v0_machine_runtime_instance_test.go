@@ -23,6 +23,7 @@ import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+	event "github.com/threeport/threeport/pkg/event/v0"
 	tp_errors "github.com/threeport/threeport/pkg/errors/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -78,59 +79,6 @@ func TestMachineRuntimeInstanceCreated_HappyPath(t *testing.T) {
 
 	// check the handler records no event
 	assert.Empty(t, recorder.GetReasons(), "reconciler emits no Normal event on the success path; the wrapper covers the outcome and reachability is a log line")
-}
-
-// TestMachineRuntimeInstanceCreated_NoHostname_RequeuesWithoutDialing covers
-// a Created reconcile whose hostname is nil or empty.
-func TestMachineRuntimeInstanceCreated_NoHostname_RequeuesWithoutDialing(t *testing.T) {
-	// shrink the unpopulated requeue delay
-	overrideUnpopulatedRequeueDelay(t, 3)
-	// fail if the reconcile builds an ssh context
-	overrideReconcileContext(t, func() (context.Context, context.CancelFunc) {
-		t.Fatal("reconcile must not dial ssh when the hostname is unpopulated")
-		return context.WithCancel(context.Background())
-	})
-
-	key := machinetest.NewEncryptionKey(t)
-
-	cases := []struct {
-		name     string
-		hostname *string
-	}{
-		{"nil hostname", nil},
-		{"empty hostname", util.Ptr("")},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			// build an mri with an unpopulated hostname
-			mri := &v0.MachineRuntimeInstance{
-				Common:      v0.Common{ID: util.Ptr(uint(101))},
-				Instance:    v0.Instance{Name: util.Ptr("mri-unpopulated")},
-				SSHPassword: util.Ptr("ignored"),
-				Hostname:    tc.hostname,
-			}
-
-			// count persisted updates
-			api := machinetest.NewAPIStub(t)
-			patchCount := registerPatchCounter(t, api, 101)
-			recorder := machinetest.NewFakeRecorder()
-			log := logr.Discard()
-			r := &controller.Reconciler{
-				APIClient:      api.Client,
-				APIServer:      api.Addr,
-				EncryptionKey:  key,
-				EventsRecorder: recorder,
-			}
-
-			// run created
-			delay, err := v0MachineRuntimeInstanceCreated(r, mri, &log)
-			// assert requeue without error, event, or patch
-			require.NoError(t, err, "an unpopulated instance must requeue without erroring")
-			assert.Equal(t, int64(3), delay, "an unpopulated instance requeues with the unpopulated delay")
-			assert.Empty(t, recorder.GetReasons(), "no event may be recorded before the machine is reachable")
-			assert.Equal(t, int64(0), atomic.LoadInt64(patchCount), "no update may be persisted, so Reconciled stays unset")
-		})
-	}
 }
 
 // TestMachineRuntimeInstanceCreated_NoHostname_RequeuesWithoutDialing covers
@@ -324,23 +272,6 @@ func TestMachineRuntimeInstanceCreated_HostKeyMismatch(t *testing.T) {
 
 	// check the handler records no event
 	assert.Empty(t, recorder.GetReasons(), "failure path should not call RecordEvent directly; the wrapper substitutes the event")
-}
-
-	// ssh-client failures always retry, on the wrapper's requeue delay
-	require.Error(t, err)
-	assert.Equal(t, int64(0), delay, "an ssh-client error leaves the requeue delay to the reconciler wrapper")
-
-	// error carries the specific-reason event the wrapper will substitute
-	// for the generic FailedCreate row
-	var errWithEvent *tp_errors.ErrWithEvent
-	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")
-	require.NotNil(t, errWithEvent.Event.Reason)
-	assert.Equal(t, "SSHConnectFailed", *errWithEvent.Event.Reason)
-
-	// failure path defers the failure event to the wrapper, so the only
-	// direct RecordEvent call is the CreateInProgress lifecycle marker at the
-	// top of the run; no SSHConnectFailed event fires here
-	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "failure path should not call RecordEvent directly for the failure; the wrapper substitutes it")
 }
 
 // overrideUnpopulatedRequeueDelay sets unpopulatedRequeueDelaySeconds for one test.
@@ -597,6 +528,7 @@ func TestMachineRuntimeInstanceCreated_EventRecordingFailure_Continues(t *testin
 
 	// drive the Created reconciler with every RecordEvent call failing
 	delay, err := v0MachineRuntimeInstanceCreated(r, mri, &log)
+	assert.Equal(t, int64(1), atomic.LoadInt64(patchCount), "the first-reachability write still persists when event recording fails")
 	// assert created still succeeds
 	require.NoError(t, err, "a failing recorder must not block reconciliation")
 	assert.Equal(t, int64(0), delay)

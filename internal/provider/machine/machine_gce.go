@@ -326,6 +326,15 @@ func (i *GceMachineInfra) createInfra() error {
 // in GCP after a successful pulumi up. It returns a descriptive error when the
 // compute API reports the instance is not found, so a pulumi program that
 // silently skipped the instance resource cannot masquerade as create success.
+func (i *GceMachineInfra) GcpClientOptions(extra ...option.ClientOption) []option.ClientOption {
+	opts := []option.ClientOption{}
+	if i.ServiceAccountCredentials != "" {
+		opts = append(opts, option.WithCredentialsJSON([]byte(i.ServiceAccountCredentials)))
+	}
+	opts = append(opts, extra...)
+	return opts
+}
+
 func (i *GceMachineInfra) verifyInstanceExists(ctx context.Context) error {
 	service, err := computev1.NewService(ctx, i.GcpClientOptions(option.WithScopes(computev1.ComputeReadonlyScope))...)
 	if err != nil {

@@ -164,11 +164,17 @@ func v0MachineRuntimeInstanceCreated(
 			return controller.RetryOnNetworkErr(err, "failed to persist host key and creation confirmed on machine runtime instance")
 		}
 		if capturedHostKey != "" {
-			log.Info(
-				"captured ssh host key",
-				"machineRuntimeInstance", *machineRuntimeInstance.Name,
-				"id", *machineRuntimeInstance.ID,
-			)
+			if eventErr := r.EventsRecorder.RecordEvent(
+				&v0.Event{
+					Type:   util.Ptr(event.TypeNormal),
+					Reason: util.Ptr("HostKeyCaptured"),
+					Note:   util.Ptr(fmt.Sprintf("captured ssh host key for %s", *machineRuntimeInstance.Name)),
+				},
+				*machineRuntimeInstance.ID,
+				machineRuntimeInstance.GetFullyQualifiedType(),
+			); eventErr != nil {
+				log.Error(eventErr, "failed to record event for host key capture")
+			}
 		}
 	}
 

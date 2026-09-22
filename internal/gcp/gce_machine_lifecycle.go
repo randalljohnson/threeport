@@ -403,14 +403,15 @@ func buildGceMachineInfra(
 		infraGce.SSHSourceRanges = append([]string(nil), *instance.SSHSourceRanges...)
 	}
 
-	if gcpProvider.ServiceAccountCredentials != nil && *gcpProvider.ServiceAccountCredentials != "" {
-		// decrypt service account credentials
-		decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
-		}
-		infraGce.ServiceAccountCredentials = decryptedCredentials
+	if gcpProvider.ServiceAccountCredentials == nil || *gcpProvider.ServiceAccountCredentials == "" {
+		return nil, fmt.Errorf("gcp provider %s has no service account credentials", *gcpProvider.Name)
 	}
+	// decrypt service account credentials
+	decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
+	}
+	infraGce.ServiceAccountCredentials = decryptedCredentials
 
 	if instance.SSHKey != nil && *instance.SSHKey != "" {
 		// decrypt and seed persisted SSH key

@@ -339,6 +339,7 @@ func TestValidateCreateGenesisControlPlaneFlagsTier(t *testing.T) {
 				nil,
 				false,
 				"",
+				0,
 			)
 
 			if !test.wantErr {

@@ -378,8 +378,11 @@ func gkeBuildFixtures() (*v0.GcpGkeKubernetesRuntimeInstance, *v0.GcpGkeKubernet
 	inst.GcpGkeKubernetesRuntimeDefinitionID = util.Ptr(gkeTestDefinitionID)
 	inst.GcpProviderID = util.Ptr(gkeTestProviderID)
 	def := &v0.GcpGkeKubernetesRuntimeDefinition{
-		Common:                      v0.Common{ID: util.Ptr(gkeTestDefinitionID)},
-		DefaultNodeGroupInitialSize: util.Ptr(3),
+		Common:                       v0.Common{ID: util.Ptr(gkeTestDefinitionID)},
+		DefaultNodeGroupInitialSize:  util.Ptr(3),
+		DefaultNodeGroupInstanceType: util.Ptr("e2-medium"),
+		DefaultNodeGroupMinimumSize:  util.Ptr(1),
+		DefaultNodeGroupMaximumSize:  util.Ptr(5),
 	}
 	prov := &v0.GcpProvider{
 		Common:    v0.Common{ID: util.Ptr(gkeTestProviderID)},
@@ -417,6 +420,9 @@ func TestGkeLifecycleBuildInfra(t *testing.T) {
 		assert.Equal(t, "proj-x", infraGKE.ProjectID)
 		assert.Equal(t, "us-central1", infraGKE.Region)
 		assert.Equal(t, int32(3), infraGKE.WorkerNodeInitialCount)
+		assert.Equal(t, "e2-medium", infraGKE.MachineType)
+		assert.Equal(t, int32(1), infraGKE.MinNodeCount)
+		assert.Equal(t, int32(5), infraGKE.MaxNodeCount)
 		assert.Equal(t, creds, infraGKE.ServiceAccountCredentials)
 		assert.Equal(t, "test-sa@proj-x.iam.gserviceaccount.com", infraGKE.ServiceAccountEmail)
 	})

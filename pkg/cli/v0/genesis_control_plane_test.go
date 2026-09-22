@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-<<<<<<< HEAD
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	threeport "github.com/threeport/threeport/pkg/threeport-installer/v0"

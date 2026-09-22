@@ -7,6 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -170,8 +171,32 @@ func (g *GcpGceMachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeUpdate runs before the GcpGceMachineRuntimeInstance is updated.
+// beforeUpdate rejects changes to the immutable placement and association fields.
 func (g *GcpGceMachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
+	// region, zone, definition, and provider stay fixed after the VM is provisioned
+	immutableFields := []struct {
+		column string
+		name   string
+	}{
+		{"Region", "region"},
+		{"Zone", "zone"},
+		{"GcpGceMachineRuntimeDefinitionID", "definition"},
+		{"GcpProviderID", "provider"},
+	}
+	for _, field := range immutableFields {
+		changed, err := lib.IsFieldChanged(tx, field.column)
+		if err != nil {
+			return fmt.Errorf("failed to check %s for changes: %w", field.name, err)
+		}
+		if changed {
+			return util.NewBadRequestError(
+				fmt.Sprintf(
+					"gcp gce machine runtime instance %s cannot be changed after creation",
+					field.name,
+				),
+			)
+		}
+	}
 	return nil
 }
 

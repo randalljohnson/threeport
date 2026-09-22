@@ -133,29 +133,6 @@ func v0MachineRuntimeInstanceCreated(
 	}
 	defer sshClient.Close()
 
-	// persist captured host key and mark reconciled to skip the update notification
-	if capturedHostKey != "" {
-		if _, err := client.UpdateMachineRuntimeInstance(r.APIClient, r.APIServer, &v0.MachineRuntimeInstance{
-			Common:         v0.Common{ID: machineRuntimeInstance.ID},
-			Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(true)},
-			HostKey:        &capturedHostKey,
-		}); err != nil {
-			return controller.RetryOnNetworkErr(err, "failed to save captured host key")
-		}
-		// record host key capture
-		if eventErr := r.EventsRecorder.RecordEvent(
-			&v0.Event{
-				Type:   util.Ptr(event.TypeNormal),
-				Reason: util.Ptr("HostKeyCaptured"),
-				Note:   util.Ptr(fmt.Sprintf("captured ssh host key for %s", *machineRuntimeInstance.Name)),
-			},
-			*machineRuntimeInstance.ID,
-			machineRuntimeInstance.GetFullyQualifiedType(),
-		); eventErr != nil {
-			log.Error(eventErr, "failed to record event for host key capture")
-		}
-	}
-
 	// verify the connection is usable
 	if err := pingWithContext(ctx, sshClient); err != nil {
 		// retry: the host may become reachable without changing this object.
@@ -169,6 +146,37 @@ func v0MachineRuntimeInstanceCreated(
 			},
 		}
 
+	}
+
+	// persist a captured host key and stamp creation confirmed in one update
+	if capturedHostKey != "" || machineRuntimeInstance.CreationConfirmed == nil {
+		update := &v0.MachineRuntimeInstance{
+			Common:         v0.Common{ID: machineRuntimeInstance.ID},
+			Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(true)},
+		}
+		if capturedHostKey != "" {
+			update.HostKey = &capturedHostKey
+		}
+		if machineRuntimeInstance.CreationConfirmed == nil {
+			timestamp := time.Now().UTC()
+			update.CreationConfirmed = &timestamp
+		}
+		if _, err := client.UpdateMachineRuntimeInstance(r.APIClient, r.APIServer, update); err != nil {
+			return controller.RetryOnNetworkErr(err, "failed to persist host key and creation confirmed on machine runtime instance")
+		}
+		if capturedHostKey != "" {
+			if eventErr := r.EventsRecorder.RecordEvent(
+				&v0.Event{
+					Type:   util.Ptr(event.TypeNormal),
+					Reason: util.Ptr("HostKeyCaptured"),
+					Note:   util.Ptr(fmt.Sprintf("captured ssh host key for %s", *machineRuntimeInstance.Name)),
+				},
+				*machineRuntimeInstance.ID,
+				machineRuntimeInstance.GetFullyQualifiedType(),
+			); eventErr != nil {
+				log.Error(eventErr, "failed to record event for host key capture")
+			}
+		}
 	}
 
 	// log successful reachability

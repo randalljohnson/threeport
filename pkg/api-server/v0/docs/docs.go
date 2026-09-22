@@ -18648,36 +18648,6 @@ const docTemplate = `{
                 }
             }
         },
-        "v0.IngressRule": {
-            "type": "object",
-            "required": [
-                "Protocol"
-            ],
-            "properties": {
-                "Description": {
-                    "description": "Description is a human-readable note attached to the rule where the\nprovider supports it.",
-                    "type": "string"
-                },
-                "Ports": {
-                    "description": "Ports are the destination ports the rule allows. Empty means\n\"all ports for this protocol\". Supports bare ports and ranges\n(e.g. \"80\", \"8000-9000\").",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "Protocol": {
-                    "description": "Protocol is the L4 protocol name (\"tcp\", \"udp\", \"icmp\") or bare\nprotocol number (\"112\" for VRRP, \"50\" for ESP).",
-                    "type": "string"
-                },
-                "SourceRanges": {
-                    "description": "SourceRanges are the source CIDR blocks the rule allows. Empty\nmeans any source.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "v0.KubernetesRuntimeDefinition": {
             "type": "object",
             "required": [
@@ -19436,10 +19406,6 @@ const docTemplate = `{
                 "Name"
             ],
             "properties": {
-                "AssignPublicIP": {
-                    "description": "AssignPublicIP controls whether the primary network interface gets\nan external IP address. Defaults false; the reconciler reads back\nthe assigned address into Hostname after provisioning when true.",
-                    "type": "boolean"
-                },
                 "CreationAcknowledged": {
                     "description": "The last time creation was acknowledged as begun",
                     "type": "string"
@@ -19476,13 +19442,6 @@ const docTemplate = `{
                     "description": "The hostname or IP address used to reach the machine. Optional at\ncreate so the abstract instance can exist before the machine is\nprovisioned; populated once the machine is reachable.\n\nidx_machine_runtime_instance_hostname is a partial unique index that\nallows at most one live instance per hostname, so a single machine\ncannot be represented by two records that each drive their own\nreconciliation against it. The deleted_at predicate keeps\nsoft-deleted rows out of the unique slot, so the hostname of a\ndeleted instance is available to a new one right away. CockroachDB\ntreats every NULL as distinct in a unique index, so any number of\ninstances may hold no hostname while they wait on provisioning.\nAn empty string is excluded the same way, because it is not a\nhostname either.",
                     "type": "string"
                 },
-                "IngressRules": {
-                    "description": "IngressRules are the firewall ingress rules applied to the machine.\nRules are provider-agnostic; each provider reconciler translates them\nto its native firewall shape. Callers who need SSH must include a\ntcp/22 rule here; no rule is added by default.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.IngressRule"
-                    }
-                },
                 "InterruptReconciliation": {
                     "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
@@ -19506,10 +19465,6 @@ const docTemplate = `{
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "NetworkCIDR": {
-                    "description": "NetworkCIDR is the CIDR block for the VPC network the machine is\nplaced in. Optional; when unset the reconciler falls back to a\nprovider-specific default.",
-                    "type": "string"
-                },
                 "NetworkID": {
                     "description": "The provider network identifier the machine attaches to.",
                     "type": "string"
@@ -19527,7 +19482,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "ResourceInventory": {
-                    "description": "An inventory of all provider resources backing this machine, used for\ncrash recovery and deprovisioning.",
+                    "description": "An inventory of all provider resources backing this machine",
                     "allOf": [
                         {
                             "$ref": "#/definitions/datatypes.JSON"
@@ -19548,10 +19503,6 @@ const docTemplate = `{
                 },
                 "Status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
-                    "type": "string"
-                },
-                "SubnetCIDR": {
-                    "description": "SubnetCIDR is the CIDR block for the subnet the machine's primary\ninterface is placed in. Optional; when unset the reconciler falls\nback to a provider-specific default.",
                     "type": "string"
                 },
                 "SubnetID": {

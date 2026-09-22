@@ -813,8 +813,7 @@ func (h Handler) UpdateGcpGceMachineRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
 	prevReconciliation := existingGcpGceMachineRuntimeInstance.Reconciliation
 
 	// update object in database
@@ -1897,8 +1896,7 @@ func (h Handler) UpdateGcpGkeKubernetesRuntimeInstance(c echo.Context) error {
 		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
 	}
 
-	// snapshot reconciliation state before update so the notify block
-	// can skip publishing when the update did not touch any state marker
+	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
 	prevReconciliation := existingGcpGkeKubernetesRuntimeInstance.Reconciliation
 
 	// update object in database

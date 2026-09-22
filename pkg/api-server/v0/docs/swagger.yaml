@@ -1129,36 +1129,6 @@ definitions:
     - KubernetesRuntimeInstanceID
     - Name
     type: object
-  v0.IngressRule:
-    properties:
-      Description:
-        description: |-
-          Description is a human-readable note attached to the rule where the
-          provider supports it.
-        type: string
-      Ports:
-        description: |-
-          Ports are the destination ports the rule allows. Empty means
-          "all ports for this protocol". Supports bare ports and ranges
-          (e.g. "80", "8000-9000").
-        items:
-          type: string
-        type: array
-      Protocol:
-        description: |-
-          Protocol is the L4 protocol name ("tcp", "udp", "icmp") or bare
-          protocol number ("112" for VRRP, "50" for ESP).
-        type: string
-      SourceRanges:
-        description: |-
-          SourceRanges are the source CIDR blocks the rule allows. Empty
-          means any source.
-        items:
-          type: string
-        type: array
-    required:
-    - Protocol
-    type: object
   v0.KubernetesRuntimeDefinition:
     properties:
       CreationAcknowledged:
@@ -1859,12 +1829,6 @@ definitions:
     type: object
   v0.MachineRuntimeInstance:
     properties:
-      AssignPublicIP:
-        description: |-
-          AssignPublicIP controls whether the primary network interface gets
-          an external IP address. Defaults false; the reconciler reads back
-          the assigned address into Hostname after provisioning when true.
-        type: boolean
       CreationAcknowledged:
         description: The last time creation was acknowledged as begun
         type: string
@@ -1912,15 +1876,6 @@ definitions:
           An empty string is excluded the same way, because it is not a
           hostname either.
         type: string
-      IngressRules:
-        description: |-
-          IngressRules are the firewall ingress rules applied to the machine.
-          Rules are provider-agnostic; each provider reconciler translates them
-          to its native firewall shape. Callers who need SSH must include a
-          tcp/22 rule here; no rule is added by default.
-        items:
-          $ref: '#/definitions/v0.IngressRule'
-        type: array
       InterruptReconciliation:
         description: |-
           InterruptReconciliation is used by the controller to indicate that future
@@ -1945,12 +1900,6 @@ definitions:
       Name:
         description: An arbitrary name the instance
         type: string
-      NetworkCIDR:
-        description: |-
-          NetworkCIDR is the CIDR block for the VPC network the machine is
-          placed in. Optional; when unset the reconciler falls back to a
-          provider-specific default.
-        type: string
       NetworkID:
         description: The provider network identifier the machine attaches to.
         type: string
@@ -1967,9 +1916,7 @@ definitions:
       ResourceInventory:
         allOf:
         - $ref: '#/definitions/datatypes.JSON'
-        description: |-
-          An inventory of all provider resources backing this machine, used for
-          crash recovery and deprovisioning.
+        description: An inventory of all provider resources backing this machine
       SSHKey:
         description: The SSH private key for authenticating to the machine.
         type: string
@@ -1986,12 +1933,6 @@ definitions:
         description: |-
           The status of the instance.
           TODO: use a custom type
-        type: string
-      SubnetCIDR:
-        description: |-
-          SubnetCIDR is the CIDR block for the subnet the machine's primary
-          interface is placed in. Optional; when unset the reconciler falls
-          back to a provider-specific default.
         type: string
       SubnetID:
         description: The provider subnet identifier the machine attaches to

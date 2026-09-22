@@ -4,6 +4,7 @@ package machineruntime
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	v0 "github.com/threeport/threeport/pkg/api/v0"
+	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	tp_errors "github.com/threeport/threeport/pkg/errors/v0"
@@ -261,10 +263,6 @@ func reconcileProviderInstance(
 		}
 		gcpGceMachineRuntimeDefinition := (*gcpGceMachineRuntimeDefinitions)[0]
 
-		if machineRuntimeInstance.SSHUser == nil || *machineRuntimeInstance.SSHUser == "" {
-			return 0, fmt.Errorf("failed to create GCE machine runtime instance: ssh user is empty")
-		}
-		sshSourceRanges := []string{"0.0.0.0/0"}
 		// create GCE machine runtime instance on the default network
 		gcpGceMachineRuntimeInstance := v0.GcpGceMachineRuntimeInstance{
 			Instance: v0.Instance{
@@ -276,8 +274,13 @@ func reconcileProviderInstance(
 			MachineRuntimeInstanceID:         machineRuntimeInstance.ID,
 			GcpGceMachineRuntimeDefinitionID: gcpGceMachineRuntimeDefinition.ID,
 			NetworkID:                        util.Ptr("default"),
-			SSHUser:                          machineRuntimeInstance.SSHUser,
-			SSHSourceRanges:                  &sshSourceRanges,
+		}
+		// copy ssh credentials only when set so the married columns stay null otherwise
+		if machineRuntimeInstance.SSHUser != nil {
+			gcpGceMachineRuntimeInstance.SSHUser = util.Ptr(*machineRuntimeInstance.SSHUser)
+		}
+		if machineRuntimeInstance.SSHKey != nil {
+			gcpGceMachineRuntimeInstance.SSHKey = util.Ptr(*machineRuntimeInstance.SSHKey)
 		}
 		if _, err := client.CreateGcpGceMachineRuntimeInstance(
 			r.APIClient,
@@ -310,5 +313,35 @@ func v0MachineRuntimeInstanceDeleted(
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
-	return 0, nil
+	// fetch married GCE machine runtime instances owned by this instance
+	existing, err := client.GetGcpGceMachineRuntimeInstancesByQueryString(
+		r.APIClient,
+		r.APIServer,
+		fmt.Sprintf("machineruntimeinstanceid=%d", *machineRuntimeInstance.ID),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to list married GCE machine runtime instances: %w", err)
+	}
+
+	// nothing left; cascade is complete
+	if len(*existing) == 0 {
+		return controller.Done, nil
+	}
+
+	// delete each row that is not already scheduled; the GCE reconciler destroys the VM
+	for _, gceInstance := range *existing {
+		if gceInstance.DeletionScheduled != nil {
+			continue
+		}
+		if _, err := client.DeleteGcpGceMachineRuntimeInstance(
+			r.APIClient,
+			r.APIServer,
+			*gceInstance.ID,
+		); err != nil && !errors.Is(err, client_lib.ErrObjectNotFound) {
+			return 0, fmt.Errorf("failed to delete married GCE machine runtime instance %d: %w", *gceInstance.ID, err)
+		}
+	}
+
+	// requeue until every married GCE instance has cleared
+	return controller.Requeue30s, nil
 }

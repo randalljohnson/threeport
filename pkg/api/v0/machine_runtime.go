@@ -83,7 +83,6 @@ type MachineRuntimeInstance struct {
 	// The provider subnet identifier the machine attaches to
 	SubnetID *string `validate:"optional"`
 
-<<<<<<< HEAD
 	// IngressRules are the firewall ingress rules applied to the machine.
 	// Rules are provider-agnostic; each provider reconciler translates them
 	// to its native firewall shape. Callers who need SSH must include a

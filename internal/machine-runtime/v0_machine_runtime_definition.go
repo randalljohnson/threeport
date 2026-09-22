@@ -3,7 +3,6 @@
 package machineruntime
 
 import (
-	"errors"
 	"fmt"
 
 	logr "github.com/go-logr/logr"
@@ -94,15 +93,5 @@ func v0MachineRuntimeDefinitionDeleted(
 	machineRuntimeDefinition *v0.MachineRuntimeDefinition,
 	log *logr.Logger,
 ) (int64, error) {
-	// check that deletion is scheduled
-	if machineRuntimeDefinition.DeletionScheduled == nil {
-		return 0, errors.New("deletion notification received but not scheduled")
-	}
-
-	// skip when deletion is already confirmed
-	if machineRuntimeDefinition.DeletionConfirmed != nil {
-		return 0, nil
-	}
-
 	return 0, nil
 }

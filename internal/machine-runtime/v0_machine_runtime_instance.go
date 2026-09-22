@@ -20,17 +20,7 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-<<<<<<< Updated upstream
-// sshRetryDelaySeconds is the requeue delay (in seconds) after an SSH
-// connect or ping failure, and while waiting on a GCE instance.
-=======
-// sshRetryDelaySeconds is the requeue delay tests override for ssh connect and ping failures.
-var sshRetryDelaySeconds int64 = 30
-
-// unpopulatedRequeueDelaySeconds is the requeue delay (in seconds) returned
-// when the instance has no hostname yet, so the reconciler checks back
-// without erroring while the machine is still being provisioned.
->>>>>>> Stashed changes
+// sshRetryDelaySeconds is the requeue delay after an SSH connect or ping failure.
 // Package-level so tests can override it.
 var sshRetryDelaySeconds int64 = 30
 

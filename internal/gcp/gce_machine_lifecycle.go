@@ -548,9 +548,9 @@ func buildGceMachineInfra(
 		}
 		return nil, fmt.Errorf("gcp provider %d has no service account credentials", *gcpProvider.ID)
 	}
-	decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
+	decryptedCredentials, decryptErr := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
+	if decryptErr != nil {
+		return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", decryptErr)
 	}
 	infraGce.ServiceAccountCredentials = decryptedCredentials
 

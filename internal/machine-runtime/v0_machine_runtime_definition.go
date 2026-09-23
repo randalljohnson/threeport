@@ -3,7 +3,6 @@
 package machineruntime
 
 import (
-	"errors"
 	"fmt"
 
 	logr "github.com/go-logr/logr"

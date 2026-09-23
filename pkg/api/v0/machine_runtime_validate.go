@@ -17,6 +17,14 @@ const (
 	MachineRuntimeInfraProviderGCE = "gce"
 )
 
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on
+// MachineRuntimeDefinition. The definition has no relationship-tagged foreign
+// keys, so this satisfies the interface with an empty list so lifecycle emit
+// sites can pass the object as the note owner.
+func (m *MachineRuntimeDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return nil
+}
+
 // beforeCreate validates the MachineRuntimeDefinition before create.
 func (m *MachineRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 	return nil
@@ -202,4 +210,15 @@ func (m *MachineRuntimeInstance) afterUpdate(tx *gorm.DB) error {
 // afterDelete runs after the MachineRuntimeInstance is deleted.
 func (m *MachineRuntimeInstance) afterDelete(tx *gorm.DB) error {
 	return nil
+}
+
+// MachineRuntimeMarriedKind returns the kebab-case married attached-object
+// kind for infraProvider and suffix ("definition" or "instance").
+// Returns "" when CloudProviderForInfraProvider fails.
+func MachineRuntimeMarriedKind(infraProvider, suffix string) string {
+	cloud, err := CloudProviderForInfraProvider(infraProvider)
+	if err != nil {
+		return ""
+	}
+	return cloud + "-" + infraProvider + "-machine-runtime-" + suffix
 }

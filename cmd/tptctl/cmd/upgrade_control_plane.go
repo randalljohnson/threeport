@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
@@ -103,6 +104,7 @@ func updateDeploymentImageTag(imageTag string, namespace string, dynamicKubeClie
 		return fmt.Errorf("failed to get kubernetes deployment for rest-api: %w", err)
 	}
 
+	// return the rest-api image update error
 	if err := updateImageTagInDeployment(deployment, imageTag, installer.ThreeportRestApi.Name); err != nil {
 		return err
 	}
@@ -165,12 +167,14 @@ func updateDeploymentImageTag(imageTag string, namespace string, dynamicKubeClie
 			*mapper,
 		)
 		if err != nil {
+			// skip a controller deployment that is not found
 			if k8serrors.IsNotFound(err) {
 				continue
 			}
 			return fmt.Errorf("failed to get kubernetes deployment for controller %s: %w", c.Name, err)
 		}
 
+		// return the controller image update error
 		if err := updateImageTagInDeployment(deployment, imageTag, c.Name); err != nil {
 			return err
 		}
@@ -232,7 +236,6 @@ func updateImageTagInDeployment(deployment *unstructured.Unstructured, imageTag 
 		return fmt.Errorf("could not find containers in controller deployment for: %s", name)
 	}
 
-	// retag the database migrator init container on the rest-api only
 	if name == installer.ThreeportRestApi.Name {
 		initContainersList, ok := templateSpec["initContainers"].([]interface{})
 		if !ok {
@@ -244,8 +247,8 @@ func updateImageTagInDeployment(deployment *unstructured.Unstructured, imageTag 
 			return fmt.Errorf("could not type convert database init container for: %s", name)
 		}
 
-		currentImage := db_migrator["image"].(string)
-		db_migrator["image"] = fmt.Sprintf("%s:%s", util.ImageWithoutTag(currentImage), updateImageTag)
+		// retag the database migrator and write init containers back
+		db_migrator["image"] = retagImage(db_migrator["image"], updateImageTag)
 		initContainersList[1] = db_migrator
 		templateSpec["initContainers"] = initContainersList
 	}
@@ -265,8 +268,8 @@ func updateImageTagInDeployment(deployment *unstructured.Unstructured, imageTag 
 		return fmt.Errorf("could not type convert container in deployment for: %s", name)
 	}
 
-	currentImage := container["image"].(string)
-	container["image"] = fmt.Sprintf("%s:%s", util.ImageWithoutTag(currentImage), updateImageTag)
+	// retag the selected container
+	container["image"] = retagImage(container["image"], updateImageTag)
 	containerSpec[containerIndex] = container
 	templateSpec["containers"] = containerSpec
 	template["spec"] = templateSpec
@@ -276,6 +279,21 @@ func updateImageTagInDeployment(deployment *unstructured.Unstructured, imageTag 
 
 	return nil
 }
+
+// retagImage keeps the text before the first colon and appends the tag.
+// A value that is not a string is returned as the tag alone.
+func retagImage(current interface{}, tag string) string {
+	// return the tag when the current value is not a string
+	image, ok := current.(string)
+	if !ok {
+		return tag
+	}
+
+	// keep the text before the first colon
+	parts := strings.Split(image, ":")
+	return fmt.Sprintf("%s:%s", parts[0], tag)
+}
+
 
 func init() {
 	UpgradeCmd.AddCommand(UpgradeControlPlaneCmd)

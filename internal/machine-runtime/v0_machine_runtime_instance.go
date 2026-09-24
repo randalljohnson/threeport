@@ -121,17 +121,6 @@ func v0MachineRuntimeInstanceCreated(
 	if err != nil {
 		// retry: a credential or host may be fixed without changing this object.
 		note := fmt.Sprintf("failed to connect to machine runtime instance via ssh: %s", err)
-		if eventErr := r.EventsRecorder.RecordEvent(
-			&v0.Event{
-				Type:   util.Ptr(event.TypeWarning),
-				Reason: util.Ptr("SSHConnectFailed"),
-				Note:   util.Ptr(note),
-			},
-			*machineRuntimeInstance.ID,
-			machineRuntimeInstance.GetFullyQualifiedType(),
-		); eventErr != nil {
-			log.Error(eventErr, "failed to record event for ssh connect failure")
-		}
 		return sshRetryDelaySeconds, &tp_errors.ErrWithEvent{
 			Message: note,
 			Cause:   err,

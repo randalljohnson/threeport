@@ -22,9 +22,8 @@ verification.
 
 An instance that a provider will provision also carries the region, the
 network, the subnet and a resource inventory.  Region, network and subnet
-cannot change after create.  Hostname is unique among live instances once
-it is set.  A definition with an infrastructure provider requires the
-instance region at create.
+cannot change after create.  A definition with an infrastructure provider
+requires the instance region at create.
 
 ## Next Steps
 

@@ -8,9 +8,8 @@ defined as shell scripts that run over the existing SSH connection.
 ## Machine Runtime Definition
 
 The definition holds template-level configuration shared across machine
-runtime instances.  Today it is a thin record used to group instances under
-a common name; provisioning is not yet automated, so each instance is
-registered against an already-reachable host.
+runtime instances: the infrastructure provider, the machine type and the
+image.  Those fields cannot change after create.
 
 ## Machine Runtime Instance
 
@@ -21,11 +20,18 @@ If the host key is not supplied at create time, the controller captures it
 on the first successful connection and stores it for subsequent identity
 verification.
 
+An instance can also carry the region, the network and the subnet.  Those
+three cannot change after create.  Hostname is unique among live instances
+once it is set.  A definition with an infrastructure provider requires the
+instance region at create.
+
 ## Next Steps
 
-Threeport currently supports importing machines that have already been
-deployed by registering an existing SSH-reachable host as a Machine Runtime
-Instance.  Provisioning new hosts via Threeport is not yet supported.
+A definition that names an infrastructure provider is how the controller
+creates the provider machine.  Deleting the instance deletes that machine
+and waits until it is gone.  You can still import a machine that is already
+SSH-reachable by creating an instance with a credential and no location
+fields.
 
 Once a host is registered, see the [Machine Workloads
 introduction](machine-workload-intro.md) to define and deploy workloads on

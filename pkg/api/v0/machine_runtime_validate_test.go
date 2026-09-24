@@ -12,7 +12,8 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// newValidMRI returns an MRI with a name, hostname, ssh user, and ssh password.
+// newValidMRI returns a MachineRuntimeInstance that passes beforeCreate:
+// a name and an SSHPassword.
 func newValidMRI(name string) *MachineRuntimeInstance {
 	return &MachineRuntimeInstance{
 		Instance:    Instance{Name: util.Ptr(name)},
@@ -22,11 +23,12 @@ func newValidMRI(name string) *MachineRuntimeInstance {
 	}
 }
 
-// createProvisionedMRI seeds an MRI with region, network id, and subnet id set
-// and returns the row reloaded from the database.
+// createProvisionedMRI seeds an MRI with Location, Region, NetworkID, and
+// SubnetID set and returns the row reloaded from DB.
 func createProvisionedMRI(t *testing.T, db *gorm.DB, name string) MachineRuntimeInstance {
 	t.Helper()
 	mri := newValidMRI(name)
+	mri.Location = util.Ptr("us-east")
 	mri.Region = util.Ptr("us-central1")
 	mri.NetworkID = util.Ptr("network-1")
 	mri.SubnetID = util.Ptr("subnet-1")
@@ -38,7 +40,7 @@ func createProvisionedMRI(t *testing.T, db *gorm.DB, name string) MachineRuntime
 }
 
 // TestMachineRuntimeInstance_BeforeCreate_RequiresCredential rejects an MRI
-// that has neither SSHKey nor SSHPassword.
+// with neither SSHKey nor SSHPassword.
 func TestMachineRuntimeInstance_BeforeCreate_RequiresCredential(t *testing.T) {
 	db := setupMachineWorkloadValidateDB(t)
 
@@ -60,12 +62,13 @@ func TestMachineRuntimeInstance_BeforeCreate_ImportedMachinePasses(t *testing.T)
 }
 
 // TestMachineRuntimeInstance_BeforeUpdate_LocationFieldsImmutable rejects an
-// update that changes region, network id, or subnet id on a provisioned MRI.
+// update that changes any provisioning location field on a live row.
 func TestMachineRuntimeInstance_BeforeUpdate_LocationFieldsImmutable(t *testing.T) {
 	tests := []struct {
 		name    string
 		payload *MachineRuntimeInstance
 	}{
+		{"location", &MachineRuntimeInstance{Location: util.Ptr("other-location")}},
 		{"region", &MachineRuntimeInstance{Region: util.Ptr("other-region")}},
 		{"network id", &MachineRuntimeInstance{NetworkID: util.Ptr("other-network")}},
 		{"subnet id", &MachineRuntimeInstance{SubnetID: util.Ptr("other-subnet")}},
@@ -173,7 +176,8 @@ func TestMachineRuntimeDefinition_BeforeUpdate_TemplateFieldsImmutableOnSave(t *
 }
 
 // TestMachineRuntimeInstance_BeforeCreate_RejectsProviderWithoutRegion rejects
-// an MRI whose definition has an infra provider when the MRI has no region.
+// creating an instance whose definition has an infra provider and neither a
+// location nor a region.
 func TestMachineRuntimeInstance_BeforeCreate_RejectsProviderWithoutRegion(t *testing.T) {
 	db := setupMachineWorkloadValidateDB(t)
 
@@ -185,14 +189,15 @@ func TestMachineRuntimeInstance_BeforeCreate_RejectsProviderWithoutRegion(t *tes
 
 	mri := newValidMRI("mri-no-region")
 	mri.MachineRuntimeDefinitionID = mrd.ID
+	// leave region nil
 
 	err := db.Create(mri).Error
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "must have a region when the definition specifies an infra provider")
 }
 
-// TestMachineRuntimeInstance_BeforeCreate_AcceptsProviderWithRegion accepts
-// an MRI whose definition has an infra provider when the MRI supplies a region.
+// TestMachineRuntimeInstance_BeforeCreate_AcceptsProviderWithRegion accepts an
+// instance whose definition has an infra provider when the instance has a region.
 func TestMachineRuntimeInstance_BeforeCreate_AcceptsProviderWithRegion(t *testing.T) {
 	db := setupMachineWorkloadValidateDB(t)
 

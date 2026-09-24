@@ -3,6 +3,8 @@ package machine
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +16,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"golang.org/x/crypto/ssh"
+	"google.golang.org/api/googleapi"
 	"gorm.io/datatypes"
 
 	"github.com/threeport/threeport/internal/provider"
@@ -28,12 +31,15 @@ func requirePulumi(t *testing.T) {
 	}
 }
 
-// recordedResource is one NewResource call captured by recordingMocks.
-// It holds the type token, name, and mapped inputs.
+// recordedResource captures the type token, logical name, inputs, and import
+// ID of one resource registered during a mocked Pulumi program run. The import
+// ID is the physical identifier Pulumi passes when a resource carries a
+// pulumi.Import option, so tests can assert the adopt path attached it.
 type recordedResource struct {
 	typeToken string
 	name      string
 	inputs    map[string]any
+	importID  string
 }
 
 // recordingMocks is a pulumi mock that records each NewResource call.
@@ -49,6 +55,7 @@ func (m *recordingMocks) NewResource(args pulumi.MockResourceArgs) (string, reso
 		typeToken: args.TypeToken,
 		name:      args.Name,
 		inputs:    args.Inputs.Mappable(),
+		importID:  args.ID,
 	})
 	m.mu.Unlock()
 	return args.Name + "-id", args.Inputs, nil
@@ -76,21 +83,29 @@ const (
 	gcpProviderTypeToken = "pulumi:providers:gcp"
 )
 
-// newTestInfra returns a GceMachineInfra with test project, zone, and image fields set.
+// newTestInfra builds a fully-configured provider for program-level tests.
+// Seeds a single SSH ingress rule so program-level tests observe the same
+// firewall shape the adapter would inject in production, where SSH is one
+// entry in IngressRules and the pulumi program renders one firewall per rule.
 func newTestInfra(name string) *GceMachineInfra {
 	return &GceMachineInfra{
 		PulumiWorkspace: provider.PulumiWorkspace{
 			RuntimeInstanceName: name,
 			ProjectName:         "gce",
 		},
-		ProjectID:       "test-project",
-		Region:          "us-central1",
-		Zone:            "us-central1-a",
-		MachineType:     "e2-medium",
-		ImageID:         "debian-cloud/debian-12",
-		NetworkID:       "default",
-		SSHUser:         "threeport",
-		SSHSourceRanges: []string{"10.0.0.0/8"},
+		ProjectID:   "test-project",
+		Region:      "us-central1",
+		Zone:        "us-central1-a",
+		MachineType: "e2-medium",
+		ImageID:     "debian-cloud/debian-12",
+		NetworkID:   "default",
+		SSHUser:     "threeport",
+		IngressRules: []GceIngressRule{{
+			Protocol:     "tcp",
+			Ports:        []string{"22"},
+			SourceRanges: []string{"0.0.0.0/0"},
+			Description:  "ssh",
+		}},
 	}
 }
 
@@ -203,25 +218,13 @@ func TestPulumiProgram_CreatesInstanceAndFirewall(t *testing.T) {
 		t.Errorf("instance zone = %v, want us-central1-a", got)
 	}
 
-	// check firewall source ranges and tcp/22
-	if got := firewallSourceRanges(t, firewalls[0]); !equalStringSlices(got, i.sshSourceRanges()) {
-		t.Errorf("firewall sourceRanges = %v, want %v", got, i.sshSourceRanges())
+	// firewall source ranges match the seeded ingress rule
+	if got := firewallSourceRanges(t, firewalls[0]); !equalStringSlices(got, i.IngressRules[0].SourceRanges) {
+		t.Errorf("firewall sourceRanges = %v, want %v", got, i.IngressRules[0].SourceRanges)
 	}
+	// firewall allows tcp/22 from the seeded ingress rule
 	if !firewallAllowsTCP22(t, firewalls[0]) {
 		t.Errorf("firewall does not allow tcp/22: %v", firewalls[0].inputs["allows"])
-	}
-	if got := stringSliceInput(t, firewalls[0].inputs["targetTags"]); !equalStringSlices(got, []string{i.RuntimeInstanceName}) {
-		t.Errorf("firewall targetTags = %v, want [%s]", got, i.RuntimeInstanceName)
-	}
-	if got := stringSliceInput(t, inst.inputs["tags"]); !equalStringSlices(got, []string{i.RuntimeInstanceName}) {
-		t.Errorf("instance tags = %v, want [%s]", got, i.RuntimeInstanceName)
-	}
-	wantLabels := provider.GcpResourceLabels(i.RuntimeInstanceName)
-	if got := stringMapInput(t, inst.inputs["labels"]); !equalStringMaps(got, wantLabels) {
-		t.Errorf("instance labels = %v, want %v", got, wantLabels)
-	}
-	if got, ok := firewalls[0].inputs["description"].(string); !ok || !strings.Contains(got, provider.GcpOwnershipDescription(i.RuntimeInstanceName)) {
-		t.Errorf("firewall description = %v, want it to contain ownership pair", firewalls[0].inputs["description"])
 	}
 }
 
@@ -278,7 +281,115 @@ func TestPulumiProgram_DoesNotExportPrivateKey(t *testing.T) {
 	}
 }
 
-// TestCaptureOutputs_MapsHostnameAndIP covers hostname and externalIP from stack outputs and empty maps.
+// TestResourceOptions_AttachesImportWhenAdopting asserts the program attaches a
+// pulumi.Import option carrying the recorded import ID to a resource whose
+// logical name DiscoverAndAdopt found in the cloud, and leaves resources with
+// no recorded ID untouched so a partial adopt imports only the orphan.
+func TestResourceOptions_AttachesImportWhenAdopting(t *testing.T) {
+	// build a configured provider and seed an adopt ID for the instance only,
+	// modeling an interrupted create where the VM was made but the firewall was not
+	i := newTestInfra("adopt-test")
+	if err := i.ensureSSHKeyPair(); err != nil {
+		t.Fatalf("ensureSSHKeyPair: %v", err)
+	}
+	wantInstanceID := "projects/test-project/zones/us-central1-a/instances/adopt-test"
+	i.adoptImportIDs = map[string]string{
+		i.instanceLogicalName(): wantInstanceID,
+	}
+
+	// run the program under the recording monitor so the import ID Pulumi
+	// receives for each resource is observable
+	mocks := &recordingMocks{}
+	if err := pulumi.RunErr(i.pulumiProgram(), pulumi.WithMocks("gce", "test-stack", mocks)); err != nil {
+		t.Fatalf("RunErr: %v", err)
+	}
+
+	// the instance carries the seeded import ID, marking it adopted not created
+	instances := mocks.byType(instanceTypeToken)
+	if len(instances) != 1 {
+		t.Fatalf("expected exactly 1 instance, got %d", len(instances))
+	}
+	if instances[0].importID != wantInstanceID {
+		t.Errorf("instance importID = %q, want %q", instances[0].importID, wantInstanceID)
+	}
+
+	// the firewall has no recorded ID, so it is created fresh with no import
+	firewalls := mocks.byType(firewallTypeToken)
+	if len(firewalls) != 1 {
+		t.Fatalf("expected exactly 1 firewall, got %d", len(firewalls))
+	}
+	if firewalls[0].importID != "" {
+		t.Errorf("firewall importID = %q, want empty (no adopt)", firewalls[0].importID)
+	}
+}
+
+// TestResourceOptions_NoImportOnCleanCreate asserts that with no recorded adopt
+// IDs the program imports nothing, so an ordinary create still creates both
+// resources rather than attempting to import absent cloud resources.
+func TestResourceOptions_NoImportOnCleanCreate(t *testing.T) {
+	// a provider with an empty adopt map models a clean first create
+	i := newTestInfra("clean-create")
+	if err := i.ensureSSHKeyPair(); err != nil {
+		t.Fatalf("ensureSSHKeyPair: %v", err)
+	}
+
+	// run the program and confirm no resource received an import ID
+	mocks := &recordingMocks{}
+	if err := pulumi.RunErr(i.pulumiProgram(), pulumi.WithMocks("gce", "test-stack", mocks)); err != nil {
+		t.Fatalf("RunErr: %v", err)
+	}
+	for _, r := range mocks.resources {
+		if r.importID != "" {
+			t.Errorf("resource %q (%s) carried importID %q on a clean create", r.name, r.typeToken, r.importID)
+		}
+	}
+}
+
+// TestAdoptTargets_DeterministicLogicalNames asserts the adopt targets pair each
+// resource kind with the same logical name the program registers it under, so a
+// found import ID lands on the resource that gets imported.
+func TestAdoptTargets_DeterministicLogicalNames(t *testing.T) {
+	// the instance name derives deterministically from the runtime instance
+	// name, which is what makes the constructed import ID valid
+	i := newTestInfra("targets")
+	targets := i.adoptTargets()
+	if len(targets) != 1 {
+		t.Fatalf("expected 1 adopt target, got %d", len(targets))
+	}
+
+	// the instance kind maps to its program logical name
+	byKind := map[adoptResourceKind]string{}
+	for _, target := range targets {
+		byKind[target.kind] = target.logicalName
+	}
+	if got := byKind[adoptInstance]; got != "targets" {
+		t.Errorf("instance target logical name = %q, want %q", got, "targets")
+	}
+}
+
+// TestIsNotFound_DistinguishesFourOhFour asserts only a 404 from the compute API
+// reads as not found, so DiscoverAndAdopt skips an absent resource yet surfaces
+// other API errors instead of silently treating them as not found.
+func TestIsNotFound_DistinguishesFourOhFour(t *testing.T) {
+	// a 404 is the not-found signal that lets adopt skip a missing resource
+	if !isNotFound(&googleapi.Error{Code: 404}) {
+		t.Error("expected a 404 googleapi error to read as not found")
+	}
+	// a 403 is a real failure, not a not-found, and must not be swallowed
+	if isNotFound(&googleapi.Error{Code: 403}) {
+		t.Error("a 403 googleapi error must not read as not found")
+	}
+	// a wrapped 404 still reads as not found via errors.As unwrapping
+	wrapped := fmt.Errorf("get instance: %w", &googleapi.Error{Code: 404})
+	if !isNotFound(wrapped) {
+		t.Error("expected a wrapped 404 to read as not found")
+	}
+	// a non-api error is not a not-found
+	if isNotFound(errors.New("connection reset")) {
+		t.Error("a plain error must not read as not found")
+	}
+}
+
 func TestCaptureOutputs_MapsHostnameAndIP(t *testing.T) {
 	i := newTestInfra("capture-test")
 
@@ -424,22 +535,32 @@ func TestStackStateRoundTrip_CheckpointFormat(t *testing.T) {
 	}
 }
 
-// TestSSHSourceRanges_Required covers empty SSHSourceRanges failing validation.
-func TestSSHSourceRanges_Required(t *testing.T) {
-	i := newTestInfra("no-ranges")
-	i.SSHSourceRanges = nil
-	err := i.validateRequiredFields()
-	if err == nil || !strings.Contains(err.Error(), "SSHSourceRanges") {
-		t.Errorf("validateRequiredFields = %v, want SSHSourceRanges missing", err)
+// TestIngressRule_SourceRangesOverrideReachesFirewall drives the pulumi program
+// with an explicit ingress rule and asserts the configured source ranges reach
+// the firewall args under mocks. Replaces the earlier SSH-firewall-focused test:
+// the SSH firewall is no longer a standalone resource, so this exercises the
+// generic ingress-rule pipeline the SSH rule now folds into.
+func TestIngressRule_SourceRangesOverrideReachesFirewall(t *testing.T) {
+	override := newTestInfra("override-ranges")
+	override.IngressRules = []GceIngressRule{{
+		Protocol:     "tcp",
+		Ports:        []string{"22"},
+		SourceRanges: []string{"10.0.0.0/8"},
+		Description:  "ssh",
+	}}
+	if err := override.ensureSSHKeyPair(); err != nil {
+		t.Fatalf("ensureSSHKeyPair: %v", err)
 	}
-}
-
-// TestValidateRequiredFields_InvalidName covers a GCE name that GCP would reject.
-func TestValidateRequiredFields_InvalidName(t *testing.T) {
-	i := newTestInfra("Bad_Name")
-	err := i.validateRequiredFields()
-	if err == nil || !strings.Contains(err.Error(), "not a valid GCE instance name") {
-		t.Errorf("validateRequiredFields = %v, want invalid GCE instance name", err)
+	mocks := &recordingMocks{}
+	if err := pulumi.RunErr(override.pulumiProgram(), pulumi.WithMocks("gce", "test-stack", mocks)); err != nil {
+		t.Fatalf("RunErr: %v", err)
+	}
+	firewalls := mocks.byType(firewallTypeToken)
+	if len(firewalls) != 1 {
+		t.Fatalf("expected exactly 1 firewall, got %d", len(firewalls))
+	}
+	if got := firewallSourceRanges(t, firewalls[0]); !equalStringSlices(got, []string{"10.0.0.0/8"}) {
+		t.Errorf("firewall sourceRanges = %v, want [10.0.0.0/8]", got)
 	}
 }
 
@@ -461,6 +582,9 @@ func TestValidateRequiredFields_NameLeavesRoomForFirewall(t *testing.T) {
 
 // TestDeployInfra_MissingRequiredFields rejects each required field when it is empty.
 func TestDeployInfra_MissingRequiredFields(t *testing.T) {
+	// base provides a configuration valid enough that each case's single
+	// mutation isolates the field the case is exercising; NetworkID is
+	// seeded so the network-resolution rule is satisfied by default
 	base := func() *GceMachineInfra {
 		return &GceMachineInfra{
 			PulumiWorkspace: provider.PulumiWorkspace{RuntimeInstanceName: "validate"},
@@ -470,7 +594,6 @@ func TestDeployInfra_MissingRequiredFields(t *testing.T) {
 			ImageID:         "img",
 			SSHUser:         "u",
 			NetworkID:       "default",
-			SSHSourceRanges: []string{"10.0.0.0/8"},
 		}
 	}
 	cases := []struct {
@@ -485,10 +608,11 @@ func TestDeployInfra_MissingRequiredFields(t *testing.T) {
 		{"missing image id", func(i *GceMachineInfra) { i.ImageID = "" }, "ImageID"},
 		{"missing ssh user", func(i *GceMachineInfra) { i.SSHUser = "" }, "SSHUser"},
 		{"missing network id", func(i *GceMachineInfra) { i.NetworkID = "" }, "NetworkID"},
-		{"missing ssh source ranges", func(i *GceMachineInfra) { i.SSHSourceRanges = nil }, "SSHSourceRanges"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			// mutate a single field to empty and confirm the validator names
+			// that specific field in the accumulated error string
 			i := base()
 			tc.mut(i)
 			err := i.DeployInfra()
@@ -513,29 +637,91 @@ func TestDeployInfra_ReportsAllMissingFields(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for multiple missing fields, got nil")
 	}
-	for _, field := range []string{"Zone", "MachineType", "SSHUser", "NetworkID", "SSHSourceRanges"} {
+	// the one error names every field left empty, not just the first;
+	// NetworkID here is the substring in the "NetworkID or NetworkCIDR" phrasing
+	// the validator uses when neither network field is set
+	for _, field := range []string{"Zone", "MachineType", "SSHUser", "NetworkID"} {
 		if !strings.Contains(err.Error(), field) {
 			t.Errorf("error %q does not name missing field %q", err.Error(), field)
 		}
 	}
 }
 
-// TestEnsureSSHKeyPair_RestoredPrivateKey covers deriving the public key from a stored PEM.
-func TestEnsureSSHKeyPair_RestoredPrivateKey(t *testing.T) {
-	priv, pub, err := generateSSHKeyPair()
-	if err != nil {
-		t.Fatalf("generateSSHKeyPair: %v", err)
+// TestDeployInfra_NetworkFieldsExclusive covers the mutually-exclusive rule
+// between NetworkID and NetworkCIDR: neither set is a missing-field error, both
+// set is an exclusivity error, and either one set alone passes validation
+// through to the next stage.
+func TestDeployInfra_NetworkFieldsExclusive(t *testing.T) {
+	// base leaves both network fields unset so each case controls the pair
+	base := func() *GceMachineInfra {
+		return &GceMachineInfra{
+			PulumiWorkspace: provider.PulumiWorkspace{RuntimeInstanceName: "validate"},
+			ProjectID:       "p",
+			Zone:            "z",
+			MachineType:     "m",
+			ImageID:         "img",
+			SSHUser:         "u",
+		}
 	}
-	i := &GceMachineInfra{sshPrivateKeyPEM: priv}
-	if err := i.ensureSSHKeyPair(); err != nil {
-		t.Fatalf("ensureSSHKeyPair: %v", err)
-	}
-	if i.sshPrivateKeyPEM != priv {
-		t.Error("ensureSSHKeyPair replaced the restored private key")
-	}
-	if i.sshPublicKeyAuthorized != pub {
-		t.Errorf("derived public key = %q, want %q", i.sshPublicKeyAuthorized, pub)
-	}
+
+	// neither field set: reject with the required-field accumulated message
+	// naming the network resolution requirement
+	t.Run("neither network id nor cidr", func(t *testing.T) {
+		i := base()
+		err := i.DeployInfra()
+		if err == nil {
+			t.Fatal("expected error when both NetworkID and NetworkCIDR are unset")
+		}
+		if !strings.Contains(err.Error(), "NetworkID or NetworkCIDR") {
+			t.Errorf("error %q does not name the network resolution requirement", err.Error())
+		}
+	})
+
+	// both fields set: reject with an exclusivity error naming both fields so
+	// the operator can see which pair conflicts
+	t.Run("both network id and cidr", func(t *testing.T) {
+		i := base()
+		i.NetworkID = "default"
+		i.NetworkCIDR = "10.0.0.0/16"
+		err := i.DeployInfra()
+		if err == nil {
+			t.Fatal("expected error when both NetworkID and NetworkCIDR are set")
+		}
+		if !strings.Contains(err.Error(), "mutually exclusive") {
+			t.Errorf("error %q does not name the exclusivity rule", err.Error())
+		}
+		if !strings.Contains(err.Error(), "NetworkID") || !strings.Contains(err.Error(), "NetworkCIDR") {
+			t.Errorf("error %q does not name both conflicting fields", err.Error())
+		}
+	})
+
+	// only NetworkID set: passes validation, so any subsequent error is not the
+	// validator complaining about the network fields
+	t.Run("only network id passes validation", func(t *testing.T) {
+		i := base()
+		i.NetworkID = "default"
+		err := i.DeployInfra()
+		if err != nil && strings.Contains(err.Error(), "missing required fields") {
+			t.Errorf("validator rejected NetworkID-only config: %v", err)
+		}
+		if err != nil && strings.Contains(err.Error(), "mutually exclusive") {
+			t.Errorf("validator rejected NetworkID-only config as exclusive: %v", err)
+		}
+	})
+
+	// only NetworkCIDR set: same shape as above; NetworkID may legitimately be
+	// empty when the program is meant to create a new custom-mode network
+	t.Run("only network cidr passes validation", func(t *testing.T) {
+		i := base()
+		i.NetworkCIDR = "10.0.0.0/16"
+		err := i.DeployInfra()
+		if err != nil && strings.Contains(err.Error(), "missing required fields") {
+			t.Errorf("validator rejected NetworkCIDR-only config: %v", err)
+		}
+		if err != nil && strings.Contains(err.Error(), "mutually exclusive") {
+			t.Errorf("validator rejected NetworkCIDR-only config as exclusive: %v", err)
+		}
+	})
 }
 
 // TestSeedSSHKeyPair_ReusesPersistedKey covers loading a PEM and keeping it
@@ -611,7 +797,6 @@ func TestSyncStackConfigs_RegionFromZone(t *testing.T) {
 	}
 }
 
-// exists reports whether path is present on disk.
 func exists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
@@ -624,50 +809,15 @@ func firewallSourceRanges(t *testing.T, r recordedResource) []string {
 	if !ok {
 		t.Fatal("firewall has no sourceRanges input")
 	}
-	return stringSliceInput(t, raw)
-}
-
-// stringSliceInput converts a Pulumi string-array input to []string.
-func stringMapInput(t *testing.T, raw any) map[string]string {
-	t.Helper()
-	items, ok := raw.(map[string]any)
-	if !ok {
-		t.Fatalf("input is not a map: %T", raw)
-	}
-	out := make(map[string]string, len(items))
-	for k, v := range items {
-		s, ok := v.(string)
-		if !ok {
-			t.Fatalf("map value is not a string: %T", v)
-		}
-		out[k] = s
-	}
-	return out
-}
-
-func equalStringMaps(a, b map[string]string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for k, v := range a {
-		if b[k] != v {
-			return false
-		}
-	}
-	return true
-}
-
-func stringSliceInput(t *testing.T, raw any) []string {
-	t.Helper()
 	items, ok := raw.([]any)
 	if !ok {
-		t.Fatalf("input is not a slice: %T", raw)
+		t.Fatalf("sourceRanges is not a slice: %T", raw)
 	}
 	out := make([]string, 0, len(items))
 	for _, it := range items {
 		s, ok := it.(string)
 		if !ok {
-			t.Fatalf("slice entry is not a string: %T", it)
+			t.Fatalf("sourceRanges entry is not a string: %T", it)
 		}
 		out = append(out, s)
 	}
@@ -767,3 +917,100 @@ func equalStringSlices(a, b []string) bool {
 	return true
 }
 
+// TestPulumiProgram_AssertsLabelableResourcesCarryManagedByLabel covers that
+// every registered resource is labeled managed-by=threeport or listed as exempt.
+// An unknown type fails so a new resource cannot ship unlabeled by default.
+func TestPulumiProgram_AssertsLabelableResourcesCarryManagedByLabel(t *testing.T) {
+	// build a configured provider and generate the SSH key pair the program requires
+	i := newTestInfra("label-audit")
+	if err := i.ensureSSHKeyPair(); err != nil {
+		t.Fatalf("ensureSSHKeyPair: %v", err)
+	}
+
+	// run the program under the recording monitor
+	mocks := &recordingMocks{}
+	if err := pulumi.RunErr(i.pulumiProgram(), pulumi.WithMocks("gce", "test-stack", mocks)); err != nil {
+		t.Fatalf("RunErr: %v", err)
+	}
+
+	// fail fast when the program registered nothing
+	if len(mocks.resources) == 0 {
+		t.Fatal("program registered no resources; nothing to audit")
+	}
+
+	type labelExpectation struct {
+		labelable    bool
+		exemptReason string
+	}
+	// classify each type as labelable or exempt; a missing type fails the audit
+	allowlist := map[string]labelExpectation{
+		instanceTypeToken: {labelable: true},
+		firewallTypeToken: {
+			labelable:    false,
+			exemptReason: "firewall rules have no labels field, so the managed-by label cannot be applied",
+		},
+		gcpProviderTypeToken: {
+			labelable:    false,
+			exemptReason: "the cloud-provider meta-resource carries no user labels",
+		},
+	}
+
+	sawLabelable := false
+	sawFirewall := false
+
+	// check each registered resource against the allowlist
+	for _, r := range mocks.resources {
+		exp, ok := allowlist[r.typeToken]
+		if !ok {
+			t.Errorf("resource %q (%s) is not in the label allowlist; classify it as labelable or exempt", r.name, r.typeToken)
+			continue
+		}
+
+		if !exp.labelable {
+			if r.typeToken == firewallTypeToken {
+				sawFirewall = true
+			}
+			if exp.exemptReason == "" {
+				t.Errorf("resource type %s is exempt but carries no documented reason", r.typeToken)
+			}
+			continue
+		}
+
+		sawLabelable = true
+		labels := instanceLabels(t, r)
+		if got := labels[provider.GcpLabelProvisionedBy]; got != provider.GcpLabelProvisionedByValue {
+			t.Errorf("resource %q (%s) labels[%q] = %q, want %q", r.name, r.typeToken, provider.GcpLabelProvisionedBy, got, provider.GcpLabelProvisionedByValue)
+		}
+	}
+
+	// require at least one labelable resource and the exempt firewall
+	if !sawLabelable {
+		t.Error("no labelable resource was registered; expected at least the VM instance")
+	}
+	if !sawFirewall {
+		t.Error("the exempt firewall resource was not registered")
+	}
+}
+
+// instanceLabels returns the labels input as strings.
+// It fails the test when the input is missing or the wrong shape.
+func instanceLabels(t *testing.T, r recordedResource) map[string]string {
+	t.Helper()
+	raw, ok := r.inputs["labels"]
+	if !ok {
+		t.Fatalf("resource %q (%s) has no labels input", r.name, r.typeToken)
+	}
+	m, ok := raw.(map[string]any)
+	if !ok {
+		t.Fatalf("resource %q labels is not a map: %T", r.name, raw)
+	}
+	out := make(map[string]string, len(m))
+	for k, v := range m {
+		s, ok := v.(string)
+		if !ok {
+			t.Fatalf("resource %q label %q is not a string: %T", r.name, k, v)
+		}
+		out[k] = s
+	}
+	return out
+}

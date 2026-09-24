@@ -154,14 +154,8 @@ func GcpGceMachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 			}
 			gcpGceMachineRuntimeInstance = latestGcpGceMachineRuntimeInstance
 
-			// treat a deletion-scheduled update as a delete
-			operation := notif.Operation
-			if gcpGceMachineRuntimeInstance.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
-				log.Info("gcp gce machine runtime instance scheduled for deletion - treating update as delete")
-				operation = notifications.NotificationOperationDeleted
-			}
 			// determine which operation and act accordingly
-			switch operation {
+			switch notif.Operation {
 			case notifications.NotificationOperationCreated:
 				if gcpGceMachineRuntimeInstance.ScheduledForDeletion() != nil {
 					log.Info("gcp gce machine runtime instance scheduled for deletion - skipping create")
@@ -221,7 +215,7 @@ func GcpGceMachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("create requeued for future reconciliation")
+					log.V(1).Info("create requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						gcpGceMachineRuntimeInstance,
 						customRequeueDelay,
@@ -285,7 +279,7 @@ func GcpGceMachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("update requeued for future reconciliation")
+					log.V(1).Info("update requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						gcpGceMachineRuntimeInstance,
 						customRequeueDelay,
@@ -363,7 +357,7 @@ func GcpGceMachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("delete requeued for future reconciliation")
+					log.V(1).Info("delete requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						gcpGceMachineRuntimeInstance,
 						customRequeueDelay,
@@ -430,7 +424,7 @@ func GcpGceMachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if operation != notifications.NotificationOperationDeleted {
+			if notif.Operation != notifications.NotificationOperationDeleted {
 				reconciledGcpGceMachineRuntimeInstance := api_v0.GcpGceMachineRuntimeInstance{
 					Common:         api_v0.Common{ID: util.Ptr(gcpGceMachineRuntimeInstance.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

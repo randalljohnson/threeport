@@ -4,6 +4,8 @@ import "time"
 
 const (
 	PathEventsJoinAttachedObjectReferences = "/v0/events-join-attached-object-references"
+	// PathEventsFiltered is the list path for events filtered by subject.
+	PathEventsFiltered = "/v0/events-filtered"
 )
 
 // Event is a record of an event in the system.

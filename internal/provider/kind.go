@@ -226,6 +226,11 @@ func kindWorkers(numWorkerNodes int, threeportPath, goPath, goCache string) *[]v
 	return &nodes
 }
 
+// ThreeportAPINodePort is the NodePort the threeport API server's service is
+// published on inside the cluster, and so the container port the host mapping
+// points at.
+const ThreeportAPINodePort = int32(30000)
+
 // getPortMapping returns port mappings for the kind cluster
 func getPortMapping(authEnabled bool, portMappings map[int32]int32) []v1alpha4.PortMapping {
 	hostPort := threeport.GetThreeportAPIPort(authEnabled)

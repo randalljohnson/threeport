@@ -147,6 +147,15 @@ func (g *gkeLifecycle) OnCreateConfirmed(infra provider.InfraProvider) error {
 // linked kubernetes runtime instance. It is split out from OnCreateConfirmed so
 // unit tests can cover it without calling GetConnection.
 func (g *gkeLifecycle) updateKubeRuntimeConnection(kubeConnectionInfo *kube.KubeConnectionInfo) error {
+	// reject incomplete connection info so empty fields are not written
+	if kubeConnectionInfo.APIEndpoint == "" ||
+		kubeConnectionInfo.CACertificate == "" ||
+		kubeConnectionInfo.Token == "" {
+		return errors.New(
+			"incomplete kube connection info for GKE cluster: API endpoint, CA certificate, and token are all required",
+		)
+	}
+
 	latest, err := client.GetGcpGkeKubernetesRuntimeInstanceByID(
 		g.r.APIClient,
 		g.r.APIServer,
@@ -506,4 +515,19 @@ func serviceAccountEmailFromCredentials(credentialsJSON string) (string, error) 
 		return "", fmt.Errorf("service account credentials JSON has no client_email field")
 	}
 	return key.ClientEmail, nil
+}
+
+// RecordSuccessfulCreate records a CreateSuccessful event for the GKE instance.
+// ConfirmCreation sets Reconciled=true first, so a later reconcile pass sees
+// wasReconciled and skips the generated wrapper's success emit.
+func (g *gkeLifecycle) RecordSuccessfulCreate() error {
+	return g.r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonCreateSuccessful),
+			Note:   util.Ptr("provisioning complete"),
+		},
+		g.instance.GetId(),
+		g.instance.GetFullyQualifiedType(),
+	)
 }

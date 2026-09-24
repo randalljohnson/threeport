@@ -132,7 +132,8 @@ func (i *GceMachineInfra) BuildResourceInventory() map[string]any {
 	}
 }
 
-// GcpClientOptions returns the GCP SDK client options for this instance.
+// GcpClientOptions appends the instance service account credentials to the
+// GCP client options. An empty credential leaves the options unchanged.
 func (i *GceMachineInfra) GcpClientOptions(base ...option.ClientOption) []option.ClientOption {
 	if i.ServiceAccountCredentials == "" {
 		return base
@@ -301,7 +302,9 @@ func (i *GceMachineInfra) SetStackState(state *datatypes.JSON) error {
 // pulumiProgram defines the Pulumi resources for the GCE VM stack.
 func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 	return func(pctx *pulumi.Context) error {
-		// configure the GCP provider from the supplied credentials
+		// configure the GCP provider for this stack; thread service account
+		// credentials into the provider when set rather than a process-global
+		// env var, so concurrent creates for different accounts stay isolated
 		gcpProvider, err := gcp.NewProvider(pctx, "gcp-provider", &gcp.ProviderArgs{
 			Project:     pulumi.String(i.ProjectID),
 			Region:      pulumi.String(i.gcpRegion()),
@@ -507,9 +510,12 @@ func (i *GceMachineInfra) persistGeneratedSSHKey() error {
 	return i.PersistSSHKey(i.sshPrivateKeyPEM)
 }
 
-// gcpLabelsInput builds the label map for a GCE VM.
-func gcpLabelsInput(name string) pulumi.StringMap {
-	return pulumi.StringMap{
-		"name": pulumi.String(name),
+// gcpLabelsInput maps GcpResourceLabels onto a Pulumi string map.
+func gcpLabelsInput(ownerName string) pulumi.StringMap {
+	labels := provider.GcpResourceLabels(ownerName)
+	out := make(pulumi.StringMap, len(labels))
+	for k, v := range labels {
+		out[k] = pulumi.String(v)
 	}
+	return out
 }

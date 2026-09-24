@@ -24,18 +24,18 @@ package v0
 type IngressRule struct {
 	// Protocol is the L4 protocol name ("tcp", "udp", "icmp") or bare
 	// protocol number ("112" for VRRP, "50" for ESP).
-	Protocol *string `json:",omitempty" validate:"required"`
+	Protocol *string `validate:"required"`
 
 	// Ports are the destination ports the rule allows. Empty means
 	// "all ports for this protocol". Supports bare ports and ranges
 	// (e.g. "80", "8000-9000").
-	Ports *[]string `json:",omitempty" validate:"optional"`
+	Ports *[]string `validate:"optional"`
 
 	// SourceRanges are the source CIDR blocks the rule allows. Empty
 	// means any source.
-	SourceRanges *[]string `json:",omitempty" validate:"optional"`
+	SourceRanges *[]string `validate:"optional"`
 
 	// Description is a human-readable note attached to the rule where the
 	// provider supports it.
-	Description *string `json:",omitempty" validate:"optional"`
+	Description *string `validate:"optional"`
 }

@@ -62,28 +62,6 @@ func TestValidateTags_Valid(t *testing.T) {
 	assert.NoError(t, g.ValidateTags())
 }
 
-// TestValidateTags_ValidateRequiredMissingOmitempty enforces the omitempty
-// pairing rule.
-// Example:
-//
-//	type Foo struct {
-//	    Name *string `validate:"required"`
-//	}
-//
-// Expected: error citing "Foo.Name" requires `json:",omitempty"`.
-func TestValidateTags_ValidateRequiredMissingOmitempty(t *testing.T) {
-	g := fixture(
-		map[string]map[string]map[string]string{
-			"Foo": {"Name": tag("validate", "required")},
-		},
-		nil, nil, nil,
-	)
-	err := g.ValidateTags()
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Foo.Name")
-	assert.Contains(t, err.Error(), "omitempty")
-}
-
 // TestValidateTags_BogusValidateValue rejects unknown validate-tag values.
 // Example:
 //

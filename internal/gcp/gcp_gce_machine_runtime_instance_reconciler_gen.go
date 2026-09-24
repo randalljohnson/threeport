@@ -119,9 +119,6 @@ func GcpGceMachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 				continue
 			}
 
-			// capture pre-pass reconciled state to gate the success-event emit
-			wasReconciled := false
-
 			// retrieve latest version of object
 			var latestGcpGceMachineRuntimeInstance tpapi_lib.ReconciledThreeportApiObject
 			var getLatestErr error
@@ -132,9 +129,6 @@ func GcpGceMachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 					r.APIServer,
 					gcpGceMachineRuntimeInstance.GetId(),
 				)
-				if latestObject != nil && latestObject.Reconciled != nil && *latestObject.Reconciled {
-					wasReconciled = true
-				}
 				latestGcpGceMachineRuntimeInstance = latestObject
 				getLatestErr = err
 			default:
@@ -154,14 +148,8 @@ func GcpGceMachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 			}
 			gcpGceMachineRuntimeInstance = latestGcpGceMachineRuntimeInstance
 
-			// treat a deletion-scheduled update as a delete
-			operation := notif.Operation
-			if gcpGceMachineRuntimeInstance.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
-				log.Info("gcp gce machine runtime instance scheduled for deletion - treating update as delete")
-				operation = notifications.NotificationOperationDeleted
-			}
 			// determine which operation and act accordingly
-			switch operation {
+			switch notif.Operation {
 			case notifications.NotificationOperationCreated:
 				if gcpGceMachineRuntimeInstance.ScheduledForDeletion() != nil {
 					log.Info("gcp gce machine runtime instance scheduled for deletion - skipping create")
@@ -430,7 +418,7 @@ func GcpGceMachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if operation != notifications.NotificationOperationDeleted {
+			if notif.Operation != notifications.NotificationOperationDeleted {
 				reconciledGcpGceMachineRuntimeInstance := api_v0.GcpGceMachineRuntimeInstance{
 					Common:         api_v0.Common{ID: util.Ptr(gcpGceMachineRuntimeInstance.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},
@@ -458,25 +446,23 @@ func GcpGceMachineRuntimeInstanceReconciler(r *controller.Reconciler) {
 				log.V(1).Info("gcp gce machine runtime instance unlocked")
 			}
 
-			// emit success event only on the first-successful transition; skip on redelivery
-			if !wasReconciled {
-				successMsg := fmt.Sprintf(
-					"gcp gce machine runtime instance successfully reconciled for %s operation",
-					strings.ToLower(string(notif.Operation)),
-				)
-				if err := r.EventsRecorder.RecordEvent(
-					&api_v0.Event{
-						Note:   util.Ptr(successMsg),
-						Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
-						Type:   util.Ptr(event.TypeNormal),
-					},
-					gcpGceMachineRuntimeInstance.GetId(),
-					gcpGceMachineRuntimeInstance.GetFullyQualifiedType(),
-				); err != nil {
-					log.Error(err, "failed to record event for successful gcp gce machine runtime instance reconciliation")
-				}
-				log.Info(successMsg)
+			// log and record event for successful reconciliation
+			successMsg := fmt.Sprintf(
+				"gcp gce machine runtime instance successfully reconciled for %s operation",
+				strings.ToLower(string(notif.Operation)),
+			)
+			if err := r.EventsRecorder.RecordEvent(
+				&api_v0.Event{
+					Note:   util.Ptr(successMsg),
+					Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
+					Type:   util.Ptr(event.TypeNormal),
+				},
+				gcpGceMachineRuntimeInstance.GetId(),
+				gcpGceMachineRuntimeInstance.GetFullyQualifiedType(),
+			); err != nil {
+				log.Error(err, "failed to record event for successful gcp gce machine runtime instance reconciliation")
 			}
+			log.Info(successMsg)
 		}
 	}
 

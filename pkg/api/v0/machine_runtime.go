@@ -42,12 +42,23 @@ type MachineRuntimeInstance struct {
 	// The hostname or IP address used to reach the machine. Optional at
 	// create so the abstract instance can exist before the machine is
 	// provisioned; populated once the machine is reachable.
-	Hostname *string `validate:"optional"`
+	//
+	// idx_machine_runtime_instance_hostname is a partial unique index that
+	// allows at most one live instance per hostname, so a single machine
+	// cannot be represented by two records that each drive their own
+	// reconciliation against it. The deleted_at predicate keeps
+	// soft-deleted rows out of the unique slot, so the hostname of a
+	// deleted instance is available to a new one right away. CockroachDB
+	// treats every NULL as distinct in a unique index, so any number of
+	// instances may hold no hostname while they wait on provisioning.
+	// An empty string is excluded the same way, because it is not a
+	// hostname either.
+	Hostname *string `json:",omitempty" validate:"optional" gorm:"uniqueIndex:idx_machine_runtime_instance_hostname,where:deleted_at IS NULL AND hostname IS NOT NULL AND hostname <> ''"`
 
 	// The SSH username for authenticating to the machine. Optional at create
 	// for the same reason as the hostname; populated once the machine is
 	// provisioned.
-	SSHUser *string `validate:"optional"`
+	SSHUser *string `json:",omitempty" validate:"optional"`
 
 	// The SSH private key for authenticating to the machine.
 	SSHKey *string `validate:"optional" encrypt:"true"`
@@ -73,27 +84,6 @@ type MachineRuntimeInstance struct {
 
 	// The provider subnet identifier the machine attaches to
 	SubnetID *string `json:",omitempty" gorm:"type:text" validate:"optional"`
-
-	// IngressRules are the firewall ingress rules applied to the machine.
-	// Rules are provider-agnostic; each provider reconciler translates them
-	// to its native firewall shape. Callers who need SSH must include a
-	// tcp/22 rule here; no rule is added by default.
-	IngressRules *[]IngressRule `json:",omitempty" validate:"optional" gorm:"type:jsonb;serializer:json"`
-
-	// NetworkCIDR is the CIDR block for the VPC network the machine is
-	// placed in. Optional; when unset the reconciler falls back to a
-	// provider-specific default.
-	NetworkCIDR *string `json:",omitempty" validate:"optional" gorm:"column:network_cidr"`
-
-	// SubnetCIDR is the CIDR block for the subnet the machine's primary
-	// interface is placed in. Optional; when unset the reconciler falls
-	// back to a provider-specific default.
-	SubnetCIDR *string `json:",omitempty" validate:"optional" gorm:"column:subnet_cidr"`
-
-	// AssignPublicIP controls whether the primary network interface gets
-	// an external IP address. Defaults false; the reconciler reads back
-	// the assigned address into Hostname after provisioning when true.
-	AssignPublicIP *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 
 	// An inventory of all provider resources backing this machine
 	ResourceInventory *datatypes.JSON `json:",omitempty" validate:"optional"`

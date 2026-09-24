@@ -2,409 +2,480 @@ package v0
 
 import (
 	"errors"
-	"net/http"
-	"net/http/httptest"
-	"sync"
+	"runtime"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// resetModRouter clears the process-global ModRouter so tests do not observe
-// leaked entries from prior test runs or from other tests in this package.
-func resetModRouter(t *testing.T) {
+// setupModuleRouterTestDB returns an in-memory database with the two tables
+// reconciliation reads, and leaves the process-wide router empty for the test.
+func setupModuleRouterTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	ModRouter.routes.Range(func(k, _ interface{}) bool {
-		ModRouter.routes.Delete(k)
-		return true
-	})
-}
 
-// newTestEchoContext builds an echo.Context whose request URL path is set to
-// requestPath so ServeModuleRoutes can dispatch against it.
-func newTestEchoContext(requestPath string) (echo.Context, *httptest.ResponseRecorder) {
-	req := httptest.NewRequest(http.MethodGet, requestPath, nil)
-	rec := httptest.NewRecorder()
-	e := echo.New()
-	c := e.NewContext(req, rec)
-	return c, rec
-}
-
-// TestModuleRouter_AddAndRemoveRoute covers that AddRoute() stores a handler
-// under the given path and RemoveRoute() deletes it.
-func TestModuleRouter_AddAndRemoveRoute(t *testing.T) {
-	// start with an isolated router so tests do not touch the global
-	r := &ModuleRouter{routes: sync.Map{}}
-
-	// action under test: register a handler for a path
-	handler := func(c echo.Context) error { return nil }
-	r.AddRoute("/v0/example", handler)
-
-	// verify the handler is present in the underlying map
-	got, ok := r.routes.Load("/v0/example")
-	if !ok {
-		t.Fatalf("AddRoute did not persist the path")
-	}
-	if got == nil {
-		t.Fatalf("AddRoute stored nil handler")
-	}
-
-	// action under test: remove the handler
-	r.RemoveRoute("/v0/example")
-
-	// verify the handler was deleted
-	if _, ok := r.routes.Load("/v0/example"); ok {
-		t.Fatalf("RemoveRoute did not delete the path")
-	}
-}
-
-// TestModuleRouter_RemoveRouteMissing covers that RemoveRoute() is a no-op
-// when the path was never registered.
-func TestModuleRouter_RemoveRouteMissing(t *testing.T) {
-	// setup: empty router
-	r := &ModuleRouter{routes: sync.Map{}}
-
-	// action: remove a path that was never added; should not panic
-	r.RemoveRoute("/v0/never-added")
-
-	// assertion: map remains empty
-	count := 0
-	r.routes.Range(func(_, _ interface{}) bool {
-		count++
-		return true
-	})
-	if count != 0 {
-		t.Fatalf("expected empty routes map, got %d entries", count)
-	}
-}
-
-// TestModuleRouter_AddRouteOverwrites covers that AddRoute() replaces the
-// handler for a path when called twice with the same path.
-func TestModuleRouter_AddRouteOverwrites(t *testing.T) {
-	// setup: register a first handler that marks a flag
-	r := &ModuleRouter{routes: sync.Map{}}
-	firstCalled := false
-	secondCalled := false
-	r.AddRoute("/v0/dup", func(c echo.Context) error {
-		firstCalled = true
-		return nil
-	})
-
-	// action: register a second handler at the same path
-	r.AddRoute("/v0/dup", func(c echo.Context) error {
-		secondCalled = true
-		return nil
-	})
-
-	// verify only the second handler is stored
-	got, _ := r.routes.Load("/v0/dup")
-	if got == nil {
-		t.Fatalf("handler missing after overwrite")
-	}
-	c, _ := newTestEchoContext("/v0/dup")
-	if err := got.(echo.HandlerFunc)(c); err != nil {
-		t.Fatalf("handler returned error: %v", err)
-	}
-	if firstCalled {
-		t.Fatalf("original handler was called after overwrite")
-	}
-	if !secondCalled {
-		t.Fatalf("replacement handler was not called after overwrite")
-	}
-}
-
-// TestServeModuleRoutes_DispatchAndFallthrough covers both dispatch behaviors:
-// a request matching a registered path runs the matched handler, and a
-// request not matching any registered path falls through to next.
-func TestServeModuleRoutes_DispatchAndFallthrough(t *testing.T) {
-	tests := []struct {
-		name           string
-		registered     string
-		requested      string
-		wantMatched    bool
-		wantNextCalled bool
-	}{
-		{
-			name:           "exact match dispatches handler",
-			registered:     "/v0/widgets",
-			requested:      "/v0/widgets",
-			wantMatched:    true,
-			wantNextCalled: false,
-		},
-		{
-			name:           "prefix match dispatches handler",
-			registered:     "/v0/widgets",
-			requested:      "/v0/widgets/42",
-			wantMatched:    true,
-			wantNextCalled: false,
-		},
-		{
-			name:           "unrelated path falls through to next",
-			registered:     "/v0/widgets",
-			requested:      "/v0/gadgets",
-			wantMatched:    false,
-			wantNextCalled: true,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// setup: build an isolated router and register the test's path
-			r := &ModuleRouter{routes: sync.Map{}}
-			matched := false
-			r.AddRoute(tc.registered, func(c echo.Context) error {
-				matched = true
-				return nil
-			})
-
-			// setup: capture whether the fallthrough next handler is invoked
-			nextCalled := false
-			next := func(c echo.Context) error {
-				nextCalled = true
-				return nil
-			}
-
-			// action: invoke the middleware against a request for the test path
-			c, _ := newTestEchoContext(tc.requested)
-			if err := r.ServeModuleRoutes(next)(c); err != nil {
-				t.Fatalf("ServeModuleRoutes returned error: %v", err)
-			}
-
-			// verify dispatch went where expected
-			if matched != tc.wantMatched {
-				t.Fatalf("matched handler called=%v want=%v", matched, tc.wantMatched)
-			}
-			if nextCalled != tc.wantNextCalled {
-				t.Fatalf("next handler called=%v want=%v", nextCalled, tc.wantNextCalled)
-			}
-		})
-	}
-}
-
-// TestServeModuleRoutes_PropagatesHandlerError covers that an error returned
-// by the matched handler is propagated to the caller.
-func TestServeModuleRoutes_PropagatesHandlerError(t *testing.T) {
-	// setup: register a handler that always errors
-	r := &ModuleRouter{routes: sync.Map{}}
-	sentinel := errors.New("handler failure")
-	r.AddRoute("/v0/thing", func(c echo.Context) error { return sentinel })
-
-	// action: invoke the middleware against the registered path
-	c, _ := newTestEchoContext("/v0/thing")
-	err := r.ServeModuleRoutes(func(c echo.Context) error { return nil })(c)
-
-	// verify the handler's error surfaces to the caller
-	if !errors.Is(err, sentinel) {
-		t.Fatalf("expected sentinel error, got %v", err)
-	}
-}
-
-// TestServeModuleRoutes_NoRoutesRegistered covers that with an empty router
-// every request falls through to next.
-func TestServeModuleRoutes_NoRoutesRegistered(t *testing.T) {
-	// setup: empty router
-	r := &ModuleRouter{routes: sync.Map{}}
-
-	// setup: track whether next was invoked
-	nextCalled := false
-	next := func(c echo.Context) error {
-		nextCalled = true
-		return nil
-	}
-
-	// action: call the middleware
-	c, _ := newTestEchoContext("/anything")
-	if err := r.ServeModuleRoutes(next)(c); err != nil {
-		t.Fatalf("ServeModuleRoutes returned error: %v", err)
-	}
-
-	// verify the request fell through
-	if !nextCalled {
-		t.Fatalf("expected fallthrough to next when no routes are registered")
-	}
-}
-
-// TestMatchRoute covers the segment-prefix matching semantics used by
-// ServeModuleRoutes: registered path segments must match the leading segments
-// of the requested path exactly, and extra request segments are ignored.
-func TestMatchRoute(t *testing.T) {
-	tests := []struct {
-		name       string
-		registered string
-		requested  string
-		want       bool
-	}{
-		{
-			name:       "identical paths match",
-			registered: "/v0/widgets",
-			requested:  "/v0/widgets",
-			want:       true,
-		},
-		{
-			name:       "request with trailing id matches",
-			registered: "/v0/widgets",
-			requested:  "/v0/widgets/42",
-			want:       true,
-		},
-		{
-			name:       "request with subpath matches",
-			registered: "/v0/widgets",
-			requested:  "/v0/widgets/42/sub",
-			want:       true,
-		},
-		{
-			name:       "mismatched final segment does not match",
-			registered: "/v0/widgets",
-			requested:  "/v0/gadgets",
-			want:       false,
-		},
-		{
-			name:       "mismatched prefix does not match",
-			registered: "/v0/widgets",
-			requested:  "/v1/widgets",
-			want:       false,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// action: compare the registered and requested paths
-			got := matchRoute(tc.registered, tc.requested)
-
-			// verify the boolean result
-			if got != tc.want {
-				t.Fatalf("matchRoute(%q, %q) = %v want %v",
-					tc.registered, tc.requested, got, tc.want)
-			}
-		})
-	}
-}
-
-// TestInitModuleRouter_LoadsNonCoreRoutes covers that InitModuleRouter reads
-// non-core ModuleApi rows from the database, registers each associated route
-// path against the shared ModRouter, and installs itself as middleware on the
-// echo instance.
-func TestInitModuleRouter_LoadsNonCoreRoutes(t *testing.T) {
-	// setup: start with a clean global router and restore it after the test
-	resetModRouter(t)
-	t.Cleanup(func() { resetModRouter(t) })
-
-	// setup: open an in-memory database with the module tables
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	if err := db.AutoMigrate(&ModuleApi{}, &ModuleApiRoute{}, &AttachedObjectReference{}); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
+	require.NoError(t, err)
 
-	// setup: seed one non-core module API with two routes and one core row
-	// that should be skipped by the WHERE core = false clause
-	name := "widgets-api"
-	endpoint := "widgets.example:8080"
-	core := false
-	nonCore := ModuleApi{
-		Name:     &name,
-		Core:     &core,
-		Endpoint: &endpoint,
-	}
-	if err := db.Create(&nonCore).Error; err != nil {
-		t.Fatalf("create module api: %v", err)
-	}
-	p1 := "/v0/widgets"
-	p2 := "/v0/gizmos"
-	if err := db.Create(&ModuleApiRoute{Path: &p1, ModuleApiID: nonCore.ID}).Error; err != nil {
-		t.Fatalf("create route 1: %v", err)
-	}
-	if err := db.Create(&ModuleApiRoute{Path: &p2, ModuleApiID: nonCore.ID}).Error; err != nil {
-		t.Fatalf("create route 2: %v", err)
-	}
-	coreName := "core-api"
-	coreEndpoint := "core.example:8080"
-	coreFlag := true
-	coreApi := ModuleApi{
-		Name:     &coreName,
-		Core:     &coreFlag,
-		Endpoint: &coreEndpoint,
-	}
-	if err := db.Create(&coreApi).Error; err != nil {
-		t.Fatalf("create core api: %v", err)
-	}
-	corePath := "/v0/core-only"
-	if err := db.Create(&ModuleApiRoute{Path: &corePath, ModuleApiID: coreApi.ID}).Error; err != nil {
-		t.Fatalf("create core route: %v", err)
-	}
+	// an in-memory sqlite database belongs to its connection, so a second one
+	// from the pool would be empty. The resync worker queries while the test
+	// holds the first connection, which is exactly when the pool would open
+	// one, and the tables would be missing on it.
+	sqlDb, err := db.DB()
+	require.NoError(t, err)
+	sqlDb.SetMaxOpenConns(1)
+	// ModuleApiRoute.ModuleApiID carries a relationship tag, so creating one
+	// writes an attached object reference in the same transaction
+	require.NoError(t, db.AutoMigrate(&ModuleApi{}, &ModuleApiRoute{}, &AttachedObjectReference{}))
 
-	// action: initialize the module router against the seeded database
-	e := echo.New()
-	if err := InitModuleRouter(db, e); err != nil {
-		t.Fatalf("InitModuleRouter: %v", err)
-	}
+	t.Cleanup(func() {
+		// InitModuleRouter and the resync tests leave a goroutine reading this
+		// database; it has to be gone before the next test replaces either
+		stopModuleRouteResync()
+		ModRouter.routes.Range(func(key, _ any) bool {
+			ModRouter.routes.Delete(key)
 
-	// verify each non-core route was registered in the global ModRouter
-	for _, want := range []string{p1, p2} {
-		if _, ok := ModRouter.routes.Load(want); !ok {
-			t.Fatalf("expected route %q registered, missing", want)
+			return true
+		})
+		pendingModuleRoutes.Range(func(key, _ any) bool {
+			pendingModuleRoutes.Delete(key)
+
+			return true
+		})
+		// the repair goroutine exits once nothing is pending; wait so it does
+		// not outlive the test and touch the next one's router
+		for moduleRouteRepairRunning.Load() {
+			time.Sleep(time.Millisecond)
 		}
-	}
-
-	// verify the core-only route was skipped by the non-core filter
-	if _, ok := ModRouter.routes.Load(corePath); ok {
-		t.Fatalf("core route %q should not have been registered", corePath)
-	}
-}
-
-// TestInitModuleRouter_EmptyDatabase covers the boundary case where no module
-// APIs are present: InitModuleRouter returns nil and leaves the router empty.
-func TestInitModuleRouter_EmptyDatabase(t *testing.T) {
-	// setup: clean global router
-	resetModRouter(t)
-	t.Cleanup(func() { resetModRouter(t) })
-
-	// setup: empty in-memory database with the module schema
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	if err := db.AutoMigrate(&ModuleApi{}, &ModuleApiRoute{}, &AttachedObjectReference{}); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
-
-	// action: initialize against the empty database
-	e := echo.New()
-	if err := InitModuleRouter(db, e); err != nil {
-		t.Fatalf("InitModuleRouter on empty db: %v", err)
-	}
-
-	// verify no routes were registered
-	count := 0
-	ModRouter.routes.Range(func(_, _ interface{}) bool {
-		count++
-		return true
 	})
-	if count != 0 {
-		t.Fatalf("expected empty router, got %d routes", count)
+
+	return db
+}
+
+// dropPathUniqueIndex models a control plane upgraded into the current model
+// rather than created from it. The migration leaves an existing table alone, so
+// the unique index the model declares on Path is not necessarily there, and
+// duplicate rows for one path remain possible.
+func dropPathUniqueIndex(t *testing.T, db *gorm.DB) {
+	t.Helper()
+
+	require.NoError(t, db.Migrator().DropIndex(&ModuleApiRoute{}, "Path"))
+}
+
+// routeServed reports whether the router currently holds an entry for a path.
+func routeServed(path string) bool {
+	_, ok := ModRouter.routes.Load(path)
+
+	return ok
+}
+
+// seedModuleApi writes a module API and returns its ID.
+func seedModuleApi(t *testing.T, db *gorm.DB, name string, core bool) uint {
+	t.Helper()
+
+	modApi := ModuleApi{
+		Name:     util.Ptr(name),
+		Core:     util.Ptr(core),
+		Endpoint: util.Ptr("module-api.example.svc:443"),
+	}
+	require.NoError(t, db.Create(&modApi).Error)
+
+	return *modApi.ID
+}
+
+// TestReconcileModuleRoute_AddsACommittedRoute covers the ordinary create: the
+// row is there, so the router serves the path.
+func TestReconcileModuleRoute_AddsACommittedRoute(t *testing.T) {
+	db := setupModuleRouterTestDB(t)
+	moduleApiId := seedModuleApi(t, db, "example", false)
+
+	route := ModuleApiRoute{Path: util.Ptr("/example.com/v0/widgets"), ModuleApiID: &moduleApiId}
+	require.NoError(t, db.Create(&route).Error)
+
+	require.NoError(t, ReconcileModuleRoute(db, *route.Path))
+	assert.True(t, routeServed(*route.Path))
+}
+
+// TestReconcileModuleRoute_DropsARouteWithNoRow is the failure the hooks caused.
+// A create whose transaction did not commit leaves no row, and the router must
+// not be left proxying to one that does not exist.
+func TestReconcileModuleRoute_DropsARouteWithNoRow(t *testing.T) {
+	db := setupModuleRouterTestDB(t)
+	path := "/example.com/v0/widgets"
+
+	// stand in for a route the old afterCreate hook registered from inside a
+	// transaction that then rolled back
+	ModRouter.AddRoute(path, nil)
+	require.True(t, routeServed(path))
+
+	require.NoError(t, ReconcileModuleRoute(db, path))
+	assert.False(t, routeServed(path), "a path with no committed row must not be served")
+}
+
+// TestReconcileModuleRoute_KeepsARouteWhoseRowSurvived is the mirror failure. A
+// delete that rolled back left the row in place, and removing the route from
+// inside the transaction stopped a valid endpoint being served until restart.
+func TestReconcileModuleRoute_KeepsARouteWhoseRowSurvived(t *testing.T) {
+	db := setupModuleRouterTestDB(t)
+	moduleApiId := seedModuleApi(t, db, "example", false)
+
+	route := ModuleApiRoute{Path: util.Ptr("/example.com/v0/widgets"), ModuleApiID: &moduleApiId}
+	require.NoError(t, db.Create(&route).Error)
+
+	require.NoError(t, ReconcileModuleRoute(db, *route.Path))
+	assert.True(t, routeServed(*route.Path), "the row committed, so the route has to be served")
+}
+
+// TestReconcileModuleRoute_SkipsCoreApis covers the check the old hook made:
+// core routes are served by this process and must not be proxied.
+func TestReconcileModuleRoute_SkipsCoreApis(t *testing.T) {
+	db := setupModuleRouterTestDB(t)
+	moduleApiId := seedModuleApi(t, db, "core", true)
+
+	route := ModuleApiRoute{Path: util.Ptr("/v0/widgets"), ModuleApiID: &moduleApiId}
+	require.NoError(t, db.Create(&route).Error)
+
+	require.NoError(t, ReconcileModuleRoute(db, *route.Path))
+	assert.False(t, routeServed(*route.Path), "a core API path is served directly, not proxied")
+}
+
+// TestReconcileModuleRoute_IsIdempotent covers repeated calls, which is what a
+// retried request produces.
+func TestReconcileModuleRoute_IsIdempotent(t *testing.T) {
+	db := setupModuleRouterTestDB(t)
+	moduleApiId := seedModuleApi(t, db, "example", false)
+
+	route := ModuleApiRoute{Path: util.Ptr("/example.com/v0/widgets"), ModuleApiID: &moduleApiId}
+	require.NoError(t, db.Create(&route).Error)
+
+	for range 3 {
+		require.NoError(t, ReconcileModuleRoute(db, *route.Path))
+	}
+	assert.True(t, routeServed(*route.Path))
+
+	require.NoError(t, db.Unscoped().Delete(&route).Error)
+	for range 3 {
+		require.NoError(t, ReconcileModuleRoute(db, *route.Path))
+	}
+	assert.False(t, routeServed(*route.Path))
+}
+
+// TestReconcileModuleRoute_PicksTheLowestIdForADuplicatePath covers a path named
+// by more than one row, which the unique index on Path rules out for a schema
+// created from the current model but not for one upgraded into it.
+//
+// The rows are written in the opposite order to their IDs to state the intent,
+// but this cannot fail against an unordered query: sqlite returns rows by
+// rowid, which is the ID. CockroachDB does not promise an order without ORDER
+// BY, which is why the query has one - that part is argued, not covered here.
+func TestReconcileModuleRoute_PicksTheLowestIdForADuplicatePath(t *testing.T) {
+	db := setupModuleRouterTestDB(t)
+	dropPathUniqueIndex(t, db)
+	coreApiId := seedModuleApi(t, db, "core", true)
+	moduleApiId := seedModuleApi(t, db, "example", false)
+
+	unhooked := db.Session(&gorm.Session{SkipHooks: true})
+	path := "/example.com/v0/widgets"
+
+	// written first, higher ID: the row an unordered query returns first
+	proxied := ModuleApiRoute{
+		Common:      Common{ID: util.Ptr(uint(2))},
+		Path:        util.Ptr(path),
+		ModuleApiID: &moduleApiId,
+	}
+	require.NoError(t, unhooked.Create(&proxied).Error)
+	core := ModuleApiRoute{
+		Common:      Common{ID: util.Ptr(uint(1))},
+		Path:        util.Ptr(path),
+		ModuleApiID: &coreApiId,
+	}
+	require.NoError(t, unhooked.Create(&core).Error)
+
+	require.NoError(t, ReconcileModuleRoute(db, path))
+	assert.False(
+		t, routeServed(path),
+		"the lowest ID wins, and that row's API is core, so the path is not proxied",
+	)
+}
+
+// TestInitModuleRouter_AgreesWithReconciliation covers the two rules problem.
+// Startup used to register every route belonging to a non-core API, which meant
+// a duplicated path where the lowest ID is core was served after a restart and
+// removed by reconciliation - the router's contents depending on which of the
+// two last ran.
+func TestInitModuleRouter_AgreesWithReconciliation(t *testing.T) {
+	db := setupModuleRouterTestDB(t)
+	dropPathUniqueIndex(t, db)
+	coreApiId := seedModuleApi(t, db, "core", true)
+	moduleApiId := seedModuleApi(t, db, "example", false)
+
+	unhooked := db.Session(&gorm.Session{SkipHooks: true})
+
+	// the core row takes the lower ID, so reconciliation rejects the path
+	path := "/example.com/v0/widgets"
+	core := ModuleApiRoute{Path: util.Ptr(path), ModuleApiID: &coreApiId}
+	require.NoError(t, unhooked.Create(&core).Error)
+	proxied := ModuleApiRoute{Path: util.Ptr(path), ModuleApiID: &moduleApiId}
+	require.NoError(t, unhooked.Create(&proxied).Error)
+	require.Less(t, *core.ID, *proxied.ID)
+
+	// a path only the non-core API names, to show startup still registers
+	plainPath := "/example.com/v0/gadgets"
+	plain := ModuleApiRoute{Path: util.Ptr(plainPath), ModuleApiID: &moduleApiId}
+	require.NoError(t, unhooked.Create(&plain).Error)
+
+	require.NoError(t, InitModuleRouter(db, echo.New(), false))
+
+	assert.False(
+		t, routeServed(path),
+		"startup has to reach the same answer reconciliation does for a duplicated path",
+	)
+	assert.True(t, routeServed(plainPath), "an unambiguous path is still served")
+
+	// and reconciliation run afterwards must not change what startup produced
+	require.NoError(t, ReconcileModuleRoute(db, path))
+	require.NoError(t, ReconcileModuleRoute(db, plainPath))
+	assert.False(t, routeServed(path))
+	assert.True(t, routeServed(plainPath))
+}
+
+// failingModuleRouterDB returns a database and a switch that makes its reads
+// fail, which is what a briefly unreachable control plane database looks like
+// to reconciliation: one handle, not a different one.
+func failingModuleRouterDB(t *testing.T) (*gorm.DB, *atomic.Bool) {
+	t.Helper()
+
+	db := setupModuleRouterTestDB(t)
+
+	var failing atomic.Bool
+	require.NoError(t, db.Callback().Query().Before("gorm:query").Register(
+		"test:fail_reads",
+		func(tx *gorm.DB) {
+			if failing.Load() {
+				tx.AddError(errors.New("database unavailable"))
+			}
+		},
+	))
+
+	return db, &failing
+}
+
+// withFastModuleRouteRepair shrinks the retry waits so a test does not sit
+// through them.
+func withFastModuleRouteRepair(t *testing.T) {
+	t.Helper()
+
+	attempts, seconds, wait := moduleRouteReconcileAttempts,
+		moduleRouteReconcileWaitSeconds, moduleRouteRepairWait
+	moduleRouteReconcileAttempts, moduleRouteReconcileWaitSeconds = 1, 0
+	moduleRouteRepairWait = time.Millisecond
+
+	t.Cleanup(func() {
+		moduleRouteReconcileAttempts, moduleRouteReconcileWaitSeconds = attempts, seconds
+		moduleRouteRepairWait = wait
+	})
+}
+
+// TestReconcileModuleRoute_RepairsAPathAFailedReadLeftBehind covers the window
+// the retry does not close. The write has already committed when reconciliation
+// runs, and the request cannot be replayed to try again - a repeated create
+// answers 409 and a repeated delete answers 404 - so a path whose read failed
+// has to be picked up rather than wait for a restart.
+func TestReconcileModuleRoute_RepairsAPathAFailedReadLeftBehind(t *testing.T) {
+	withFastModuleRouteRepair(t)
+	db, failing := failingModuleRouterDB(t)
+	moduleApiId := seedModuleApi(t, db, "example", false)
+
+	failedPath := "/example.com/v0/widgets"
+	require.NoError(t, db.Create(&ModuleApiRoute{
+		Path: util.Ptr(failedPath), ModuleApiID: &moduleApiId,
+	}).Error)
+	otherPath := "/example.com/v0/gadgets"
+	require.NoError(t, db.Create(&ModuleApiRoute{
+		Path: util.Ptr(otherPath), ModuleApiID: &moduleApiId,
+	}).Error)
+
+	// the route is committed but the database cannot be read, so the router is
+	// not told and the handler has already answered 500
+	failing.Store(true)
+	require.Error(t, ReconcileModuleRoute(db, failedPath))
+	require.False(t, routeServed(failedPath))
+
+	// the next reconciliation of any path repairs it
+	failing.Store(false)
+	require.NoError(t, ReconcileModuleRoute(db, otherPath))
+
+	assert.True(t, routeServed(failedPath), "the path a failed read left behind has to be repaired")
+	assert.True(t, routeServed(otherPath))
+}
+
+// TestReconcileModuleRoute_RepairsWithoutAnotherRouteChange is the case waiting
+// on the next reconciliation does not cover. Nothing guarantees another module
+// route is ever created or deleted, so a path left behind by a failed read has
+// to be retried on its own rather than stay wrong until the process restarts.
+func TestReconcileModuleRoute_RepairsWithoutAnotherRouteChange(t *testing.T) {
+	withFastModuleRouteRepair(t)
+	db, failing := failingModuleRouterDB(t)
+	moduleApiId := seedModuleApi(t, db, "example", false)
+
+	path := "/example.com/v0/widgets"
+	require.NoError(t, db.Create(&ModuleApiRoute{
+		Path: util.Ptr(path), ModuleApiID: &moduleApiId,
+	}).Error)
+
+	failing.Store(true)
+	require.Error(t, ReconcileModuleRoute(db, path))
+	require.False(t, routeServed(path))
+
+	// the database comes back and nothing else touches a module route
+	failing.Store(false)
+
+	assert.Eventually(
+		t, func() bool { return routeServed(path) }, 5*time.Second, 5*time.Millisecond,
+		"the route has to be repaired without waiting for another route change",
+	)
+	assert.Eventually(
+		t, func() bool { return !moduleRouteRepairRunning.Load() }, time.Second, 5*time.Millisecond,
+		"the repair goroutine has to stop once nothing is pending",
+	)
+}
+
+// TestReconcileModuleRoutes_PicksUpAnotherProcessesCreate covers the half of
+// the problem post-commit reconciliation cannot reach. The router is
+// process-local and only the process that handled the write reconciles, so a
+// route committed by one rest-api replica is not proxied by its siblings. Here
+// the row is written without any reconciliation, standing in for the sibling
+// that committed it.
+func TestReconcileModuleRoutes_PicksUpAnotherProcessesCreate(t *testing.T) {
+	db := setupModuleRouterTestDB(t)
+	moduleApiId := seedModuleApi(t, db, "example", false)
+
+	path := "/example.com/v0/widgets"
+	require.NoError(t, db.Create(&ModuleApiRoute{
+		Path: util.Ptr(path), ModuleApiID: &moduleApiId,
+	}).Error)
+	require.False(t, routeServed(path), "this process has not been told about it")
+
+	require.NoError(t, ReconcileModuleRoutes(db))
+	assert.True(t, routeServed(path))
+}
+
+// TestReconcileModuleRoutes_PicksUpAnotherProcessesDelete is the mirror. A row
+// deleted elsewhere leaves this process proxying a path the table no longer
+// has, and the database alone cannot say so - the path is gone from it, so
+// walking only the committed rows would never visit it.
+func TestReconcileModuleRoutes_PicksUpAnotherProcessesDelete(t *testing.T) {
+	db := setupModuleRouterTestDB(t)
+	moduleApiId := seedModuleApi(t, db, "example", false)
+
+	path := "/example.com/v0/widgets"
+	route := ModuleApiRoute{Path: util.Ptr(path), ModuleApiID: &moduleApiId}
+	require.NoError(t, db.Create(&route).Error)
+	require.NoError(t, ReconcileModuleRoute(db, path))
+	require.True(t, routeServed(path))
+
+	// the sibling's delete, which this process is not told about
+	require.NoError(t, db.Unscoped().Delete(&route).Error)
+
+	require.NoError(t, ReconcileModuleRoutes(db))
+	assert.False(t, routeServed(path), "a path the table no longer has must stop being proxied")
+}
+
+// TestReconcileModuleRoutes_LeavesAgreeingRoutesAlone covers the ordinary pass
+// on a single-replica install, where the process already agrees with the table.
+func TestReconcileModuleRoutes_LeavesAgreeingRoutesAlone(t *testing.T) {
+	db := setupModuleRouterTestDB(t)
+	moduleApiId := seedModuleApi(t, db, "example", false)
+
+	paths := []string{"/example.com/v0/widgets", "/example.com/v0/gadgets"}
+	for _, path := range paths {
+		require.NoError(t, db.Create(&ModuleApiRoute{
+			Path: util.Ptr(path), ModuleApiID: &moduleApiId,
+		}).Error)
+		require.NoError(t, ReconcileModuleRoute(db, path))
+	}
+
+	require.NoError(t, ReconcileModuleRoutes(db))
+	for _, path := range paths {
+		assert.True(t, routeServed(path), path)
 	}
 }
 
-// TestInitModuleRouter_QueryError covers that InitModuleRouter wraps and
-// returns a database error when the ModuleApi query fails (e.g. the schema is
-// not migrated).
-func TestInitModuleRouter_QueryError(t *testing.T) {
-	// setup: database with no tables migrated so the query fails
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
+// TestStartModuleRouteResync_ConvergesWithoutAnyLocalWrite drives the goroutine
+// InitModuleRouter starts: nothing happens in this process, and the route a
+// sibling committed still arrives.
+func TestStartModuleRouteResync_ConvergesWithoutAnyLocalWrite(t *testing.T) {
+	interval := moduleRouteResyncInterval
+	moduleRouteResyncInterval = time.Millisecond
+	t.Cleanup(func() { moduleRouteResyncInterval = interval })
+
+	db := setupModuleRouterTestDB(t)
+	moduleApiId := seedModuleApi(t, db, "example", false)
+
+	startModuleRouteResync(db, nil)
+
+	path := "/example.com/v0/widgets"
+	require.NoError(t, db.Create(&ModuleApiRoute{
+		Path: util.Ptr(path), ModuleApiID: &moduleApiId,
+	}).Error)
+
+	assert.Eventually(
+		t, func() bool { return routeServed(path) }, 5*time.Second, 5*time.Millisecond,
+		"a route committed by another process has to arrive without one being written here",
+	)
+}
+
+// TestStartModuleRouteResync_StartsOneGoroutine covers the guard, since
+// InitModuleRouter can be called more than once in a process under test.
+func TestStartModuleRouteResync_StartsOneGoroutine(t *testing.T) {
+	db := setupModuleRouterTestDB(t)
+
+	startModuleRouteResync(db, nil)
+	before := runtime.NumGoroutine()
+	for range 5 {
+		startModuleRouteResync(db, nil)
 	}
 
-	// action: initialize against a database without the module schema
-	e := echo.New()
-	err = InitModuleRouter(db, e)
+	assert.LessOrEqual(t, runtime.NumGoroutine(), before, "a second call must not start another")
+}
 
-	// verify the error is surfaced
-	if err == nil {
-		t.Fatalf("expected error from missing schema, got nil")
-	}
+// TestReconcileModuleRoutes_OneBadPathDoesNotBlockTheRest covers the sweep
+// giving up at the first failure. The router-only paths are walked last, so a
+// row that fails on every pass would have kept every route another process
+// deleted alive for as long as that row existed - and the pass that repairs it
+// is the only one that would have removed them.
+func TestReconcileModuleRoutes_OneBadPathDoesNotBlockTheRest(t *testing.T) {
+	withFastModuleRouteRepair(t)
+	db := setupModuleRouterTestDB(t)
+	moduleApiId := seedModuleApi(t, db, "example", false)
+
+	// a route whose module API cannot be loaded, which fails every pass
+	unhooked := db.Session(&gorm.Session{SkipHooks: true})
+	missingApiId := moduleApiId + 999
+	require.NoError(t, unhooked.Create(&ModuleApiRoute{
+		Path: util.Ptr("/example.com/v0/broken"), ModuleApiID: &missingApiId,
+	}).Error)
+
+	// a route this process serves that no longer has a row, standing in for one
+	// another process deleted. Router-only paths are reconciled after the
+	// database ones, so the broken row above is reached first.
+	stale := "/example.com/v0/stale"
+	ModRouter.AddRoute(stale, nil)
+	require.True(t, routeServed(stale))
+
+	err := ReconcileModuleRoutes(db)
+
+	require.Error(t, err, "the broken row still has to be reported")
+	assert.Contains(t, err.Error(), "/example.com/v0/broken")
+	assert.False(
+		t, routeServed(stale),
+		"a path another process deleted has to be dropped even when an earlier path fails",
+	)
 }

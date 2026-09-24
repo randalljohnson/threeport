@@ -1,666 +1,462 @@
 package v0
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	kubeerr "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	kubemetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	dynamicfake "k8s.io/client-go/dynamic/fake"
-	k8stesting "k8s.io/client-go/testing"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/client-go/dynamic"
 )
 
-// resourceTestGVK describes one GVK the fake REST mapper is aware of, along
-// with its scope so RESTMapping resolves to the right resource.
-type resourceTestGVK struct {
-	group   string
-	version string
-	kind    string
-	scope   meta.RESTScope
-}
+// TestDeleteResourceTreatsMissingCRDAsSuccess covers the case where the
+// target cluster has no CRD for the resource's kind: DeleteResource should
+// return nil (treat as already-deleted) so the workload-instance reconciler
+// does not hang on a resource that cannot possibly exist. The case arises
+// when a gateway controller materializes a VirtualService (gateway.solo.io)
+// and records it in the threeport database, but the CRD was never installed
+// in the target cluster.
+func TestDeleteResourceTreatsMissingCRDAsSuccess(t *testing.T) {
+	// an empty mapper knows about zero kinds, so any RESTMapping lookup
+	// returns *meta.NoKindMatchError, the same error a cluster with no CRD
+	// for the kind produces. getResourceMapping wraps that error before
+	// DeleteResource inspects it, so this also covers the wrapped case.
+	emptyMapper := meta.NewDefaultRESTMapper(nil)
 
-// resourceTestGVKs returns the GVK set that resource.go tests exercise. Kept
-// in one place so the fake scheme and mapper stay in lockstep.
-func resourceTestGVKs() []resourceTestGVK {
-	return []resourceTestGVK{
-		{"", "v1", "Namespace", meta.RESTScopeRoot},
-		{"", "v1", "ConfigMap", meta.RESTScopeNamespace},
-		{"", "v1", "Service", meta.RESTScopeNamespace},
-		{"", "v1", "Pod", meta.RESTScopeNamespace},
-	}
-}
-
-// newResourceTestScheme registers every GVK from resourceTestGVKs as an
-// unstructured type on a fresh runtime.Scheme so the fake dynamic client's
-// tracker can convert back to *unstructured.Unstructured.
-func newResourceTestScheme() *runtime.Scheme {
-	scheme := runtime.NewScheme()
-	for _, g := range resourceTestGVKs() {
-		gvk := schema.GroupVersionKind{Group: g.group, Version: g.version, Kind: g.kind}
-		scheme.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
-		listGVK := gvk
-		listGVK.Kind += "List"
-		scheme.AddKnownTypeWithName(listGVK, &unstructured.UnstructuredList{})
-	}
-	return scheme
-}
-
-// newResourceTestMapper returns a RESTMapper seeded with the GVK set the
-// resource.go tests exercise, so RESTMapping calls resolve without a real
-// discovery client.
-func newResourceTestMapper() meta.RESTMapper {
-	gvs := []schema.GroupVersion{}
-	seen := map[schema.GroupVersion]bool{}
-	for _, g := range resourceTestGVKs() {
-		gv := schema.GroupVersion{Group: g.group, Version: g.version}
-		if seen[gv] {
-			continue
-		}
-		seen[gv] = true
-		gvs = append(gvs, gv)
-	}
-	m := meta.NewDefaultRESTMapper(gvs)
-	for _, g := range resourceTestGVKs() {
-		gvk := schema.GroupVersionKind{Group: g.group, Version: g.version, Kind: g.kind}
-		m.Add(gvk, g.scope)
-	}
-	return m
-}
-
-// newResourceTestClient returns a fake dynamic client seeded with objs and
-// wired to the same scheme as newResourceTestMapper.
-func newResourceTestClient(objs ...runtime.Object) *dynamicfake.FakeDynamicClient {
-	return dynamicfake.NewSimpleDynamicClient(newResourceTestScheme(), objs...)
-}
-
-// TestGetJsonResourcesFromYamlDocEmpty covers the empty-input path: an empty
-// YAML document yields no JSON objects and no error.
-func TestGetJsonResourcesFromYamlDocEmpty(t *testing.T) {
-	// empty input decodes to zero nodes
-	got, err := GetJsonResourcesFromYamlDoc("")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// no JSON objects should be returned
-	if len(got) != 0 {
-		t.Errorf("expected 0 objects, got %d", len(got))
-	}
-}
-
-// TestGetJsonResourcesFromYamlDocSingle covers the single-document happy path:
-// one YAML doc converts to one JSON blob carrying the same fields.
-func TestGetJsonResourcesFromYamlDocSingle(t *testing.T) {
-	yamlDoc := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm-a\n"
-
-	// a single document decodes to a single JSON blob
-	got, err := GetJsonResourcesFromYamlDoc(yamlDoc)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(got) != 1 {
-		t.Fatalf("expected 1 object, got %d", len(got))
-	}
-
-	// the JSON blob preserves the kind field
-	if !strings.Contains(string(got[0]), `"kind":"ConfigMap"`) {
-		t.Errorf("expected converted JSON to contain kind ConfigMap, got %s", string(got[0]))
-	}
-}
-
-// TestGetJsonResourcesFromYamlDocMulti covers a multi-doc YAML separated by
-// `---`: each document lands as its own JSON blob in order.
-func TestGetJsonResourcesFromYamlDocMulti(t *testing.T) {
-	yamlDoc := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm-a\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: svc-a\n"
-
-	// two documents decode to two JSON blobs
-	got, err := GetJsonResourcesFromYamlDoc(yamlDoc)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(got) != 2 {
-		t.Fatalf("expected 2 objects, got %d", len(got))
-	}
-
-	// the first JSON blob carries the ConfigMap
-	if !strings.Contains(string(got[0]), "ConfigMap") {
-		t.Errorf("expected first blob to be ConfigMap, got %s", string(got[0]))
-	}
-
-	// the second JSON blob carries the Service
-	if !strings.Contains(string(got[1]), "Service") {
-		t.Errorf("expected second blob to be Service, got %s", string(got[1]))
-	}
-}
-
-// TestGetJsonResourcesFromYamlDocInvalid covers the parse-error path: a
-// malformed YAML document returns a wrapped decode error.
-func TestGetJsonResourcesFromYamlDocInvalid(t *testing.T) {
-	// unclosed bracket triggers a yaml decoder error
-	_, err := GetJsonResourcesFromYamlDoc("apiVersion: v1\nkind: [not closed\n")
-	if err == nil {
-		t.Fatal("expected error for malformed YAML")
-	}
-
-	// the wrapper prefix should surface for the caller to distinguish decode
-	// failure from conversion failure downstream
-	if !strings.Contains(err.Error(), "failed to decode yaml node") {
-		t.Errorf("expected decode-error prefix, got: %v", err)
-	}
-}
-
-// TestCreateResourceNewNamespaced covers the create path for a namespaced
-// resource: a fresh ConfigMap lands and the returned object carries the name.
-func TestCreateResourceNewNamespaced(t *testing.T) {
-	client := newResourceTestClient()
-	mapper := newResourceTestMapper()
-
-	// build a minimal ConfigMap so DeepCopyJSON does not choke on Go int types
-	cm := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata": map[string]interface{}{
-			"name":      "cm-a",
-			"namespace": "default",
-		},
-	}}
-
-	// creating against an empty tracker succeeds and returns the object
-	got, err := CreateResource(cm, client, mapper)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.GetName() != "cm-a" {
-		t.Errorf("expected name cm-a, got %q", got.GetName())
-	}
-}
-
-// TestCreateResourceAlreadyExists covers the AlreadyExists branch: the second
-// Create call is swallowed and the input object is returned.
-func TestCreateResourceAlreadyExists(t *testing.T) {
-	// seed the tracker with the object so the first Create call errors
-	cm := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata": map[string]interface{}{
-			"name":      "cm-existing",
-			"namespace": "default",
-		},
-	}}
-	client := newResourceTestClient(cm)
-	mapper := newResourceTestMapper()
-
-	// AlreadyExists must be swallowed and the input returned unchanged
-	got, err := CreateResource(cm, client, mapper)
-	if err != nil {
-		t.Fatalf("expected AlreadyExists to be swallowed, got: %v", err)
-	}
-	if got.GetName() != "cm-existing" {
-		t.Errorf("expected input object returned, got name %q", got.GetName())
-	}
-}
-
-// TestCreateResourceMappingFailure covers the RESTMapping error path: an
-// unknown Kind produces a wrapped "failed to get REST mapping" error.
-func TestCreateResourceMappingFailure(t *testing.T) {
-	client := newResourceTestClient()
-	mapper := newResourceTestMapper()
-
-	// UnknownKind is not registered in the mapper
-	obj := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "UnknownKind",
-		"metadata":   map[string]interface{}{"name": "x", "namespace": "default"},
-	}}
-
-	// the mapping failure should propagate as a wrapped error
-	_, err := CreateResource(obj, client, mapper)
-	if err == nil {
-		t.Fatal("expected mapping error for unknown kind")
-	}
-	if !strings.Contains(err.Error(), "failed to get REST mapping") {
-		t.Errorf("expected mapping-error prefix, got: %v", err)
-	}
-}
-
-// TestGetResourceNamespaced covers the namespaced-lookup path: a seeded
-// ConfigMap is retrieved by name and namespace.
-func TestGetResourceNamespaced(t *testing.T) {
-	cm := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata": map[string]interface{}{
-			"name":      "cm-a",
-			"namespace": "ns-a",
-		},
-	}}
-	client := newResourceTestClient(cm)
-	mapper := newResourceTestMapper()
-
-	// GetResource looks up by API version, kind, namespace and name
-	got, err := GetResource("core", "v1", "ConfigMap", "ns-a", "cm-a", client, mapper)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.GetName() != "cm-a" {
-		t.Errorf("expected name cm-a, got %q", got.GetName())
-	}
-}
-
-// TestGetResourceNonNamespaced covers the cluster-scoped lookup path: an empty
-// namespace argument selects the non-namespaced code branch.
-func TestGetResourceNonNamespaced(t *testing.T) {
-	ns := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "Namespace",
-		"metadata":   map[string]interface{}{"name": "ns-a"},
-	}}
-	client := newResourceTestClient(ns)
-	mapper := newResourceTestMapper()
-
-	// empty namespace routes through the non-namespaced Resource() branch
-	got, err := GetResource("", "v1", "Namespace", "", "ns-a", client, mapper)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.GetName() != "ns-a" {
-		t.Errorf("expected name ns-a, got %q", got.GetName())
-	}
-}
-
-// TestGetResourceNotFound covers the missing-resource path: the client's
-// NotFound error is wrapped with the "failed to get resource" prefix.
-func TestGetResourceNotFound(t *testing.T) {
-	client := newResourceTestClient()
-	mapper := newResourceTestMapper()
-
-	// nothing seeded, so the Get call returns NotFound
-	_, err := GetResource("core", "v1", "ConfigMap", "default", "missing", client, mapper)
-	if err == nil {
-		t.Fatal("expected NotFound error")
-	}
-	if !strings.Contains(err.Error(), "failed to get resource") {
-		t.Errorf("expected get-error prefix, got: %v", err)
-	}
-}
-
-// TestGetResourceMappingFailure covers the mapper-error path from GetResource:
-// an unknown Kind surfaces as a wrapped mapping error.
-func TestGetResourceMappingFailure(t *testing.T) {
-	client := newResourceTestClient()
-	mapper := newResourceTestMapper()
-
-	// UnknownKind is not registered in the mapper
-	_, err := GetResource("", "v1", "UnknownKind", "", "x", client, mapper)
-	if err == nil {
-		t.Fatal("expected mapping error")
-	}
-	if !strings.Contains(err.Error(), "failed to map kubernetes API version and kind") {
-		t.Errorf("expected mapping-error prefix, got: %v", err)
-	}
-}
-
-// TestDeleteResourcePresent covers the delete happy path: a seeded ConfigMap
-// is removed and the call returns nil.
-func TestDeleteResourcePresent(t *testing.T) {
-	cm := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata": map[string]interface{}{
-			"name":      "cm-a",
-			"namespace": "default",
-		},
-	}}
-	client := newResourceTestClient(cm)
-	mapper := newResourceTestMapper()
-
-	// deleting a present resource returns nil
-	if err := DeleteResource(cm, client, mapper); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-// TestDeleteResourceNotFound covers the idempotent branch: a NotFound error
-// from the Delete verb is swallowed so callers can retry safely.
-func TestDeleteResourceNotFound(t *testing.T) {
-	cm := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata": map[string]interface{}{
-			"name":      "missing",
-			"namespace": "default",
-		},
-	}}
-	client := newResourceTestClient()
-	mapper := newResourceTestMapper()
-
-	// nothing seeded, so Delete returns NotFound; the wrapper must swallow it
-	if err := DeleteResource(cm, client, mapper); err != nil {
-		t.Fatalf("expected NotFound to be swallowed, got: %v", err)
-	}
-}
-
-// TestDeleteResourcePropagatesOtherErrors covers the non-NotFound error path:
-// a reactor injects a generic error and the wrapper propagates it prefixed.
-func TestDeleteResourcePropagatesOtherErrors(t *testing.T) {
-	cm := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata": map[string]interface{}{
-			"name":      "cm-a",
-			"namespace": "default",
-		},
-	}}
-	client := newResourceTestClient()
-	client.PrependReactor("delete", "configmaps", func(action k8stesting.Action) (bool, runtime.Object, error) {
-		return true, nil, errors.New("boom")
+	obj := &unstructured.Unstructured{}
+	obj.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "gateway.solo.io",
+		Version: "v1",
+		Kind:    "VirtualService",
 	})
-	mapper := newResourceTestMapper()
+	obj.SetName("does-not-matter")
+	obj.SetNamespace("default")
 
-	// a non-NotFound error must surface with the wrapper prefix
-	err := DeleteResource(cm, client, mapper)
-	if err == nil {
-		t.Fatal("expected delete error")
-	}
-	if !strings.Contains(err.Error(), "failed to delete kubernetes resource") {
-		t.Errorf("expected delete-error prefix, got: %v", err)
-	}
-}
-
-// TestDeleteResourceMappingFailure covers the mapping-error path from
-// DeleteResource: an unknown Kind surfaces as a wrapped mapping error.
-func TestDeleteResourceMappingFailure(t *testing.T) {
-	client := newResourceTestClient()
-	mapper := newResourceTestMapper()
-
-	// UnknownKind is not registered in the mapper
-	obj := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "UnknownKind",
-		"metadata":   map[string]interface{}{"name": "x", "namespace": "default"},
-	}}
-
-	err := DeleteResource(obj, client, mapper)
-	if err == nil {
-		t.Fatal("expected mapping error")
-	}
-	if !strings.Contains(err.Error(), "failed to get REST mapping") {
-		t.Errorf("expected mapping-error prefix, got: %v", err)
-	}
-}
-
-// TestCreateOrUpdateResourceCreate covers the create branch: an empty tracker
-// gets a fresh ConfigMap and the returned object carries the name.
-func TestCreateOrUpdateResourceCreate(t *testing.T) {
-	client := newResourceTestClient()
-	mapper := newResourceTestMapper()
-
-	cm := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata": map[string]interface{}{
-			"name":      "cm-a",
-			"namespace": "default",
-		},
-	}}
-
-	// initial create against empty tracker succeeds
-	got, err := CreateOrUpdateResource(cm, client, mapper)
+	// dynamic client stays nil on purpose: DeleteResource short-circuits on
+	// the mapper miss and never dereferences the client. Should it stop
+	// short-circuiting, the call reaches the client, panics on nil, and this
+	// test fails loudly instead of appearing to pass.
+	err := DeleteResource(obj, nil, emptyMapper)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.GetName() != "cm-a" {
-		t.Errorf("expected name cm-a, got %q", got.GetName())
+		t.Fatalf("DeleteResource with missing-CRD kind: got err %v, want nil", err)
 	}
 }
 
-// TestCreateOrUpdateResourceUpdate covers the AlreadyExists → update branch:
-// a repeated call for a seeded object routes through UpdateResource.
-func TestCreateOrUpdateResourceUpdate(t *testing.T) {
-	cm := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata": map[string]interface{}{
-			"name":            "cm-a",
-			"namespace":       "default",
-			"resourceVersion": "1",
-		},
-		"data": map[string]interface{}{"k": "v"},
-	}}
-	client := newResourceTestClient(cm)
-	mapper := newResourceTestMapper()
+// TestDeleteResourceForwardsOtherMapperErrors covers the negative case: a
+// mapper error that is NOT a "no match for kind" (e.g. a wrapped error
+// with a different underlying cause) should still surface as an error so
+// callers aren't silently masked from unrelated failures.
+func TestDeleteResourceForwardsOtherMapperErrors(t *testing.T) {
+	// wrap a non-NoMatch error in a mapper so getResourceMapping returns it
+	// via the normal path
+	mapper := &errMapper{err: errOtherMapperFailure}
 
-	// second create hits AlreadyExists then routes through UpdateResource
-	updated := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata": map[string]interface{}{
-			"name":      "cm-a",
-			"namespace": "default",
-		},
-		"data": map[string]interface{}{"k": "v2"},
-	}}
-	got, err := CreateOrUpdateResource(updated, client, mapper)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.GetName() != "cm-a" {
-		t.Errorf("expected name cm-a, got %q", got.GetName())
-	}
-}
-
-// TestCreateOrUpdateResourceInvalidService covers the Service-specific
-// IsInvalid branch: a nodeport-invalidated Service is routed to UpdateResource
-// rather than returning the raw error.
-func TestCreateOrUpdateResourceInvalidService(t *testing.T) {
-	// seed the existing Service so UpdateResource's Get call finds it
-	existing := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "Service",
-		"metadata": map[string]interface{}{
-			"name":            "svc-a",
-			"namespace":       "default",
-			"resourceVersion": "1",
-		},
-	}}
-	client := newResourceTestClient(existing)
-	mapper := newResourceTestMapper()
-
-	// Create rejects with IsInvalid so the Service-specific branch fires
-	client.PrependReactor("create", "services", func(action k8stesting.Action) (bool, runtime.Object, error) {
-		return true, nil, kubeerr.NewInvalid(
-			schema.GroupKind{Kind: "Service"},
-			"svc-a",
-			nil,
-		)
+	obj := &unstructured.Unstructured{}
+	obj.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "apps",
+		Version: "v1",
+		Kind:    "Deployment",
 	})
 
-	// build the input; UpdateResource should be reached and succeed
-	svc := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "Service",
-		"metadata": map[string]interface{}{
-			"name":      "svc-a",
-			"namespace": "default",
-		},
-	}}
-	got, err := CreateOrUpdateResource(svc, client, mapper)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.GetName() != "svc-a" {
-		t.Errorf("expected name svc-a, got %q", got.GetName())
-	}
-}
-
-// TestCreateOrUpdateResourcePropagatesUnknownError covers the default branch:
-// a non-AlreadyExists, non-Service-Invalid error surfaces with the wrapper
-// prefix.
-func TestCreateOrUpdateResourcePropagatesUnknownError(t *testing.T) {
-	client := newResourceTestClient()
-	client.PrependReactor("create", "configmaps", func(action k8stesting.Action) (bool, runtime.Object, error) {
-		return true, nil, errors.New("boom")
-	})
-	mapper := newResourceTestMapper()
-
-	cm := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata": map[string]interface{}{
-			"name":      "cm-a",
-			"namespace": "default",
-		},
-	}}
-
-	// an unrecognised Create error must propagate wrapped
-	_, err := CreateOrUpdateResource(cm, client, mapper)
+	err := DeleteResource(obj, nil, mapper)
 	if err == nil {
-		t.Fatal("expected error")
-	}
-	if !strings.Contains(err.Error(), "failed to create kubernetes resource") {
-		t.Errorf("expected create-error prefix, got: %v", err)
+		t.Fatalf("DeleteResource with non-NoMatch mapper error: got nil, want error")
 	}
 }
 
-// TestUpdateResourceHappy covers the update happy path: a seeded ConfigMap
-// gets its resource version filled in from Get and the Update call succeeds.
-func TestUpdateResourceHappy(t *testing.T) {
-	existing := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata": map[string]interface{}{
-			"name":            "cm-a",
-			"namespace":       "default",
-			"resourceVersion": "1",
+// TestIsTransientKubeError covers which apiserver responses CreateResource
+// is willing to retry. The transient cases all mean the server is behind
+// rather than the request being wrong; the deterministic cases mean the
+// request will fail the same way no matter how many times it is sent.
+func TestIsTransientKubeError(t *testing.T) {
+	deployments := schema.GroupResource{Group: "apps", Resource: "deployments"}
+
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{
+			name: "nil error",
+			err:  nil,
+			want: false,
 		},
-	}}
-	client := newResourceTestClient(existing)
-	mapper := newResourceTestMapper()
-
-	// resolve the mapping for the Update call
-	gvk := schema.GroupVersionKind{Version: "v1", Kind: "ConfigMap"}
-	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-	if err != nil {
-		t.Fatalf("mapping: %v", err)
-	}
-
-	// updating with a fresh copy resolves via UpdateResource
-	update := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata": map[string]interface{}{
-			"name":      "cm-a",
-			"namespace": "default",
+		{
+			name: "server timeout",
+			err:  kubeerr.NewServerTimeout(deployments, "create", 1),
+			want: true,
 		},
-		"data": map[string]interface{}{"k": "v"},
-	}}
-	got, err := UpdateResource(update, client, mapper, mapping)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.GetName() != "cm-a" {
-		t.Errorf("expected name cm-a, got %q", got.GetName())
-	}
-}
-
-// TestUpdateResourceGetMissing covers the pre-check error path: when the
-// existing object is missing UpdateResource surfaces a wrapped Get error.
-func TestUpdateResourceGetMissing(t *testing.T) {
-	client := newResourceTestClient()
-	mapper := newResourceTestMapper()
-
-	gvk := schema.GroupVersionKind{Version: "v1", Kind: "ConfigMap"}
-	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-	if err != nil {
-		t.Fatalf("mapping: %v", err)
-	}
-
-	// nothing seeded, so the initial Get returns NotFound
-	update := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata": map[string]interface{}{
-			"name":      "cm-a",
-			"namespace": "default",
+		{
+			name: "request timeout",
+			err:  kubeerr.NewTimeoutError("request timed out", 1),
+			want: true,
 		},
-	}}
-	_, err = UpdateResource(update, client, mapper, mapping)
-	if err == nil {
-		t.Fatal("expected get-missing error")
+		{
+			name: "service unavailable",
+			err:  kubeerr.NewServiceUnavailable("no backends available"),
+			want: true,
+		},
+		{
+			name: "too many requests",
+			err:  kubeerr.NewTooManyRequestsError("slow down"),
+			want: true,
+		},
+		{
+			name: "quota evaluator timeout",
+			err:  kubeerr.NewInternalError(errors.New("resource quota evaluation timed out")),
+			want: true,
+		},
+		{
+			name: "etcd request timeout",
+			err:  kubeerr.NewInternalError(errors.New("etcdserver: request timed out")),
+			want: true,
+		},
+		{
+			name: "etcd leader changed",
+			err:  kubeerr.NewInternalError(errors.New("etcdserver: leader changed")),
+			want: true,
+		},
+		{
+			name: "etcd no leader",
+			err:  kubeerr.NewInternalError(errors.New("etcdserver: no leader")),
+			want: true,
+		},
+		{
+			name: "etcd too many requests",
+			err:  kubeerr.NewInternalError(errors.New("etcdserver: too many requests")),
+			want: true,
+		},
+		{
+			name: "internal error with an unrelated cause",
+			err:  kubeerr.NewInternalError(errors.New("something else went wrong")),
+			want: false,
+		},
+		{
+			name: "already exists",
+			err:  kubeerr.NewAlreadyExists(deployments, "my-app"),
+			want: false,
+		},
+		{
+			name: "not found",
+			err:  kubeerr.NewNotFound(deployments, "my-app"),
+			want: false,
+		},
+		{
+			name: "forbidden",
+			err:  kubeerr.NewForbidden(deployments, "my-app", errors.New("not allowed")),
+			want: false,
+		},
+		{
+			name: "invalid",
+			err:  kubeerr.NewInvalid(schema.GroupKind{Group: "apps", Kind: "Deployment"}, "my-app", field.ErrorList{}),
+			want: false,
+		},
+		{
+			name: "error that did not come from the kubernetes API",
+			err:  errors.New("dial tcp: connection refused"),
+			want: false,
+		},
 	}
-	if !strings.Contains(err.Error(), "failed to get existing resource") {
-		t.Errorf("expected existing-resource-error prefix, got: %v", err)
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isTransientKubeError(tc.err); got != tc.want {
+				t.Fatalf("isTransientKubeError(%v): got %t, want %t", tc.err, got, tc.want)
+			}
+		})
 	}
 }
 
-// TestDeletePodNoMatchingPods covers the empty-list branch: with no pods
-// matching the label selector DeletePod returns nil.
-func TestDeletePodNoMatchingPods(t *testing.T) {
-	client := newResourceTestClient()
-	mapper := newResourceTestMapper()
+// TestCreateResourceRetriesUntilTransientErrorClears covers the case the
+// retry loop exists for: an apiserver under load rejects the first
+// attempts with a quota evaluator timeout, then accepts the resource once
+// it catches up. CreateResource should keep trying and return the created
+// object rather than failing the install.
+func TestCreateResourceRetriesUntilTransientErrorClears(t *testing.T) {
+	shrinkCreateRetryDelay(t)
 
-	// no pods seeded, so the list is empty and no deletes fire
-	if err := DeletePod(client, &mapper, "worker", "default"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-// TestDeletePodDeletesMatched covers the match-and-delete branch: pods
-// carrying the target app.kubernetes.io/name label are removed.
-func TestDeletePodDeletesMatched(t *testing.T) {
-	pod := &unstructured.Unstructured{Object: map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "Pod",
-		"metadata": map[string]interface{}{
-			"name":      "pod-a",
-			"namespace": "default",
-			"labels": map[string]interface{}{
-				"app.kubernetes.io/name": "threeport-worker",
+	client := &stubDynamicClient{
+		resourceClient: &stubResourceClient{
+			results: []stubCreateResult{
+				{err: kubeerr.NewInternalError(errors.New("resource quota evaluation timed out"))},
+				{err: kubeerr.NewServerTimeout(schema.GroupResource{Group: "apps", Resource: "deployments"}, "create", 1)},
+				{object: testDeployment()},
 			},
 		},
-	}}
-	client := newResourceTestClient(pod)
-	mapper := newResourceTestMapper()
-
-	// deleting the matching pod returns nil and clears the tracker
-	if err := DeletePod(client, &mapper, "worker", "default"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// verify the pod is gone by listing the pod resource
-	gvk := schema.GroupVersionKind{Version: "v1", Kind: "Pod"}
-	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+	result, err := CreateResource(testDeployment(), client, testDeploymentMapper())
 	if err != nil {
-		t.Fatalf("mapping: %v", err)
+		t.Fatalf("CreateResource with two transient failures: got err %v, want nil", err)
 	}
-	list, err := client.Resource(mapping.Resource).Namespace("default").List(t.Context(), kubemetav1.ListOptions{})
-	if err != nil {
-		t.Fatalf("list: %v", err)
+	if result == nil {
+		t.Fatal("CreateResource with two transient failures: got nil object, want the created resource")
 	}
-	if len(list.Items) != 0 {
-		t.Errorf("expected pod deleted, got %d remaining", len(list.Items))
+	if client.resourceClient.attempts != 3 {
+		t.Fatalf("CreateResource with two transient failures: got %d attempts, want 3", client.resourceClient.attempts)
 	}
 }
 
-// TestDeletePodMappingFailure covers the mapping-error path from DeletePod: an
-// empty mapper cannot resolve the Pod GVK.
-func TestDeletePodMappingFailure(t *testing.T) {
-	client := newResourceTestClient()
+// TestCreateResourceGivesUpOnPersistentTransientError covers the ceiling on
+// retries: an apiserver that never recovers gets a bounded number of
+// attempts, and the caller sees the last error rather than the call
+// blocking indefinitely.
+func TestCreateResourceGivesUpOnPersistentTransientError(t *testing.T) {
+	shrinkCreateRetryDelay(t)
 
-	// empty mapper knows nothing, so the Pod mapping lookup fails
-	empty := meta.NewDefaultRESTMapper(nil)
-	var m meta.RESTMapper = empty
+	client := &stubDynamicClient{
+		resourceClient: &stubResourceClient{
+			alwaysErr: kubeerr.NewInternalError(errors.New("resource quota evaluation timed out")),
+		},
+	}
 
-	err := DeletePod(client, &m, "worker", "default")
+	_, err := CreateResource(testDeployment(), client, testDeploymentMapper())
 	if err == nil {
-		t.Fatal("expected mapping error")
+		t.Fatal("CreateResource against an apiserver that never recovers: got nil, want error")
 	}
-	if !strings.Contains(err.Error(), "failed to get REST mapping") {
-		t.Errorf("expected mapping-error prefix, got: %v", err)
+	if !strings.Contains(err.Error(), "resource quota evaluation timed out") {
+		t.Fatalf("CreateResource against an apiserver that never recovers: error %q does not carry the apiserver's message", err)
 	}
+	if client.resourceClient.attempts != createRetryAttempts {
+		t.Fatalf(
+			"CreateResource against an apiserver that never recovers: got %d attempts, want %d",
+			client.resourceClient.attempts, createRetryAttempts,
+		)
+	}
+}
+
+// TestCreateResourceRetriesEtcdStorageStall covers the condition that took
+// the integration lane down: etcd answers a write it cannot commit in time
+// with "etcdserver: request timed out", which kube-apiserver passes through
+// as a generic internal error. Nothing in the error's reason marks it
+// retriable, so only the message keeps the install alive.
+func TestCreateResourceRetriesEtcdStorageStall(t *testing.T) {
+	shrinkCreateRetryDelay(t)
+
+	client := &stubDynamicClient{
+		resourceClient: &stubResourceClient{
+			results: []stubCreateResult{
+				{err: kubeerr.NewInternalError(errors.New("etcdserver: request timed out"))},
+				{object: testDeployment()},
+			},
+		},
+	}
+
+	result, err := CreateResource(testDeployment(), client, testDeploymentMapper())
+	if err != nil {
+		t.Fatalf("CreateResource through an etcd stall: got err %v, want nil", err)
+	}
+	if result == nil {
+		t.Fatal("CreateResource through an etcd stall: got nil object, want the created resource")
+	}
+	if client.resourceClient.attempts != 2 {
+		t.Fatalf("CreateResource through an etcd stall: got %d attempts, want 2", client.resourceClient.attempts)
+	}
+}
+
+// TestCreateOrUpdateResourceRetriesEtcdStorageStall covers the same stall on
+// the create-or-update path, which reinstalls and child control plane
+// installs take. It had no retry at all, so a stall there aborted the
+// install on the first attempt.
+func TestCreateOrUpdateResourceRetriesEtcdStorageStall(t *testing.T) {
+	shrinkCreateRetryDelay(t)
+
+	client := &stubDynamicClient{
+		resourceClient: &stubResourceClient{
+			results: []stubCreateResult{
+				{err: kubeerr.NewInternalError(errors.New("etcdserver: request timed out"))},
+				{object: testDeployment()},
+			},
+		},
+	}
+
+	result, err := CreateOrUpdateResource(testDeployment(), client, testDeploymentMapper())
+	if err != nil {
+		t.Fatalf("CreateOrUpdateResource through an etcd stall: got err %v, want nil", err)
+	}
+	if result == nil {
+		t.Fatal("CreateOrUpdateResource through an etcd stall: got nil object, want the created resource")
+	}
+	if client.resourceClient.attempts != 2 {
+		t.Fatalf("CreateOrUpdateResource through an etcd stall: got %d attempts, want 2", client.resourceClient.attempts)
+	}
+}
+
+// TestCreateResourceDoesNotRetryDeterministicErrors covers the errors that
+// mean the request itself is wrong. Sending them again produces the same
+// answer, so CreateResource must return after a single attempt instead of
+// spending the backoff on a foregone conclusion.
+func TestCreateResourceDoesNotRetryDeterministicErrors(t *testing.T) {
+	deployments := schema.GroupResource{Group: "apps", Resource: "deployments"}
+
+	cases := []struct {
+		name    string
+		err     error
+		wantErr bool
+	}{
+		{
+			name:    "invalid",
+			err:     kubeerr.NewInvalid(schema.GroupKind{Group: "apps", Kind: "Deployment"}, "my-app", field.ErrorList{}),
+			wantErr: true,
+		},
+		{
+			name:    "forbidden",
+			err:     kubeerr.NewForbidden(deployments, "my-app", errors.New("not allowed")),
+			wantErr: true,
+		},
+		{
+			name:    "not found",
+			err:     kubeerr.NewNotFound(deployments, "my-app"),
+			wantErr: true,
+		},
+		{
+			// an existing resource is the one deterministic response
+			// CreateResource reports as success, since the caller's
+			// intent is already satisfied.
+			name:    "already exists",
+			err:     kubeerr.NewAlreadyExists(deployments, "my-app"),
+			wantErr: false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			shrinkCreateRetryDelay(t)
+
+			client := &stubDynamicClient{
+				resourceClient: &stubResourceClient{alwaysErr: tc.err},
+			}
+
+			_, err := CreateResource(testDeployment(), client, testDeploymentMapper())
+			if tc.wantErr && err == nil {
+				t.Fatalf("CreateResource with a %s response: got nil, want error", tc.name)
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("CreateResource with a %s response: got err %v, want nil", tc.name, err)
+			}
+			if client.resourceClient.attempts != 1 {
+				t.Fatalf(
+					"CreateResource with a %s response: got %d attempts, want 1",
+					tc.name, client.resourceClient.attempts,
+				)
+			}
+		})
+	}
+}
+
+// shrinkCreateRetryDelay drops the backoff between create attempts to
+// something a test can wait out, and restores the production value when the
+// test finishes.
+func shrinkCreateRetryDelay(t *testing.T) {
+	t.Helper()
+
+	original := createRetryBaseDelay
+	createRetryBaseDelay = time.Millisecond
+	t.Cleanup(func() { createRetryBaseDelay = original })
+}
+
+// testDeployment returns a minimal deployment for the create path to send.
+func testDeployment() *unstructured.Unstructured {
+	deployment := &unstructured.Unstructured{}
+	deployment.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "apps",
+		Version: "v1",
+		Kind:    "Deployment",
+	})
+	deployment.SetName("my-app")
+	deployment.SetNamespace("my-app-namespace")
+
+	return deployment
+}
+
+// testDeploymentMapper returns a mapper that resolves the Deployment kind,
+// the only kind the create path tests send.
+func testDeploymentMapper() meta.RESTMapper {
+	mapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{{Group: "apps", Version: "v1"}})
+	mapper.Add(
+		schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"},
+		meta.RESTScopeNamespace,
+	)
+
+	return mapper
+}
+
+// stubCreateResult is what the stub client hands back for one create call.
+type stubCreateResult struct {
+	object *unstructured.Unstructured
+	err    error
+}
+
+// stubDynamicClient hands every resource lookup the same stub resource
+// client so a test can count create attempts. The embedded interface is
+// unimplemented on purpose: any method the create path is not expected to
+// call panics rather than quietly returning a zero value.
+type stubDynamicClient struct {
+	dynamic.Interface
+	resourceClient *stubResourceClient
+}
+
+func (c *stubDynamicClient) Resource(resource schema.GroupVersionResource) dynamic.NamespaceableResourceInterface {
+	return c.resourceClient
+}
+
+// stubResourceClient answers create calls from a scripted list of results,
+// or with the same error every time when alwaysErr is set, and records how
+// many attempts it saw.
+type stubResourceClient struct {
+	dynamic.NamespaceableResourceInterface
+	results   []stubCreateResult
+	alwaysErr error
+	attempts  int
+}
+
+func (r *stubResourceClient) Namespace(namespace string) dynamic.ResourceInterface {
+	return r
+}
+
+func (r *stubResourceClient) Create(
+	ctx context.Context,
+	object *unstructured.Unstructured,
+	options kubemetav1.CreateOptions,
+	subresources ...string,
+) (*unstructured.Unstructured, error) {
+	r.attempts++
+
+	if r.alwaysErr != nil {
+		return nil, r.alwaysErr
+	}
+	if len(r.results) == 0 {
+		return nil, errors.New("stub resource client ran out of scripted results")
+	}
+
+	result := r.results[0]
+	r.results = r.results[1:]
+
+	return result.object, result.err
+}
+
+// errOtherMapperFailure is a distinct error value we can check for by identity.
+var errOtherMapperFailure = &distinctErr{msg: "some other mapper failure"}
+
+type distinctErr struct{ msg string }
+
+func (e *distinctErr) Error() string { return e.msg }
+
+// errMapper is a minimal RESTMapper that always returns a fixed error on
+// RESTMapping. All other methods are unimplemented (they return zero
+// values / nils) because DeleteResource only calls RESTMapping.
+type errMapper struct {
+	meta.RESTMapper
+	err error
+}
+
+func (m *errMapper) RESTMapping(gk schema.GroupKind, versions ...string) (*meta.RESTMapping, error) {
+	return nil, m.err
 }

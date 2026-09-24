@@ -1,114 +1,104 @@
 package tptdev
 
 import (
-	"strings"
+	"path/filepath"
 	"testing"
+
+	"github.com/docker/docker/api/types/container"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
-// pointDockerAtDeadSocket forces the docker client's FromEnv option to build a
-// client against an unreachable endpoint, so API calls return connection errors
-// without touching any real docker state on the host running the tests.
-func pointDockerAtDeadSocket(t *testing.T) {
-	t.Helper()
-	// unset TLS and API version overrides that could change error shape
-	t.Setenv("DOCKER_TLS_VERIFY", "")
-	t.Setenv("DOCKER_CERT_PATH", "")
-	t.Setenv("DOCKER_API_VERSION", "")
-	// point at a unix socket path that will not exist so the first API call
-	// fails cleanly with a connection error
-	t.Setenv("DOCKER_HOST", "unix:///nonexistent/tptdev-registry-test.sock")
-}
-
-// TestCreateLocalRegistry_ReturnsWrappedErrorWhenDockerUnreachable asserts
-// CreateLocalRegistry() wraps its docker-side failure with the expected prefix
-// when the docker daemon cannot be reached.
-func TestCreateLocalRegistry_ReturnsWrappedErrorWhenDockerUnreachable(t *testing.T) {
-	// arrange a docker client that cannot reach any daemon
-	pointDockerAtDeadSocket(t)
-
-	// invoke the exported entry point
-	err := CreateLocalRegistry()
-
-	// verify an error surfaced and carries one of the documented wrap prefixes
-	if err == nil {
-		t.Fatalf("expected error from CreateLocalRegistry with unreachable docker, got nil")
+func TestRegistryNeedsStart(t *testing.T) {
+	tests := []struct {
+		name   string
+		status string
+		want   bool
+	}{
+		{
+			name:   "an exited container is started",
+			status: container.StateExited,
+			want:   true,
+		},
+		{
+			name:   "a container that never ran is started",
+			status: container.StateCreated,
+			want:   true,
+		},
+		{
+			name:   "a running container is left alone",
+			status: container.StateRunning,
+			want:   false,
+		},
+		{
+			name:   "a paused container needs an unpause rather than a start",
+			status: container.StatePaused,
+			want:   false,
+		},
+		{
+			name:   "a restarting container is already on its way up",
+			status: container.StateRestarting,
+			want:   false,
+		},
+		{
+			name:   "a container being removed cannot be started",
+			status: container.StateRemoving,
+			want:   false,
+		},
+		{
+			name:   "a dead container cannot be started",
+			status: container.StateDead,
+			want:   false,
+		},
 	}
-	msg := err.Error()
-	// with a dead socket, ContainerInspect fails (registry "does not exist"
-	// from the client's perspective), ImageInspectWithRaw fails, then
-	// ImagePull is attempted and fails - so the surfaced wrap is the pull
-	// failure. Accept either the pull-wrap or the create-wrap in case the
-	// error path shifts on different docker client versions.
-	if !strings.Contains(msg, "failed to pull registry image") &&
-		!strings.Contains(msg, "failed to create registry container") &&
-		!strings.Contains(msg, "failed to create Docker client") {
-		t.Fatalf("expected a wrapped registry-setup error, got %q", msg)
-	}
-}
 
-// TestDeleteLocalRegistry_ReturnsWrappedErrorWhenDockerUnreachable asserts
-// DeleteLocalRegistry() wraps its stop-side failure when the daemon is
-// unreachable.
-func TestDeleteLocalRegistry_ReturnsWrappedErrorWhenDockerUnreachable(t *testing.T) {
-	// arrange an unreachable docker daemon
-	pointDockerAtDeadSocket(t)
-
-	// invoke the exported delete entry point
-	err := DeleteLocalRegistry()
-
-	// verify the stop step surfaces its wrapped error
-	if err == nil {
-		t.Fatalf("expected error from DeleteLocalRegistry with unreachable docker, got nil")
-	}
-	msg := err.Error()
-	// the first API call is ContainerStop; accept the remove-wrap too in
-	// case a client version treats a missing container as a soft-stop
-	if !strings.Contains(msg, "failed to stop registry docker container") &&
-		!strings.Contains(msg, "failed to remove registry docker container") &&
-		!strings.Contains(msg, "failed to create Docker client") {
-		t.Fatalf("expected a wrapped registry-teardown error, got %q", msg)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := registryNeedsStart(tt.status); got != tt.want {
+				t.Errorf(
+					"registryNeedsStart(%q) = %v, want %v",
+					tt.status,
+					got,
+					tt.want,
+				)
+			}
+		})
 	}
 }
 
-// TestConnectLocalRegistry_ReturnsWrappedErrorWhenDockerUnreachable asserts
-// ConnectLocalRegistry() surfaces a wrapped error when the docker daemon
-// underneath kind cannot be reached; nothing on the host should be mutated.
-func TestConnectLocalRegistry_ReturnsWrappedErrorWhenDockerUnreachable(t *testing.T) {
-	// arrange an unreachable docker daemon
-	pointDockerAtDeadSocket(t)
+func TestResolveKubeconfigPath(t *testing.T) {
+	t.Run("a supplied path is used as given", func(t *testing.T) {
+		const supplied = "/tmp/kind-cluster.kubeconfig"
 
-	// invoke with a cluster name that will not resolve
-	err := ConnectLocalRegistry("tptdev-registry-test-nonexistent-cluster")
+		assert.Equal(t, supplied, resolveKubeconfigPath(supplied))
+	})
 
-	// verify an error surfaced with a documented wrap prefix
-	if err == nil {
-		t.Fatalf("expected error from ConnectLocalRegistry with unreachable docker, got nil")
-	}
-	msg := err.Error()
-	// kind's ListNodes shells out to `docker ps`; with DOCKER_HOST pointed
-	// at a dead socket, that call fails and the function wraps it. Other
-	// wraps are possible on client-version drift, so accept the set of
-	// documented prefixes this function can emit before it reaches the
-	// kubernetes-config step.
-	acceptable := []string{
-		"failed to create Docker client",
-		"failed to list nodes for kind cluster",
-		"failed to make directory in kind node container",
-		"failed to configure local registry networking in kind cluster node",
-		"failed to inspect kind node container to configure docker network",
-		"failed to configure docker network to connect registry to kind cluster",
-		"failed to generate Kubernetes REST config from kubeconfig",
-		"failed to create new clientset for Kubernetes",
-		"failed to create configmap for local registry",
-	}
-	matched := false
-	for _, prefix := range acceptable {
-		if strings.Contains(msg, prefix) {
-			matched = true
-			break
-		}
-	}
-	if !matched {
-		t.Fatalf("expected one of the documented wrapped errors, got %q", msg)
-	}
+	t.Run("an empty path falls back to client-go precedence", func(t *testing.T) {
+		want := clientcmd.NewDefaultClientConfigLoadingRules().GetDefaultFilename()
+
+		assert.Equal(t, want, resolveKubeconfigPath(""))
+	})
+}
+
+// TestApplyK8sConfigUsesSuppliedPath covers the seam the resolver test cannot
+// reach: that the path is actually what the REST config is built from, rather
+// than resolved again inside. Pointing at a file that does not exist is enough
+// to tell the two apart, because client-go names the file it failed to stat —
+// a version that ignored the argument would name the default kubeconfig
+// instead, or succeed against whatever cluster happens to be active.
+func TestApplyK8sConfigUsesSuppliedPath(t *testing.T) {
+	supplied := filepath.Join(t.TempDir(), "kind-cluster.kubeconfig")
+
+	err := applyK8sConfig(supplied)
+
+	require.Error(t, err, "a kubeconfig that does not exist cannot produce a client")
+	assert.Contains(
+		t, err.Error(), supplied,
+		"the error must name the supplied kubeconfig, or the path was not the one used",
+	)
+	assert.NotContains(
+		t, err.Error(), clientcmd.NewDefaultClientConfigLoadingRules().GetDefaultFilename(),
+		"the default kubeconfig must not be consulted when a path was supplied",
+	)
 }

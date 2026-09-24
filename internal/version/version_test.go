@@ -5,41 +5,36 @@ import (
 	"testing"
 )
 
-// TestGetVersionStripsTrailingNewline asserts GetVersion() returns the embedded
-// version with any trailing newline removed.
-func TestGetVersionStripsTrailingNewline(t *testing.T) {
-	// invoke the function under test
-	got := GetVersion()
-
-	// assert no trailing newline remains
-	if strings.HasSuffix(got, "\n") {
-		t.Errorf("GetVersion() = %q, must not end with a newline", got)
-	}
-
-	// assert the returned value matches the embedded version with newline trimmed
-	want := strings.TrimSuffix(Version, "\n")
-	if got != want {
-		t.Errorf("GetVersion() = %q, want %q", got, want)
+// TestGetVersionPrefersReleaseVersion covers GetVersion returning a stamped
+// release version ahead of the embedded one.
+func TestGetVersionPrefersReleaseVersion(t *testing.T) {
+	// restore the unstamped default after the test
+	t.Cleanup(func() { ReleaseVersion = "" })
+	// stand in for a release build's -X stamp
+	ReleaseVersion = "v9.9.9-rc.1"
+	// the stamped version wins over the embedded one
+	if got := GetVersion(); got != "v9.9.9-rc.1" {
+		t.Errorf("GetVersion = %q, want the stamped v9.9.9-rc.1", got)
 	}
 }
 
-// TestGetVersionNonEmpty asserts GetVersion() returns a non-empty string, so
-// the embedded version.txt is populated at build time.
-func TestGetVersionNonEmpty(t *testing.T) {
-	// invoke the function under test
+// TestGetVersionFallsBackToEmbedded covers GetVersion returning the embedded
+// version with its trailing newline trimmed when no release version is set.
+func TestGetVersionFallsBackToEmbedded(t *testing.T) {
+	// leave the release version unstamped
+	ReleaseVersion = ""
+	// the embedded version stands, trimmed
 	got := GetVersion()
-
-	// assert the result is not empty
+	// reject an empty version
 	if got == "" {
-		t.Fatal("GetVersion() returned empty string; version.txt must be embedded and non-empty")
+		t.Fatal("GetVersion is empty, want the embedded version")
 	}
-}
-
-// TestVersionEmbedded asserts the Version variable is populated from the
-// embedded version.txt file.
-func TestVersionEmbedded(t *testing.T) {
-	// assert the embedded variable is non-empty
-	if Version == "" {
-		t.Fatal("Version is empty; //go:embed directive failed to populate it")
+	// reject a trailing line break
+	if strings.ContainsAny(got, "\r\n") {
+		t.Errorf("GetVersion = %q, want no line break", got)
+	}
+	// match the trimmed embed
+	if want := strings.TrimSuffix(Version, "\n"); got != want {
+		t.Errorf("GetVersion = %q, want the embedded %q", got, want)
 	}
 }

@@ -491,6 +491,15 @@ func buildGceMachineInfra(
 			return nil, fmt.Errorf("failed to retrieve machine runtime instance by ID: %w", err)
 		}
 	}
+	if gcpProvider.ServiceAccountCredentials == nil || *gcpProvider.ServiceAccountCredentials == "" {
+		return nil, fmt.Errorf("gcp provider %s has no service account credentials", *gcpProvider.Name)
+	}
+	// decrypt service account credentials
+	decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
+	}
+	infraGce.ServiceAccountCredentials = decryptedCredentials
 
 	// translate each portable ingress rule to the provider-side shape; each
 	// non-nil string/slice field is copied out of its pointer so a partial
@@ -539,9 +548,9 @@ func buildGceMachineInfra(
 		}
 		return nil, fmt.Errorf("gcp provider %d has no service account credentials", *gcpProvider.ID)
 	}
-	decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
+	decryptedCredentials, decryptErr := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
+	if decryptErr != nil {
+		return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", decryptErr)
 	}
 	infraGce.ServiceAccountCredentials = decryptedCredentials
 

@@ -27,7 +27,6 @@ func newValidMRI(name string) *MachineRuntimeInstance {
 func createProvisionedMRI(t *testing.T, db *gorm.DB, name string) MachineRuntimeInstance {
 	t.Helper()
 	mri := newValidMRI(name)
-	mri.Location = util.Ptr("us-east")
 	mri.Region = util.Ptr("us-central1")
 	mri.NetworkID = util.Ptr("network-1")
 	mri.SubnetID = util.Ptr("subnet-1")
@@ -67,7 +66,6 @@ func TestMachineRuntimeInstance_BeforeUpdate_LocationFieldsImmutable(t *testing.
 		name    string
 		payload *MachineRuntimeInstance
 	}{
-		{"location", &MachineRuntimeInstance{Location: util.Ptr("other-location")}},
 		{"region", &MachineRuntimeInstance{Region: util.Ptr("other-region")}},
 		{"network id", &MachineRuntimeInstance{NetworkID: util.Ptr("other-network")}},
 		{"subnet id", &MachineRuntimeInstance{SubnetID: util.Ptr("other-subnet")}},

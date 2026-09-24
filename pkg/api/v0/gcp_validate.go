@@ -161,12 +161,9 @@ func (g *GcpGceMachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeUpdate rejects changes to the immutable placement and association
-// fields. It checks each through lib.IsFieldChanged so immutability is enforced
-// under both PATCH and PUT; the region, zone, definition, and provider are
-// fixed once the VM is provisioned, while the ssh user stays mutable so a
-// pulumi up can apply it in place.
+// beforeUpdate rejects changes to the immutable placement and association fields.
 func (g *GcpGceMachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
+	// region, zone, definition, and provider stay fixed after the VM is provisioned
 	immutableFields := []struct {
 		column string
 		name   string
@@ -272,4 +269,3 @@ func (g *GcpGceMachineRuntimeInstance) afterUpdate(tx *gorm.DB) error {
 func (g *GcpGceMachineRuntimeInstance) afterDelete(tx *gorm.DB) error {
 	return nil
 }
-

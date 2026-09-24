@@ -131,6 +131,10 @@ func createNewApiFile(
 				Id(
 					fmt.Sprintf("%sID", definitionName),
 				).Op("*").Uint().Add(util.Tag(
+					[2]string{"json", fmt.Sprintf(
+						"%sID,omitempty",
+						definitionName,
+					)},
 					[2]string{"validate", "required"},
 					[2]string{"gorm", "not null"},
 				)),
@@ -163,6 +167,10 @@ func createNewApiFile(
 				).Index().Op("*").Id(
 					instanceName,
 				).Add(util.Tag(
+					[2]string{"json", fmt.Sprintf(
+						"%s,omitempty",
+						pluralize.Pluralize(instanceName, 2, false),
+					)},
 					[2]string{"validate", "optional,association"},
 				)),
 			)

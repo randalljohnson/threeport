@@ -35,71 +35,66 @@ func (h Handler) GetLogBackendVersions(c echo.Context) error {
 // @Param logBackend body api_v0.LogBackend true "LogBackend object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-backends [POST]
 func (h Handler) AddLogBackend(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogBackend
-	fullyQualifiedType := new(api_v0.LogBackend).GetFullyQualifiedType()
 	var logBackend api_v0.LogBackend
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, logBackend); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	if err := c.Bind(&logBackend); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, logBackend, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+	}
+
+	// check for duplicate names
+	var existingLogBackend api_v0.LogBackend
+	nameUsed := true
+	result := h.RequestDB(c).Where("name = ?", logBackend.Name).First(&existingLogBackend)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			nameUsed = false
+		} else {
+			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		}
+	}
+	if nameUsed {
+		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
 	}
 
 	// persist to DB
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		// clear id so a retried create does not reuse a rolled-back key
-		logBackend.ID = nil
-		return db.Create(&logBackend)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Create(&logBackend); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.LogBackend),
-			fullyQualifiedType,
-		)
-	}
-
-	// the write has committed; bring any process state that mirrors the
-	// database in line before answering, so a caller that gets a 200 can
-	// rely on it. A persist hook cannot do this: it runs inside the
-	// transaction, so it would act on a write that may never commit.
-	if err := apiserver_lib.AfterCommitCreate(h.DB, &logBackend); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		logBackend,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
@@ -110,25 +105,25 @@ func (h Handler) AddLogBackend(c echo.Context) error {
 // @ID get-v0-logBackends
 // @Accept json
 // @Produce json
-// @Param name query string false "filter by exact log backend name (case sensitive)"
+// @Param name query string false "log backend search by name"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-backends [GET]
 func (h Handler) GetLogBackends(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.LogBackend).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeLogBackend
 
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	// bind filter
 	var filter api_v0.LogBackend
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -144,7 +139,7 @@ func (h Handler) GetLogBackends(c echo.Context) error {
 		var totalCount int64
 		if result := h.RequestDB(c).Model(&api_v0.LogBackend{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
 
 		// see if total count is greater than the limit
@@ -155,22 +150,25 @@ func (h Handler) GetLogBackends(c echo.Context) error {
 			// if we don't have to paginate, return all records
 			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
 			returnedCount = int64(len(*records))
 		case true:
-			// dispatch to the configured pagination strategy to fetch the first page
+			// if we have to paginate, create the materialized view and use it to fetch the first page of records
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.LogBackend{}).Where(&filter), records, queryTable, pageParams)
+			viewName, qid, err := h.CreateMaterializedView(queryTable)
 			if err != nil {
-				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-					return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-				}
-				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
-			pagination.QueryId = queryId
-			returnedCount = count
+			pagination.QueryId = qid
+
+			// fetch records from the new materialized view
+			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+			if err != nil {
+				h.Logger.Error("handler error: error finding records", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			}
 
 			// set the cursor for the next page of results
 			if len(*records) > 0 {
@@ -181,20 +179,24 @@ func (h Handler) GetLogBackends(c echo.Context) error {
 		}
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// continuation: dispatch to the configured pagination strategy to fetch the next page
-		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.LogBackend{}).Where(&filter), records, queryTable, pageParams)
+		// use query ID to find the materialized view name
+		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 		if err != nil {
-			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-				return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-			}
-			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
-		pagination.QueryId = queryId
-		returnedCount = count
+
+		// fetch records from the materialized view based on cursor
+		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+		if err != nil {
+			h.Logger.Error("handler error: error finding records", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		}
+
+		// set the query ID for the next page of results
+		pagination.QueryId = pageParams.QueryId
 
 		// set the cursor for the next page of results
 		if len(*records) > 0 {
@@ -214,11 +216,11 @@ func (h Handler) GetLogBackends(c echo.Context) error {
 			Pagination:  *pagination,
 		},
 		*records,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -235,26 +237,26 @@ func (h Handler) GetLogBackends(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-backends/{id} [GET]
 func (h Handler) GetLogBackend(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.LogBackend).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeLogBackend
 	logBackendID := c.Param("id")
 	var logBackend api_v0.LogBackend
 	if result := h.RequestDB(c).
 		First(&logBackend, logBackendID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		logBackend,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -274,64 +276,54 @@ func (h Handler) GetLogBackend(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-backends/{id} [PATCH]
 func (h Handler) UpdateLogBackend(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogBackend
-	fullyQualifiedType := new(api_v0.LogBackend).GetFullyQualifiedType()
 	logBackendID := c.Param("id")
 	var existingLogBackend api_v0.LogBackend
 	if result := h.RequestDB(c).First(&existingLogBackend, logBackendID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingLogBackend); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedLogBackend api_v0.LogBackend
 	if err := c.Bind(&updatedLogBackend); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// update object in database
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Model(&existingLogBackend).Updates(&updatedLogBackend)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingLogBackend).Updates(&updatedLogBackend); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.LogBackend),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingLogBackend,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -352,80 +344,70 @@ func (h Handler) UpdateLogBackend(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-backends/{id} [PUT]
 func (h Handler) ReplaceLogBackend(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogBackend
-	fullyQualifiedType := new(api_v0.LogBackend).GetFullyQualifiedType()
 	logBackendID := c.Param("id")
 	var existingLogBackend api_v0.LogBackend
 	if result := h.RequestDB(c).First(&existingLogBackend, logBackendID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingLogBackend); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedLogBackend api_v0.LogBackend
 	if err := c.Bind(&updatedLogBackend); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, updatedLogBackend, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// persist provided data
 	updatedLogBackend.ID = existingLogBackend.ID
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedLogBackend)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedLogBackend); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.LogBackend),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// reload updated data from DB
 	if result := h.RequestDB(c).First(&existingLogBackend, logBackendID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingLogBackend,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -443,21 +425,19 @@ func (h Handler) ReplaceLogBackend(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-backends/{id} [DELETE]
 func (h Handler) DeleteLogBackend(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.LogBackend).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeLogBackend
 	logBackendID := c.Param("id")
 	var logBackend api_v0.LogBackend
 	if result := h.RequestDB(c).First(&logBackend, logBackendID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// delete object
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Delete(&logBackend)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&logBackend); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
 		var blockedErr *api_v0.BlockedDeleteError
@@ -472,28 +452,20 @@ func (h Handler) DeleteLogBackend(c echo.Context) error {
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-	}
-
-	// the delete has committed; drop any process state that mirrored the
-	// row before answering. A persist hook cannot do this: a rollback
-	// would have dropped state for a row that survived.
-	if err := apiserver_lib.AfterCommitDelete(h.DB, &logBackend); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		logBackend,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -521,71 +493,66 @@ func (h Handler) GetLogStorageDefinitionVersions(c echo.Context) error {
 // @Param logStorageDefinition body api_v0.LogStorageDefinition true "LogStorageDefinition object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-definitions [POST]
 func (h Handler) AddLogStorageDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogStorageDefinition
-	fullyQualifiedType := new(api_v0.LogStorageDefinition).GetFullyQualifiedType()
 	var logStorageDefinition api_v0.LogStorageDefinition
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, logStorageDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	if err := c.Bind(&logStorageDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, logStorageDefinition, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+	}
+
+	// check for duplicate names
+	var existingLogStorageDefinition api_v0.LogStorageDefinition
+	nameUsed := true
+	result := h.RequestDB(c).Where("name = ?", logStorageDefinition.Name).First(&existingLogStorageDefinition)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			nameUsed = false
+		} else {
+			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		}
+	}
+	if nameUsed {
+		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
 	}
 
 	// persist to DB
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		// clear id so a retried create does not reuse a rolled-back key
-		logStorageDefinition.ID = nil
-		return db.Create(&logStorageDefinition)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Create(&logStorageDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.LogStorageDefinition),
-			fullyQualifiedType,
-		)
-	}
-
-	// the write has committed; bring any process state that mirrors the
-	// database in line before answering, so a caller that gets a 200 can
-	// rely on it. A persist hook cannot do this: it runs inside the
-	// transaction, so it would act on a write that may never commit.
-	if err := apiserver_lib.AfterCommitCreate(h.DB, &logStorageDefinition); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		logStorageDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
@@ -596,25 +563,25 @@ func (h Handler) AddLogStorageDefinition(c echo.Context) error {
 // @ID get-v0-logStorageDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "filter by exact log storage definition name (case sensitive)"
+// @Param name query string false "log storage definition search by name"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-definitions [GET]
 func (h Handler) GetLogStorageDefinitions(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.LogStorageDefinition).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeLogStorageDefinition
 
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	// bind filter
 	var filter api_v0.LogStorageDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -630,7 +597,7 @@ func (h Handler) GetLogStorageDefinitions(c echo.Context) error {
 		var totalCount int64
 		if result := h.RequestDB(c).Model(&api_v0.LogStorageDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
 
 		// see if total count is greater than the limit
@@ -641,22 +608,25 @@ func (h Handler) GetLogStorageDefinitions(c echo.Context) error {
 			// if we don't have to paginate, return all records
 			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
 			returnedCount = int64(len(*records))
 		case true:
-			// dispatch to the configured pagination strategy to fetch the first page
+			// if we have to paginate, create the materialized view and use it to fetch the first page of records
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.LogStorageDefinition{}).Where(&filter), records, queryTable, pageParams)
+			viewName, qid, err := h.CreateMaterializedView(queryTable)
 			if err != nil {
-				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-					return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-				}
-				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
-			pagination.QueryId = queryId
-			returnedCount = count
+			pagination.QueryId = qid
+
+			// fetch records from the new materialized view
+			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+			if err != nil {
+				h.Logger.Error("handler error: error finding records", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			}
 
 			// set the cursor for the next page of results
 			if len(*records) > 0 {
@@ -667,20 +637,24 @@ func (h Handler) GetLogStorageDefinitions(c echo.Context) error {
 		}
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// continuation: dispatch to the configured pagination strategy to fetch the next page
-		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.LogStorageDefinition{}).Where(&filter), records, queryTable, pageParams)
+		// use query ID to find the materialized view name
+		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 		if err != nil {
-			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-				return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-			}
-			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
-		pagination.QueryId = queryId
-		returnedCount = count
+
+		// fetch records from the materialized view based on cursor
+		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+		if err != nil {
+			h.Logger.Error("handler error: error finding records", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		}
+
+		// set the query ID for the next page of results
+		pagination.QueryId = pageParams.QueryId
 
 		// set the cursor for the next page of results
 		if len(*records) > 0 {
@@ -700,11 +674,11 @@ func (h Handler) GetLogStorageDefinitions(c echo.Context) error {
 			Pagination:  *pagination,
 		},
 		*records,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -721,26 +695,26 @@ func (h Handler) GetLogStorageDefinitions(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-definitions/{id} [GET]
 func (h Handler) GetLogStorageDefinition(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.LogStorageDefinition).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeLogStorageDefinition
 	logStorageDefinitionID := c.Param("id")
 	var logStorageDefinition api_v0.LogStorageDefinition
 	if result := h.RequestDB(c).
 		First(&logStorageDefinition, logStorageDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		logStorageDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -760,64 +734,54 @@ func (h Handler) GetLogStorageDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-definitions/{id} [PATCH]
 func (h Handler) UpdateLogStorageDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogStorageDefinition
-	fullyQualifiedType := new(api_v0.LogStorageDefinition).GetFullyQualifiedType()
 	logStorageDefinitionID := c.Param("id")
 	var existingLogStorageDefinition api_v0.LogStorageDefinition
 	if result := h.RequestDB(c).First(&existingLogStorageDefinition, logStorageDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingLogStorageDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedLogStorageDefinition api_v0.LogStorageDefinition
 	if err := c.Bind(&updatedLogStorageDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// update object in database
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Model(&existingLogStorageDefinition).Updates(&updatedLogStorageDefinition)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingLogStorageDefinition).Updates(&updatedLogStorageDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.LogStorageDefinition),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingLogStorageDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -838,80 +802,70 @@ func (h Handler) UpdateLogStorageDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-definitions/{id} [PUT]
 func (h Handler) ReplaceLogStorageDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogStorageDefinition
-	fullyQualifiedType := new(api_v0.LogStorageDefinition).GetFullyQualifiedType()
 	logStorageDefinitionID := c.Param("id")
 	var existingLogStorageDefinition api_v0.LogStorageDefinition
 	if result := h.RequestDB(c).First(&existingLogStorageDefinition, logStorageDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingLogStorageDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedLogStorageDefinition api_v0.LogStorageDefinition
 	if err := c.Bind(&updatedLogStorageDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, updatedLogStorageDefinition, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// persist provided data
 	updatedLogStorageDefinition.ID = existingLogStorageDefinition.ID
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedLogStorageDefinition)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedLogStorageDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.LogStorageDefinition),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// reload updated data from DB
 	if result := h.RequestDB(c).First(&existingLogStorageDefinition, logStorageDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingLogStorageDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -929,27 +883,25 @@ func (h Handler) ReplaceLogStorageDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-definitions/{id} [DELETE]
 func (h Handler) DeleteLogStorageDefinition(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.LogStorageDefinition).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeLogStorageDefinition
 	logStorageDefinitionID := c.Param("id")
 	var logStorageDefinition api_v0.LogStorageDefinition
 	if result := h.RequestDB(c).Preload("LogStorageInstances").First(&logStorageDefinition, logStorageDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check to make sure no dependent instances exist for this definition
 	if len(logStorageDefinition.LogStorageInstances) != 0 {
-		err := errors.New("log storage definition has related log storage instances - " + api_v0.ErrMsgDeleteBlocked)
-		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
+		err := errors.New("log storage definition has related log storage instances - cannot be deleted")
+		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
 	// delete object
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Delete(&logStorageDefinition)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&logStorageDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
 		var blockedErr *api_v0.BlockedDeleteError
@@ -964,28 +916,20 @@ func (h Handler) DeleteLogStorageDefinition(c echo.Context) error {
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-	}
-
-	// the delete has committed; drop any process state that mirrored the
-	// row before answering. A persist hook cannot do this: a rollback
-	// would have dropped state for a row that survived.
-	if err := apiserver_lib.AfterCommitDelete(h.DB, &logStorageDefinition); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		logStorageDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1013,71 +957,66 @@ func (h Handler) GetLogStorageInstanceVersions(c echo.Context) error {
 // @Param logStorageInstance body api_v0.LogStorageInstance true "LogStorageInstance object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-instances [POST]
 func (h Handler) AddLogStorageInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogStorageInstance
-	fullyQualifiedType := new(api_v0.LogStorageInstance).GetFullyQualifiedType()
 	var logStorageInstance api_v0.LogStorageInstance
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, logStorageInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	if err := c.Bind(&logStorageInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, logStorageInstance, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+	}
+
+	// check for duplicate names
+	var existingLogStorageInstance api_v0.LogStorageInstance
+	nameUsed := true
+	result := h.RequestDB(c).Where("name = ?", logStorageInstance.Name).First(&existingLogStorageInstance)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			nameUsed = false
+		} else {
+			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		}
+	}
+	if nameUsed {
+		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
 	}
 
 	// persist to DB
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		// clear id so a retried create does not reuse a rolled-back key
-		logStorageInstance.ID = nil
-		return db.Create(&logStorageInstance)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Create(&logStorageInstance); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.LogStorageInstance),
-			fullyQualifiedType,
-		)
-	}
-
-	// the write has committed; bring any process state that mirrors the
-	// database in line before answering, so a caller that gets a 200 can
-	// rely on it. A persist hook cannot do this: it runs inside the
-	// transaction, so it would act on a write that may never commit.
-	if err := apiserver_lib.AfterCommitCreate(h.DB, &logStorageInstance); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		logStorageInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
@@ -1088,25 +1027,25 @@ func (h Handler) AddLogStorageInstance(c echo.Context) error {
 // @ID get-v0-logStorageInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "filter by exact log storage instance name (case sensitive)"
+// @Param name query string false "log storage instance search by name"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-instances [GET]
 func (h Handler) GetLogStorageInstances(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.LogStorageInstance).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeLogStorageInstance
 
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	// bind filter
 	var filter api_v0.LogStorageInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1122,7 +1061,7 @@ func (h Handler) GetLogStorageInstances(c echo.Context) error {
 		var totalCount int64
 		if result := h.RequestDB(c).Model(&api_v0.LogStorageInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
 
 		// see if total count is greater than the limit
@@ -1133,22 +1072,25 @@ func (h Handler) GetLogStorageInstances(c echo.Context) error {
 			// if we don't have to paginate, return all records
 			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
 			returnedCount = int64(len(*records))
 		case true:
-			// dispatch to the configured pagination strategy to fetch the first page
+			// if we have to paginate, create the materialized view and use it to fetch the first page of records
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.LogStorageInstance{}).Where(&filter), records, queryTable, pageParams)
+			viewName, qid, err := h.CreateMaterializedView(queryTable)
 			if err != nil {
-				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-					return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-				}
-				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
-			pagination.QueryId = queryId
-			returnedCount = count
+			pagination.QueryId = qid
+
+			// fetch records from the new materialized view
+			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+			if err != nil {
+				h.Logger.Error("handler error: error finding records", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			}
 
 			// set the cursor for the next page of results
 			if len(*records) > 0 {
@@ -1159,20 +1101,24 @@ func (h Handler) GetLogStorageInstances(c echo.Context) error {
 		}
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// continuation: dispatch to the configured pagination strategy to fetch the next page
-		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.LogStorageInstance{}).Where(&filter), records, queryTable, pageParams)
+		// use query ID to find the materialized view name
+		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 		if err != nil {
-			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-				return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-			}
-			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
-		pagination.QueryId = queryId
-		returnedCount = count
+
+		// fetch records from the materialized view based on cursor
+		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+		if err != nil {
+			h.Logger.Error("handler error: error finding records", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		}
+
+		// set the query ID for the next page of results
+		pagination.QueryId = pageParams.QueryId
 
 		// set the cursor for the next page of results
 		if len(*records) > 0 {
@@ -1192,11 +1138,11 @@ func (h Handler) GetLogStorageInstances(c echo.Context) error {
 			Pagination:  *pagination,
 		},
 		*records,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1213,26 +1159,26 @@ func (h Handler) GetLogStorageInstances(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-instances/{id} [GET]
 func (h Handler) GetLogStorageInstance(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.LogStorageInstance).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeLogStorageInstance
 	logStorageInstanceID := c.Param("id")
 	var logStorageInstance api_v0.LogStorageInstance
 	if result := h.RequestDB(c).
 		First(&logStorageInstance, logStorageInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		logStorageInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1252,64 +1198,54 @@ func (h Handler) GetLogStorageInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-instances/{id} [PATCH]
 func (h Handler) UpdateLogStorageInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogStorageInstance
-	fullyQualifiedType := new(api_v0.LogStorageInstance).GetFullyQualifiedType()
 	logStorageInstanceID := c.Param("id")
 	var existingLogStorageInstance api_v0.LogStorageInstance
 	if result := h.RequestDB(c).First(&existingLogStorageInstance, logStorageInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingLogStorageInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedLogStorageInstance api_v0.LogStorageInstance
 	if err := c.Bind(&updatedLogStorageInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// update object in database
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Model(&existingLogStorageInstance).Updates(&updatedLogStorageInstance)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingLogStorageInstance).Updates(&updatedLogStorageInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.LogStorageInstance),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingLogStorageInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1330,80 +1266,70 @@ func (h Handler) UpdateLogStorageInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-instances/{id} [PUT]
 func (h Handler) ReplaceLogStorageInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeLogStorageInstance
-	fullyQualifiedType := new(api_v0.LogStorageInstance).GetFullyQualifiedType()
 	logStorageInstanceID := c.Param("id")
 	var existingLogStorageInstance api_v0.LogStorageInstance
 	if result := h.RequestDB(c).First(&existingLogStorageInstance, logStorageInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingLogStorageInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedLogStorageInstance api_v0.LogStorageInstance
 	if err := c.Bind(&updatedLogStorageInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, updatedLogStorageInstance, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// persist provided data
 	updatedLogStorageInstance.ID = existingLogStorageInstance.ID
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedLogStorageInstance)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedLogStorageInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.LogStorageInstance),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// reload updated data from DB
 	if result := h.RequestDB(c).First(&existingLogStorageInstance, logStorageInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingLogStorageInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1421,21 +1347,19 @@ func (h Handler) ReplaceLogStorageInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/log-storage-instances/{id} [DELETE]
 func (h Handler) DeleteLogStorageInstance(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.LogStorageInstance).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeLogStorageInstance
 	logStorageInstanceID := c.Param("id")
 	var logStorageInstance api_v0.LogStorageInstance
 	if result := h.RequestDB(c).First(&logStorageInstance, logStorageInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// delete object
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Delete(&logStorageInstance)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&logStorageInstance); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
 		var blockedErr *api_v0.BlockedDeleteError
@@ -1450,28 +1374,20 @@ func (h Handler) DeleteLogStorageInstance(c echo.Context) error {
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-	}
-
-	// the delete has committed; drop any process state that mirrored the
-	// row before answering. A persist hook cannot do this: a rollback
-	// would have dropped state for a row that survived.
-	if err := apiserver_lib.AfterCommitDelete(h.DB, &logStorageInstance); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		logStorageInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)

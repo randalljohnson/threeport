@@ -126,10 +126,6 @@ type Options struct {
 	// Port mappings for kind infra provider
 	KindPortMappings []string
 
-	// The host port to publish the Threeport API on for a local control plane.
-	// Zero means the default for the auth setting applies.
-	ApiPort int
-
 	// If true, a cloud load balancer is provisioned for the threeport API.
 	RestApiLoadBalancer bool
 
@@ -148,12 +144,6 @@ type Options struct {
 	// Create and connect local container registry for local control plane
 	// clusters.
 	LocalRegistry bool
-
-	// PaginationMode sets the REST API server's pagination strategy through
-	// the `-pagination-mode` flag. Accepted values are `as-of-system-time`
-	// and `materialized-view`. A nil or empty value omits the flag, so the
-	// API server applies its own default.
-	PaginationMode *string
 }
 
 type ControlPlaneInstaller struct {

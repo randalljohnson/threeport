@@ -251,42 +251,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/gcp-gce-machine-runtime-definitions/versions": {
-            "get": {
-                "description": "Get the supported API versions for gcp gce machine runtime definitions.",
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "GetGcpGceMachineRuntimeDefinitionVersions gets the supported versions for the gcp gce machine runtime definition API.",
-                "operationId": "gcpGceMachineRuntimeDefinition-get-versions",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.ApiObjectVersions"
-                        }
-                    }
-                }
-            }
-        },
-        "/gcp-gce-machine-runtime-instances/versions": {
-            "get": {
-                "description": "Get the supported API versions for gcp gce machine runtime instances.",
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "GetGcpGceMachineRuntimeInstanceVersions gets the supported versions for the gcp gce machine runtime instance API.",
-                "operationId": "gcpGceMachineRuntimeInstance-get-versions",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.ApiObjectVersions"
-                        }
-                    }
-                }
-            }
-        },
         "/gcp-gke-kubernetes-runtime-definitions/versions": {
             "get": {
                 "description": "Get the supported API versions for gcp gke kubernetes runtime definitions.",
@@ -1003,7 +967,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact attached object reference name (case sensitive)",
+                        "description": "attached object reference search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -1059,12 +1023,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -1162,12 +1120,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -1273,12 +1225,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1302,7 +1248,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact aws eks kubernetes runtime definition name (case sensitive)",
+                        "description": "aws eks kubernetes runtime definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -1358,12 +1304,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -1461,12 +1401,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -1572,12 +1506,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1601,7 +1529,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact aws eks kubernetes runtime instance name (case sensitive)",
+                        "description": "aws eks kubernetes runtime instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -1657,12 +1585,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -1760,12 +1682,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -1871,12 +1787,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1900,7 +1810,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact aws provider name (case sensitive)",
+                        "description": "aws provider search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -1956,12 +1866,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -2059,12 +1963,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -2170,12 +2068,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2199,7 +2091,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact control plane definition name (case sensitive)",
+                        "description": "control plane definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -2255,12 +2147,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -2358,12 +2244,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -2469,12 +2349,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2498,7 +2372,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact control plane instance name (case sensitive)",
+                        "description": "control plane instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -2554,12 +2428,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -2657,12 +2525,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -2768,12 +2630,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2797,7 +2653,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact domain name definition name (case sensitive)",
+                        "description": "domain name definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -2853,12 +2709,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -2956,12 +2806,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -3067,12 +2911,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -3096,7 +2934,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact domain name instance name (case sensitive)",
+                        "description": "domain name instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -3152,12 +2990,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -3255,12 +3087,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -3366,12 +3192,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -3395,7 +3215,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact event name (case sensitive)",
+                        "description": "event search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -3455,12 +3275,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -3470,17 +3284,17 @@ const docTemplate = `{
                 }
             }
         },
-        "/v0/events-filtered": {
+        "/v0/events-join-attached-object-references": {
             "get": {
-                "description": "Get events from the Threeport database, narrowed by the object_type and object_id columns each event row carries.",
+                "description": "Get all events joined with attached object references from the Threeport database.",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "summary": "gets all events, filtered by subject.",
-                "operationId": "get-v0-events-filtered",
+                "summary": "gets all events joined with attached object references.",
+                "operationId": "get-v0-events-join-attached-object-references",
                 "parameters": [
                     {
                         "type": "string",
@@ -3490,7 +3304,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "filter events by object type name; CamelCase Go TypeName like 'KubernetesWorkloadInstance'. Filters on its own, and narrows objectid, objectname, or objectnameprefix to one kind",
+                        "description": "filter events by object type name (with objectname); CamelCase Go TypeName like 'KubernetesWorkloadInstance'",
                         "name": "objecttypename",
                         "in": "query"
                     },
@@ -3508,26 +3322,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "filter events by exact object name; matches every subject type carrying that name, deleted subjects included, unless objecttypename narrows it",
+                        "description": "filter events by object name (with objecttypename)",
                         "name": "objectname",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "filter events by object name prefix; matches every subject whose name starts with this token, deleted subjects included, across every subject type unless objecttypename narrows it",
-                        "name": "objectnameprefix",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "filter events by exact Reason match (case-sensitive CamelCase, e.g. 'SuccessfulCreate')",
-                        "name": "reason",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "filter events by Reason prefix (case-sensitive CamelCase, matches Reason values starting with this token)",
-                        "name": "reasonprefix",
                         "in": "query"
                     }
                 ],
@@ -3641,12 +3437,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -3748,12 +3538,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -3777,7 +3561,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact gateway definition name (case sensitive)",
+                        "description": "gateway definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -3833,12 +3617,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -3936,12 +3714,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -4047,12 +3819,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -4076,7 +3842,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact gateway http port name (case sensitive)",
+                        "description": "gateway http port search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -4132,12 +3898,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -4235,12 +3995,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -4346,12 +4100,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -4375,7 +4123,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact gateway instance name (case sensitive)",
+                        "description": "gateway instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -4431,12 +4179,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -4534,12 +4276,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -4645,12 +4381,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -4674,7 +4404,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact gateway tcp port name (case sensitive)",
+                        "description": "gateway tcp port search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -4730,12 +4460,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -4833,12 +4557,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -4944,610 +4662,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/v0/gcp-gce-machine-runtime-definitions": {
-            "get": {
-                "description": "Get all gcp gce machine runtime definitions from the Threeport database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "gets all gcp gce machine runtime definitions.",
-                "operationId": "get-v0-gcpGceMachineRuntimeDefinitions",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "filter by exact gcp gce machine runtime definition name (case sensitive)",
-                        "name": "name",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Add a new gcp gce machine runtime definition to the Threeport database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "adds a new gcp gce machine runtime definition.",
-                "operationId": "add-v0-gcpGceMachineRuntimeDefinition",
-                "parameters": [
-                    {
-                        "description": "GcpGceMachineRuntimeDefinition object",
-                        "name": "gcpGceMachineRuntimeDefinition",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.GcpGceMachineRuntimeDefinition"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/v0/gcp-gce-machine-runtime-definitions/{id}": {
-            "get": {
-                "description": "Get a particular gcp gce machine runtime definition from the database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "gets a gcp gce machine runtime definition.",
-                "operationId": "get-v0-gcpGceMachineRuntimeDefinition",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "Replace a gcp gce machine runtime definition in the database.  All required fields must be provided.\nIf any optional fields are not provided, they will be null post-update.\nNote: This API endpint is for updating gcp gce machine runtime definition objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "updates an existing gcp gce machine runtime definition by replacing the entire object.",
-                "operationId": "replace-v0-gcpGceMachineRuntimeDefinition",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "GcpGceMachineRuntimeDefinition object",
-                        "name": "gcpGceMachineRuntimeDefinition",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.GcpGceMachineRuntimeDefinition"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Delete a gcp gce machine runtime definition by ID from the database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "deletes a gcp gce machine runtime definition.",
-                "operationId": "delete-v0-gcpGceMachineRuntimeDefinition",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "description": "Update a gcp gce machine runtime definition in the database.  Provide one or more fields to update.\nNote: This API endpint is for updating gcp gce machine runtime definition objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "updates specific fields for an existing gcp gce machine runtime definition.",
-                "operationId": "update-v0-gcpGceMachineRuntimeDefinition",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "GcpGceMachineRuntimeDefinition object",
-                        "name": "gcpGceMachineRuntimeDefinition",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.GcpGceMachineRuntimeDefinition"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/v0/gcp-gce-machine-runtime-instances": {
-            "get": {
-                "description": "Get all gcp gce machine runtime instances from the Threeport database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "gets all gcp gce machine runtime instances.",
-                "operationId": "get-v0-gcpGceMachineRuntimeInstances",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "filter by exact gcp gce machine runtime instance name (case sensitive)",
-                        "name": "name",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Add a new gcp gce machine runtime instance to the Threeport database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "adds a new gcp gce machine runtime instance.",
-                "operationId": "add-v0-gcpGceMachineRuntimeInstance",
-                "parameters": [
-                    {
-                        "description": "GcpGceMachineRuntimeInstance object",
-                        "name": "gcpGceMachineRuntimeInstance",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.GcpGceMachineRuntimeInstance"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/v0/gcp-gce-machine-runtime-instances/{id}": {
-            "get": {
-                "description": "Get a particular gcp gce machine runtime instance from the database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "gets a gcp gce machine runtime instance.",
-                "operationId": "get-v0-gcpGceMachineRuntimeInstance",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "Replace a gcp gce machine runtime instance in the database.  All required fields must be provided.\nIf any optional fields are not provided, they will be null post-update.\nNote: This API endpint is for updating gcp gce machine runtime instance objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "updates an existing gcp gce machine runtime instance by replacing the entire object.",
-                "operationId": "replace-v0-gcpGceMachineRuntimeInstance",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "GcpGceMachineRuntimeInstance object",
-                        "name": "gcpGceMachineRuntimeInstance",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.GcpGceMachineRuntimeInstance"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Delete a gcp gce machine runtime instance by ID from the database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "deletes a gcp gce machine runtime instance.",
-                "operationId": "delete-v0-gcpGceMachineRuntimeInstance",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "description": "Update a gcp gce machine runtime instance in the database.  Provide one or more fields to update.\nNote: This API endpint is for updating gcp gce machine runtime instance objects only.\nRequest bodies that include related objects will be accepted, however\nthe related objects will not be changed.  Call the patch or put method for\neach particular existing object to change them.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "updates specific fields for an existing gcp gce machine runtime instance.",
-                "operationId": "update-v0-gcpGceMachineRuntimeInstance",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "GcpGceMachineRuntimeInstance object",
-                        "name": "gcpGceMachineRuntimeInstance",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v0.GcpGceMachineRuntimeInstance"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -5571,7 +4685,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact gcp gke kubernetes runtime definition name (case sensitive)",
+                        "description": "gcp gke kubernetes runtime definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -5627,12 +4741,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -5730,12 +4838,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -5841,12 +4943,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -5870,7 +4966,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact gcp gke kubernetes runtime instance name (case sensitive)",
+                        "description": "gcp gke kubernetes runtime instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -5926,12 +5022,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -6029,12 +5119,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -6140,12 +5224,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -6169,7 +5247,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact gcp provider name (case sensitive)",
+                        "description": "gcp provider search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -6225,12 +5303,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -6328,12 +5400,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -6439,12 +5505,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -6468,7 +5528,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact helm workload definition name (case sensitive)",
+                        "description": "helm workload definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -6524,12 +5584,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -6627,12 +5681,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -6738,12 +5786,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -6767,7 +5809,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact helm workload instance name (case sensitive)",
+                        "description": "helm workload instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -6823,12 +5865,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -6926,12 +5962,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -7037,12 +6067,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -7066,7 +6090,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact kubernetes runtime definition name (case sensitive)",
+                        "description": "kubernetes runtime definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -7122,12 +6146,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -7225,12 +6243,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -7336,12 +6348,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -7365,7 +6371,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact kubernetes runtime instance name (case sensitive)",
+                        "description": "kubernetes runtime instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -7421,12 +6427,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -7524,12 +6524,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -7635,12 +6629,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -7664,7 +6652,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact kubernetes workload definition name (case sensitive)",
+                        "description": "kubernetes workload definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -7720,12 +6708,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -7823,12 +6805,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -7934,12 +6910,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -7963,7 +6933,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact kubernetes workload instance name (case sensitive)",
+                        "description": "kubernetes workload instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -8019,12 +6989,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -8122,12 +7086,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -8233,12 +7191,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -8309,7 +7261,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact kubernetes workload resource definition name (case sensitive)",
+                        "description": "kubernetes workload resource definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -8365,12 +7317,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -8468,12 +7414,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -8579,12 +7519,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -8608,7 +7542,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact kubernetes workload resource instance name (case sensitive)",
+                        "description": "kubernetes workload resource instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -8664,12 +7598,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -8767,12 +7695,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -8878,12 +7800,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -8907,7 +7823,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact log backend name (case sensitive)",
+                        "description": "log backend search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -8963,12 +7879,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -9066,12 +7976,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -9177,12 +8081,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -9206,7 +8104,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact log storage definition name (case sensitive)",
+                        "description": "log storage definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -9262,12 +8160,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -9365,12 +8257,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -9476,12 +8362,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -9505,7 +8385,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact log storage instance name (case sensitive)",
+                        "description": "log storage instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -9561,12 +8441,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -9664,12 +8538,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -9775,12 +8643,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -9804,7 +8666,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact logging definition name (case sensitive)",
+                        "description": "logging definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -9860,12 +8722,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -9963,12 +8819,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -10074,12 +8924,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -10103,7 +8947,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact logging instance name (case sensitive)",
+                        "description": "logging instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -10159,12 +9003,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -10262,12 +9100,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -10373,12 +9205,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -10402,7 +9228,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact machine runtime definition name (case sensitive)",
+                        "description": "machine runtime definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -10458,12 +9284,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -10561,12 +9381,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -10672,12 +9486,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -10701,7 +9509,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact machine runtime instance name (case sensitive)",
+                        "description": "machine runtime instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -10757,12 +9565,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -10860,12 +9662,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -10971,12 +9767,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -11000,7 +9790,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact machine workload definition name (case sensitive)",
+                        "description": "machine workload definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -11056,12 +9846,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -11159,12 +9943,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -11270,12 +10048,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -11299,7 +10071,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact machine workload instance name (case sensitive)",
+                        "description": "machine workload instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -11355,12 +10127,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -11458,12 +10224,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -11569,12 +10329,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -11598,7 +10352,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact metrics definition name (case sensitive)",
+                        "description": "metrics definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -11654,12 +10408,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -11757,12 +10505,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -11868,12 +10610,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -11897,7 +10633,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact metrics instance name (case sensitive)",
+                        "description": "metrics instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -11953,12 +10689,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -12056,12 +10786,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -12167,12 +10891,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -12240,7 +10958,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact module api route name (case sensitive)",
+                        "description": "module api route search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -12296,12 +11014,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -12399,12 +11111,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -12510,12 +11216,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -12539,7 +11239,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact module api name (case sensitive)",
+                        "description": "module api search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -12595,12 +11295,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -12698,12 +11392,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -12809,12 +11497,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -12838,7 +11520,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact module controller name (case sensitive)",
+                        "description": "module controller search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -12894,12 +11576,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -12997,12 +11673,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -13108,12 +11778,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -13137,7 +11801,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact module object name (case sensitive)",
+                        "description": "module object search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -13197,12 +11861,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -13226,7 +11884,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact module object name (case sensitive)",
+                        "description": "module object search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -13383,12 +12041,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -13490,12 +12142,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -13519,7 +12165,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact observability dashboard definition name (case sensitive)",
+                        "description": "observability dashboard definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -13575,12 +12221,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -13678,12 +12318,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -13789,12 +12423,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -13818,7 +12446,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact observability dashboard instance name (case sensitive)",
+                        "description": "observability dashboard instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -13874,12 +12502,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -13977,12 +12599,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -14088,12 +12704,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -14117,7 +12727,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact observability stack definition name (case sensitive)",
+                        "description": "observability stack definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -14173,12 +12783,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -14276,12 +12880,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -14387,12 +12985,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -14416,7 +13008,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact observability stack instance name (case sensitive)",
+                        "description": "observability stack instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -14472,12 +13064,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -14575,12 +13161,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -14686,12 +13266,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -14715,7 +13289,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact oci oke kubernetes runtime definition name (case sensitive)",
+                        "description": "oci oke kubernetes runtime definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -14771,12 +13345,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -14874,12 +13442,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -14985,12 +13547,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -15014,7 +13570,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact oci oke kubernetes runtime instance name (case sensitive)",
+                        "description": "oci oke kubernetes runtime instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -15070,12 +13626,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -15173,12 +13723,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -15284,12 +13828,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -15313,7 +13851,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact oci provider name (case sensitive)",
+                        "description": "oci provider search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -15369,12 +13907,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -15472,12 +14004,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -15583,12 +14109,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -15612,7 +14132,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact profile name (case sensitive)",
+                        "description": "profile search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -15668,12 +14188,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -15771,12 +14285,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -15882,12 +14390,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -15911,7 +14413,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact secret definition name (case sensitive)",
+                        "description": "secret definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -15967,12 +14469,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -16070,12 +14566,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -16181,12 +14671,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -16210,7 +14694,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact secret instance name (case sensitive)",
+                        "description": "secret instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -16266,12 +14750,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -16369,12 +14847,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -16480,12 +14952,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -16509,7 +14975,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact terraform definition name (case sensitive)",
+                        "description": "terraform definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -16565,12 +15031,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -16668,12 +15128,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -16779,12 +15233,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -16808,7 +15256,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact terraform instance name (case sensitive)",
+                        "description": "terraform instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -16864,12 +15312,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -16967,12 +15409,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -17078,12 +15514,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -17107,7 +15537,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact tier name (case sensitive)",
+                        "description": "tier search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -17163,12 +15593,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -17266,12 +15690,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -17377,12 +15795,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -17443,7 +15855,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Relationship": {
-                    "description": "Relationship classifies this reference:\n  - \"describes\": informational; does not block delete or update of the base.\n  - \"requires\": blocks any caller from deleting the base while this\n    reference exists, control plane callers included.\n  - \"owns\": blocks both delete and update of the base, except for a\n    caller whose mTLS certificate carries the control plane\n    organizational unit. That exemption covers every control plane\n    component, not only the controller registered for the attached\n    object's type.\n    An owned base has at most one owner; an owner may own many bases.\n  - \"marries\": enforces 1-to-1 cardinality between base and attacher\n    and blocks both delete and update of the base under the same\n    control plane exemption as \"owns\".",
+                    "description": "Relationship classifies this reference and drives lifecycle behavior\nvia gorm hooks and generated code that reveals information about a\ntype's foreign keys:\n  - \"describes\": informational; does not block delete or update of the base.\n  - \"requires\": blocks any caller from deleting the base while this\n    reference exists.\n  - \"owns\": blocks both delete and update of the base for any caller\n    except the controller registered for the attached object's type,\n    identified by its mTLS peer common name.\n    An owned base has at most one owner (enforced by the partial\n    index idx_aor_owns_base above); an owner may own many bases.\n  - \"marries\": enforces 1-to-1 cardinality between base and attacher\n    via the partial indexes above; blocks both delete and update of\n    the base for any caller except the partner's controller.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/v0.Relationship"
@@ -17598,11 +16010,11 @@ const docTemplate = `{
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -17610,23 +16022,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -17687,11 +16095,11 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -17706,16 +16114,12 @@ const docTemplate = `{
                     }
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -17726,7 +16130,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "IsSelf": {
@@ -17776,11 +16180,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -17788,16 +16192,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -17815,7 +16215,7 @@ const docTemplate = `{
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -17850,11 +16250,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -17862,16 +16262,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -17882,7 +16278,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -17913,8 +16309,6 @@ const docTemplate = `{
                 "Count",
                 "EventTime",
                 "LastObservedTime",
-                "ObjectID",
-                "ObjectType",
                 "Reason",
                 "ReportingController",
                 "Type"
@@ -17937,15 +16331,13 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "ObjectID": {
-                    "description": "The id of the object this event is about",
                     "type": "integer"
                 },
                 "ObjectName": {
-                    "description": "The name of the object this event is about, resolved on read",
                     "type": "string"
                 },
                 "ObjectType": {
-                    "description": "The fully qualified type of the object this event is about",
+                    "description": "Fields carrying the event's subject - the object the event is\nabout. They flow in both directions:\n  - On create: the caller sets ObjectType (fully qualified type form) + ObjectID\n    in the request body. Event.BeforeCreate validates them;\n    Event.AfterCreate inserts the matching AttachedObjectReference\n    in the same transaction. ObjectName is ignored on write.\n  - On read: GetEventsJoinAttachedObjectReferenceByQueryString\n    projects the joined AOR's base object back into these\n    fields, then resolves ObjectName via the type's name resolver.\n\ngorm:\"-\" keeps them off the Event row in the schema - the AOR\nis the source of truth on disk for the subject linkage.\n\nFor an event describing a script failure on a\nMachineRuntimeInstance named \"some-host\" (id 42), these hold:\n  ObjectType = \"threeport.io/v0.MachineRuntimeInstance\"\n  ObjectID   = 42\n  ObjectName = \"some-host\"   (read only - ignored on create)\nA consumer like ` + "`" + `tptctl get events` + "`" + ` uses them to render\n\"threeport.io/machine-runtime-instance/some-host\" in the OBJECT\ncolumn.",
                     "type": "string"
                 },
                 "Reason": {
@@ -17969,11 +16361,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -17981,16 +16373,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18015,7 +16403,7 @@ const docTemplate = `{
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesWorkloadDefinitionID": {
@@ -18094,11 +16482,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18106,16 +16494,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18126,7 +16510,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18169,144 +16553,6 @@ const docTemplate = `{
                 "TLSEnabled": {
                     "description": "Indicates if TLS is enabled.",
                     "type": "boolean"
-                }
-            }
-        },
-        "v0.GcpGceMachineRuntimeDefinition": {
-            "type": "object",
-            "required": [
-                "Name"
-            ],
-            "properties": {
-                "GcpGceMachineRuntimeInstances": {
-                    "description": "The GCP GCE machine runtime instances derived from this definition.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v0.GcpGceMachineRuntimeInstance"
-                    }
-                },
-                "ImageID": {
-                    "description": "The boot image identifier.",
-                    "type": "string"
-                },
-                "MachineRuntimeDefinitionID": {
-                    "description": "The machine runtime definition for a GCE machine in GCP. Optional because\nimported machines may not have an associated definition.",
-                    "type": "integer"
-                },
-                "MachineType": {
-                    "description": "The GCE machine type (e.g. e2-medium).",
-                    "type": "string"
-                },
-                "Name": {
-                    "description": "An arbitrary name for the definition.",
-                    "type": "string"
-                },
-                "ProfileID": {
-                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
-                    "type": "integer"
-                },
-                "TierID": {
-                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
-                    "type": "integer"
-                }
-            }
-        },
-        "v0.GcpGceMachineRuntimeInstance": {
-            "type": "object",
-            "required": [
-                "GcpGceMachineRuntimeDefinitionID",
-                "GcpProviderID",
-                "MachineRuntimeInstanceID",
-                "Name"
-            ],
-            "properties": {
-                "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
-                    "type": "string"
-                },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
-                    "type": "string"
-                },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
-                    "type": "boolean"
-                },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
-                    "type": "string"
-                },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
-                    "type": "string"
-                },
-                "ExternalIP": {
-                    "description": "The external IP surfaced after provisioning.",
-                    "type": "string"
-                },
-                "GcpGceMachineRuntimeDefinitionID": {
-                    "description": "The definition that configures this instance.",
-                    "type": "integer"
-                },
-                "GcpProviderID": {
-                    "description": "The GCP provider in which the VM is provisioned.",
-                    "type": "integer"
-                },
-                "Hostname": {
-                    "description": "The hostname surfaced after provisioning.",
-                    "type": "string"
-                },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
-                    "type": "boolean"
-                },
-                "MachineRuntimeInstanceID": {
-                    "description": "The machine runtime instance associated with the GCE machine.",
-                    "type": "integer"
-                },
-                "Name": {
-                    "description": "An arbitrary name the instance",
-                    "type": "string"
-                },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
-                    "type": "boolean"
-                },
-                "Region": {
-                    "description": "The GCP region in which the VM is provisioned.",
-                    "type": "string"
-                },
-                "ResourceInventory": {
-                    "description": "An inventory of all GCP resources backing this VM.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
-                },
-                "SSHKey": {
-                    "description": "The generated SSH private key, surfaced once after provisioning.",
-                    "type": "string"
-                },
-                "SSHUser": {
-                    "description": "The SSH username provisioned on the VM.",
-                    "type": "string"
-                },
-                "Status": {
-                    "description": "The status of the instance.\nTODO: use a custom type",
-                    "type": "string"
-                },
-                "Zone": {
-                    "description": "The GCP zone in which the VM is provisioned.",
-                    "type": "string"
                 }
             }
         },
@@ -18377,11 +16623,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18389,16 +16635,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18413,7 +16655,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18507,11 +16749,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18519,16 +16761,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18542,7 +16780,7 @@ const docTemplate = `{
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -18587,11 +16825,11 @@ const docTemplate = `{
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18599,16 +16837,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18619,7 +16853,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18656,11 +16890,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18668,16 +16902,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18696,7 +16926,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstances": {
@@ -18776,11 +17006,11 @@ const docTemplate = `{
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18792,16 +17022,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18816,7 +17042,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeDefinitionID": {
@@ -18868,11 +17094,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18880,23 +17106,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesWorkloadInstances": {
@@ -18944,11 +17166,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18956,23 +17178,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -19155,11 +17373,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19167,23 +17385,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "LoggingInstances": {
@@ -19244,11 +17458,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19256,23 +17470,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -19319,68 +17529,12 @@ const docTemplate = `{
                 "Name"
             ],
             "properties": {
-                "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
-                    "type": "string"
-                },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
-                    "type": "string"
-                },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
-                    "type": "boolean"
-                },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
-                    "type": "string"
-                },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
-                    "type": "string"
-                },
-                "ImageID": {
-                    "description": "The provider image identifier used to boot the machine",
-                    "type": "string"
-                },
-                "InfraProvider": {
-                    "description": "The infrastructure provider that provisions machines from this definition",
-                    "type": "string"
-                },
-                "InfraProviderAccountName": {
-                    "description": "The provider account name that selects which account the machine is\nprovisioned on, empty falling back to the default provider account",
-                    "type": "string"
-                },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
-                    "type": "boolean"
-                },
-                "MachineProfile": {
-                    "description": "The CPU-to-memory ratio of the machine",
-                    "type": "string"
-                },
                 "MachineRuntimeInstances": {
                     "description": "The associated machine runtime instances that are deployed from this\ndefinition.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v0.MachineRuntimeInstance"
                     }
-                },
-                "MachineSize": {
-                    "description": "The compute capacity of the machine",
-                    "type": "string"
-                },
-                "MachineType": {
-                    "description": "The provider-specific machine type",
-                    "type": "string"
                 },
                 "Name": {
                     "description": "An arbitrary name for the definition.",
@@ -19389,10 +17543,6 @@ const docTemplate = `{
                 "ProfileID": {
                     "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
                     "type": "integer"
-                },
-                "Reconciled": {
-                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
-                    "type": "boolean"
                 },
                 "TierID": {
                     "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
@@ -19403,15 +17553,17 @@ const docTemplate = `{
         "v0.MachineRuntimeInstance": {
             "type": "object",
             "required": [
-                "Name"
+                "Hostname",
+                "Name",
+                "SSHUser"
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19419,16 +17571,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -19439,16 +17587,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Hostname": {
-                    "description": "The hostname or IP address used to reach the machine. Optional at\ncreate so the abstract instance can exist before the machine is\nprovisioned; populated once the machine is reachable.\n\nidx_machine_runtime_instance_hostname is a partial unique index that\nallows at most one live instance per hostname, so a single machine\ncannot be represented by two records that each drive their own\nreconciliation against it. The deleted_at predicate keeps\nsoft-deleted rows out of the unique slot, so the hostname of a\ndeleted instance is available to a new one right away. CockroachDB\ntreats every NULL as distinct in a unique index, so any number of\ninstances may hold no hostname while they wait on provisioning.\nAn empty string is excluded the same way, because it is not a\nhostname either.",
+                    "description": "The hostname or IP address used to reach the machine.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
-                },
-                "Location": {
-                    "description": "The abstract threeport location for the machine",
-                    "type": "string"
                 },
                 "MachineRuntimeDefinitionID": {
                     "description": "The machine runtime definition for this instance.  Optional because\nimported machines may not have an associated definition.",
@@ -19465,10 +17609,6 @@ const docTemplate = `{
                     "description": "An arbitrary name the instance",
                     "type": "string"
                 },
-                "NetworkID": {
-                    "description": "The provider network identifier the machine attaches to.",
-                    "type": "string"
-                },
                 "Port": {
                     "description": "The SSH port on the machine.",
                     "type": "integer"
@@ -19476,18 +17616,6 @@ const docTemplate = `{
                 "Reconciled": {
                     "description": "Indicates if object is considered to be reconciled by the object's controller.",
                     "type": "boolean"
-                },
-                "Region": {
-                    "description": "The provider region in which the machine is provisioned",
-                    "type": "string"
-                },
-                "ResourceInventory": {
-                    "description": "An inventory of all provider resources backing this machine",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
                 },
                 "SSHKey": {
                     "description": "The SSH private key for authenticating to the machine.",
@@ -19498,15 +17626,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "SSHUser": {
-                    "description": "The SSH username for authenticating to the machine. Optional at create\nfor the same reason as the hostname; populated once the machine is\nprovisioned.",
+                    "description": "The SSH username for authenticating to the machine.",
                     "type": "string"
                 },
                 "Status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
-                    "type": "string"
-                },
-                "SubnetID": {
-                    "description": "The provider subnet identifier the machine attaches to",
                     "type": "string"
                 }
             }
@@ -19580,11 +17704,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19592,16 +17716,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -19615,7 +17735,7 @@ const docTemplate = `{
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "MachineRuntimeInstanceID": {
@@ -19665,11 +17785,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19677,23 +17797,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmChartVersion": {
@@ -19742,11 +17858,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19754,23 +17870,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmValuesDocument": {
@@ -19939,11 +18051,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19951,16 +18063,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -19979,7 +18087,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -20016,11 +18124,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20028,16 +18136,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -20052,7 +18156,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -20084,11 +18188,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20096,16 +18200,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -20120,7 +18220,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmChartVersion": {
@@ -20193,11 +18293,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20205,16 +18305,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -20225,7 +18321,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmValuesDocument": {
@@ -20338,11 +18434,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20350,23 +18446,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -20537,9 +18629,9 @@ const docTemplate = `{
                     ]
                 },
                 "Type": {
-                    "description": "Type is \u003capi-namespace\u003e/\u003cversion\u003e.\u003cTypeName\u003e, set even when Data is empty.",
+                    "description": "Type contains ObjectType of returned Data elements.",
                     "type": "string",
-                    "example": "threeport.io/v0.KubernetesWorkloadInstance"
+                    "example": "KubernetesWorkloadInstance"
                 }
             }
         },
@@ -20555,11 +18647,11 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20575,23 +18667,19 @@ const docTemplate = `{
                     ]
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -20628,11 +18716,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20640,16 +18728,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -20660,7 +18744,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -20721,11 +18805,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20733,23 +18817,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -20790,11 +18870,11 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20802,23 +18882,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -20873,7 +18949,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "v0.7.0-rc.0",
+	Version:          "v0.7.0-dev",
 	Host:             "",
 	BasePath:         "/",
 	Schemes:          []string{},

@@ -155,23 +155,6 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					log.Info("gateway definition scheduled for deletion - skipping create")
 					break
 				}
-				// record in-progress before the custom handler so a later failure still has a start event
-				progressNote := "creating"
-				// type-assert so types without relationship-tagged foreign keys still emit creating
-				if owner, ok := gatewayDefinition.(api_v0.RelationshipTaggedForeignKeyProvider); ok {
-					progressNote = event.CreateNote(owner)
-				}
-				if recordErr := r.EventsRecorder.RecordEvent(
-					&api_v0.Event{
-						Note:   util.Ptr(progressNote),
-						Reason: util.Ptr(event.ReasonCreateInProgress),
-						Type:   util.Ptr(event.TypeNormal),
-					},
-					gatewayDefinition.GetId(),
-					gatewayDefinition.GetFullyQualifiedType(),
-				); recordErr != nil {
-					log.Error(recordErr, "failed to record in-progress event")
-				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch gatewayDefinition.GetVersion() {
@@ -184,7 +167,7 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of gateway definition encountered for create operation")
+					operationErr = errors.New("unrecognized version of gateway definition encountered for creation")
 				}
 				if operationErr != nil {
 					errorMsg := "failed to reconcile created gateway definition object"
@@ -192,8 +175,8 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonCreateFailed),
-							Type:   util.Ptr(event.TypeWarning),
+							Reason: util.Ptr(event.ReasonFailedCreate),
+							Type:   util.Ptr(event.TypeNormal),
 						},
 						gatewayDefinition.GetId(),
 						gatewayDefinition.GetFullyQualifiedType(),
@@ -219,23 +202,6 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
-				if gatewayDefinition.ScheduledForDeletion() != nil {
-					log.Info("gateway definition scheduled for deletion - skipping update")
-					break
-				}
-				// record in-progress before the custom handler so a later failure still has a start event
-				progressNote := event.UpdateNote()
-				if recordErr := r.EventsRecorder.RecordEvent(
-					&api_v0.Event{
-						Note:   util.Ptr(progressNote),
-						Reason: util.Ptr(event.ReasonUpdateInProgress),
-						Type:   util.Ptr(event.TypeNormal),
-					},
-					gatewayDefinition.GetId(),
-					gatewayDefinition.GetFullyQualifiedType(),
-				); recordErr != nil {
-					log.Error(recordErr, "failed to record in-progress event")
-				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch gatewayDefinition.GetVersion() {
@@ -248,7 +214,7 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of gateway definition encountered for update operation")
+					operationErr = errors.New("unrecognized version of gateway definition encountered for creation")
 				}
 				if operationErr != nil {
 					errorMsg := "failed to reconcile updated gateway definition object"
@@ -256,8 +222,8 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonUpdateFailed),
-							Type:   util.Ptr(event.TypeWarning),
+							Reason: util.Ptr(event.ReasonFailedUpdate),
+							Type:   util.Ptr(event.TypeNormal),
 						},
 						gatewayDefinition.GetId(),
 						gatewayDefinition.GetFullyQualifiedType(),
@@ -283,23 +249,6 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationDeleted:
-				// record in-progress before the custom handler so a later failure still has a start event
-				progressNote := "deleting"
-				// type-assert so types without relationship-tagged foreign keys still emit deleting
-				if owner, ok := gatewayDefinition.(api_v0.RelationshipTaggedForeignKeyProvider); ok {
-					progressNote = event.DeleteNote(owner)
-				}
-				if recordErr := r.EventsRecorder.RecordEvent(
-					&api_v0.Event{
-						Note:   util.Ptr(progressNote),
-						Reason: util.Ptr(event.ReasonDeleteInProgress),
-						Type:   util.Ptr(event.TypeNormal),
-					},
-					gatewayDefinition.GetId(),
-					gatewayDefinition.GetFullyQualifiedType(),
-				); recordErr != nil {
-					log.Error(recordErr, "failed to record in-progress event")
-				}
 				var operationErr error
 				var customRequeueDelay int64
 				switch gatewayDefinition.GetVersion() {
@@ -312,30 +261,16 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					customRequeueDelay = requeueDelay
 					operationErr = err
 				default:
-					operationErr = errors.New("unrecognized version of gateway definition encountered for delete operation")
+					operationErr = errors.New("unrecognized version of gateway definition encountered for creation")
 				}
 				if operationErr != nil {
-					if errors.Is(operationErr, tpclient_lib.ErrDeleteInProgress) || errors.Is(operationErr, tpclient_lib.ErrDeleteBlocked) {
-						log.Info(
-							"conflict reconciling deleted gateway definition object, requeueing",
-							"cause", operationErr.Error(),
-						)
-						// in-progress event already recorded before the handler
-						r.UnlockAndRequeue(
-							gatewayDefinition,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					errorMsg := "failed to reconcile deleted gateway definition object"
 					log.Error(operationErr, errorMsg)
 					r.EventsRecorder.HandleEventOverride(
 						&api_v0.Event{
 							Note:   util.Ptr(errorMsg),
-							Reason: util.Ptr(event.ReasonDeleteFailed),
-							Type:   util.Ptr(event.TypeWarning),
+							Reason: util.Ptr(event.ReasonFailedDelete),
+							Type:   util.Ptr(event.TypeNormal),
 						},
 						gatewayDefinition.GetId(),
 						gatewayDefinition.GetFullyQualifiedType(),
@@ -385,20 +320,6 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					gatewayDefinition.GetId(),
 				)
 				if err != nil {
-					if errors.Is(err, tpclient_lib.ErrDeleteInProgress) || errors.Is(err, tpclient_lib.ErrDeleteBlocked) {
-						log.Info(
-							"conflict deleting gateway definition, requeueing",
-							"cause", err.Error(),
-						)
-						// in-progress event already recorded before the handler
-						r.UnlockAndRequeue(
-							gatewayDefinition,
-							int64(30),
-							lockReleased,
-							msg,
-						)
-						continue
-					}
 					log.Error(err, "failed to delete gateway definition")
 					r.UnlockAndRequeue(gatewayDefinition, requeueDelay, lockReleased, msg)
 					continue

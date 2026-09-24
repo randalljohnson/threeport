@@ -39,61 +39,56 @@ func (h Handler) GetHelmWorkloadDefinitionVersions(c echo.Context) error {
 // @Param helmWorkloadDefinition body api_v0.HelmWorkloadDefinition true "HelmWorkloadDefinition object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-definitions [POST]
 func (h Handler) AddHelmWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeHelmWorkloadDefinition
-	fullyQualifiedType := new(api_v0.HelmWorkloadDefinition).GetFullyQualifiedType()
 	var helmWorkloadDefinition api_v0.HelmWorkloadDefinition
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, helmWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	if err := c.Bind(&helmWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, helmWorkloadDefinition, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+	}
+
+	// check for duplicate names
+	var existingHelmWorkloadDefinition api_v0.HelmWorkloadDefinition
+	nameUsed := true
+	result := h.RequestDB(c).Where("name = ?", helmWorkloadDefinition.Name).First(&existingHelmWorkloadDefinition)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			nameUsed = false
+		} else {
+			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		}
+	}
+	if nameUsed {
+		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
 	}
 
 	// persist to DB
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		// clear id so a retried create does not reuse a rolled-back key
-		helmWorkloadDefinition.ID = nil
-		return db.Create(&helmWorkloadDefinition)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Create(&helmWorkloadDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.HelmWorkloadDefinition),
-			fullyQualifiedType,
-		)
-	}
-
-	// the write has committed; bring any process state that mirrors the
-	// database in line before answering, so a caller that gets a 200 can
-	// rely on it. A persist hook cannot do this: it runs inside the
-	// transaction, so it would act on a write that may never commit.
-	if err := apiserver_lib.AfterCommitCreate(h.DB, &helmWorkloadDefinition); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// notify controller if reconciliation is required
@@ -105,7 +100,7 @@ func (h Handler) AddHelmWorkloadDefinition(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 		}
 		h.JS.Publish(notif.HelmWorkloadDefinitionCreateSubject, *notifPayload)
 	}
@@ -113,11 +108,11 @@ func (h Handler) AddHelmWorkloadDefinition(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		helmWorkloadDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
@@ -128,25 +123,25 @@ func (h Handler) AddHelmWorkloadDefinition(c echo.Context) error {
 // @ID get-v0-helmWorkloadDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "filter by exact helm workload definition name (case sensitive)"
+// @Param name query string false "helm workload definition search by name"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-definitions [GET]
 func (h Handler) GetHelmWorkloadDefinitions(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.HelmWorkloadDefinition).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeHelmWorkloadDefinition
 
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	// bind filter
 	var filter api_v0.HelmWorkloadDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -162,7 +157,7 @@ func (h Handler) GetHelmWorkloadDefinitions(c echo.Context) error {
 		var totalCount int64
 		if result := h.RequestDB(c).Model(&api_v0.HelmWorkloadDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
 
 		// see if total count is greater than the limit
@@ -173,22 +168,25 @@ func (h Handler) GetHelmWorkloadDefinitions(c echo.Context) error {
 			// if we don't have to paginate, return all records
 			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
 			returnedCount = int64(len(*records))
 		case true:
-			// dispatch to the configured pagination strategy to fetch the first page
+			// if we have to paginate, create the materialized view and use it to fetch the first page of records
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.HelmWorkloadDefinition{}).Where(&filter), records, queryTable, pageParams)
+			viewName, qid, err := h.CreateMaterializedView(queryTable)
 			if err != nil {
-				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-					return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-				}
-				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
-			pagination.QueryId = queryId
-			returnedCount = count
+			pagination.QueryId = qid
+
+			// fetch records from the new materialized view
+			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+			if err != nil {
+				h.Logger.Error("handler error: error finding records", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			}
 
 			// set the cursor for the next page of results
 			if len(*records) > 0 {
@@ -199,20 +197,24 @@ func (h Handler) GetHelmWorkloadDefinitions(c echo.Context) error {
 		}
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// continuation: dispatch to the configured pagination strategy to fetch the next page
-		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.HelmWorkloadDefinition{}).Where(&filter), records, queryTable, pageParams)
+		// use query ID to find the materialized view name
+		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 		if err != nil {
-			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-				return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-			}
-			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
-		pagination.QueryId = queryId
-		returnedCount = count
+
+		// fetch records from the materialized view based on cursor
+		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+		if err != nil {
+			h.Logger.Error("handler error: error finding records", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		}
+
+		// set the query ID for the next page of results
+		pagination.QueryId = pageParams.QueryId
 
 		// set the cursor for the next page of results
 		if len(*records) > 0 {
@@ -232,11 +234,11 @@ func (h Handler) GetHelmWorkloadDefinitions(c echo.Context) error {
 			Pagination:  *pagination,
 		},
 		*records,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -253,26 +255,26 @@ func (h Handler) GetHelmWorkloadDefinitions(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-definitions/{id} [GET]
 func (h Handler) GetHelmWorkloadDefinition(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.HelmWorkloadDefinition).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeHelmWorkloadDefinition
 	helmWorkloadDefinitionID := c.Param("id")
 	var helmWorkloadDefinition api_v0.HelmWorkloadDefinition
 	if result := h.RequestDB(c).
 		First(&helmWorkloadDefinition, helmWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		helmWorkloadDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -292,62 +294,48 @@ func (h Handler) GetHelmWorkloadDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-definitions/{id} [PATCH]
 func (h Handler) UpdateHelmWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeHelmWorkloadDefinition
-	fullyQualifiedType := new(api_v0.HelmWorkloadDefinition).GetFullyQualifiedType()
 	helmWorkloadDefinitionID := c.Param("id")
 	var existingHelmWorkloadDefinition api_v0.HelmWorkloadDefinition
 	if result := h.RequestDB(c).First(&existingHelmWorkloadDefinition, helmWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingHelmWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedHelmWorkloadDefinition api_v0.HelmWorkloadDefinition
 	if err := c.Bind(&updatedHelmWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
-	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
-	prevReconciliation := existingHelmWorkloadDefinition.Reconciliation
-
 	// update object in database
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Model(&existingHelmWorkloadDefinition).Updates(&updatedHelmWorkloadDefinition)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingHelmWorkloadDefinition).Updates(&updatedHelmWorkloadDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.HelmWorkloadDefinition),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and the update is notifiable
-	if existingHelmWorkloadDefinition.Reconciled != nil && !*existingHelmWorkloadDefinition.Reconciled &&
-		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingHelmWorkloadDefinition.Reconciliation) {
+	// notify controller if reconciliation is required
+	if !*existingHelmWorkloadDefinition.Reconciled {
 		notifPayload, err := existingHelmWorkloadDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -355,7 +343,7 @@ func (h Handler) UpdateHelmWorkloadDefinition(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 		}
 		h.JS.Publish(notif.HelmWorkloadDefinitionUpdateSubject, *notifPayload)
 	}
@@ -363,11 +351,11 @@ func (h Handler) UpdateHelmWorkloadDefinition(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingHelmWorkloadDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -388,99 +376,70 @@ func (h Handler) UpdateHelmWorkloadDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-definitions/{id} [PUT]
 func (h Handler) ReplaceHelmWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeHelmWorkloadDefinition
-	fullyQualifiedType := new(api_v0.HelmWorkloadDefinition).GetFullyQualifiedType()
 	helmWorkloadDefinitionID := c.Param("id")
 	var existingHelmWorkloadDefinition api_v0.HelmWorkloadDefinition
 	if result := h.RequestDB(c).First(&existingHelmWorkloadDefinition, helmWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingHelmWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedHelmWorkloadDefinition api_v0.HelmWorkloadDefinition
 	if err := c.Bind(&updatedHelmWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, updatedHelmWorkloadDefinition, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
-
-	// snapshot reconciliation state before replace so the notify block
-	// can skip publishing when the replace did not touch any state marker
-	prevReconciliation := existingHelmWorkloadDefinition.Reconciliation
 
 	// persist provided data
 	updatedHelmWorkloadDefinition.ID = existingHelmWorkloadDefinition.ID
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedHelmWorkloadDefinition)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedHelmWorkloadDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.HelmWorkloadDefinition),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// reload updated data from DB
 	if result := h.RequestDB(c).First(&existingHelmWorkloadDefinition, helmWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-	}
-
-	// notify controller if reconciliation is required and the update is notifiable
-	if existingHelmWorkloadDefinition.Reconciled != nil && !*existingHelmWorkloadDefinition.Reconciled &&
-		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingHelmWorkloadDefinition.Reconciliation) {
-		notifPayload, err := existingHelmWorkloadDefinition.NotificationPayload(
-			notifications.NotificationOperationUpdated,
-			false,
-			time.Now().Unix(),
-		)
-		if err != nil {
-			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
-		}
-		h.JS.Publish(notif.HelmWorkloadDefinitionUpdateSubject, *notifPayload)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingHelmWorkloadDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -498,21 +457,21 @@ func (h Handler) ReplaceHelmWorkloadDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-definitions/{id} [DELETE]
 func (h Handler) DeleteHelmWorkloadDefinition(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.HelmWorkloadDefinition).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeHelmWorkloadDefinition
 	helmWorkloadDefinitionID := c.Param("id")
 	var helmWorkloadDefinition api_v0.HelmWorkloadDefinition
 	if result := h.RequestDB(c).Preload("HelmWorkloadInstances").First(&helmWorkloadDefinition, helmWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check to make sure no dependent instances exist for this definition
 	if len(helmWorkloadDefinition.HelmWorkloadInstances) != 0 {
-		err := errors.New("helm workload definition has related helm workload instances - " + api_v0.ErrMsgDeleteBlocked)
-		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
+		err := errors.New("helm workload definition has related helm workload instances - cannot be deleted")
+		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -525,7 +484,7 @@ func (h Handler) DeleteHelmWorkloadDefinition(c echo.Context) error {
 				blockedErr,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, checkErr, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, checkErr, objectType)
 	}
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
@@ -539,11 +498,9 @@ func (h Handler) DeleteHelmWorkloadDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-			return db.Model(&helmWorkloadDefinition).Updates(&scheduledHelmWorkloadDefinition)
-		}); result.Error != nil {
+		if result := h.RequestDB(c).Model(&helmWorkloadDefinition).Updates(&scheduledHelmWorkloadDefinition); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
 		// notify controller
 		notifPayload, err := helmWorkloadDefinition.NotificationPayload(
@@ -553,7 +510,7 @@ func (h Handler) DeleteHelmWorkloadDefinition(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 		}
 		h.JS.Publish(notif.HelmWorkloadDefinitionDeleteSubject, *notifPayload)
 	} else {
@@ -561,16 +518,13 @@ func (h Handler) DeleteHelmWorkloadDefinition(c echo.Context) error {
 			// if deletion scheduled but not reconciled, return 409 - deletion
 			// already underway
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
-				"object with ID %d %s",
+				"object with ID %d already being deleted",
 				*helmWorkloadDefinition.ID,
-				api_v0.ErrMsgAlreadyBeingDeleted,
-			)), fullyQualifiedType)
+			)), objectType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-				return db.Delete(&helmWorkloadDefinition)
-			}); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&helmWorkloadDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
@@ -585,30 +539,22 @@ func (h Handler) DeleteHelmWorkloadDefinition(c echo.Context) error {
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
 					return apiserver_lib.ResponseStatusErr(
-						httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+						httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 					)
 				}
-				return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+				return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 			}
 		}
-	}
-
-	// the delete has committed; drop any process state that mirrored the
-	// row before answering. A persist hook cannot do this: a rollback
-	// would have dropped state for a row that survived.
-	if err := apiserver_lib.AfterCommitDelete(h.DB, &helmWorkloadDefinition); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		helmWorkloadDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -636,61 +582,56 @@ func (h Handler) GetHelmWorkloadInstanceVersions(c echo.Context) error {
 // @Param helmWorkloadInstance body api_v0.HelmWorkloadInstance true "HelmWorkloadInstance object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-instances [POST]
 func (h Handler) AddHelmWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeHelmWorkloadInstance
-	fullyQualifiedType := new(api_v0.HelmWorkloadInstance).GetFullyQualifiedType()
 	var helmWorkloadInstance api_v0.HelmWorkloadInstance
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, helmWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	if err := c.Bind(&helmWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, helmWorkloadInstance, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+	}
+
+	// check for duplicate names
+	var existingHelmWorkloadInstance api_v0.HelmWorkloadInstance
+	nameUsed := true
+	result := h.RequestDB(c).Where("name = ?", helmWorkloadInstance.Name).First(&existingHelmWorkloadInstance)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			nameUsed = false
+		} else {
+			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		}
+	}
+	if nameUsed {
+		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
 	}
 
 	// persist to DB
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		// clear id so a retried create does not reuse a rolled-back key
-		helmWorkloadInstance.ID = nil
-		return db.Create(&helmWorkloadInstance)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Create(&helmWorkloadInstance); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.HelmWorkloadInstance),
-			fullyQualifiedType,
-		)
-	}
-
-	// the write has committed; bring any process state that mirrors the
-	// database in line before answering, so a caller that gets a 200 can
-	// rely on it. A persist hook cannot do this: it runs inside the
-	// transaction, so it would act on a write that may never commit.
-	if err := apiserver_lib.AfterCommitCreate(h.DB, &helmWorkloadInstance); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// notify controller if reconciliation is required
@@ -702,7 +643,7 @@ func (h Handler) AddHelmWorkloadInstance(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 		}
 		h.JS.Publish(notif.HelmWorkloadInstanceCreateSubject, *notifPayload)
 	}
@@ -710,11 +651,11 @@ func (h Handler) AddHelmWorkloadInstance(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		helmWorkloadInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
@@ -725,25 +666,25 @@ func (h Handler) AddHelmWorkloadInstance(c echo.Context) error {
 // @ID get-v0-helmWorkloadInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "filter by exact helm workload instance name (case sensitive)"
+// @Param name query string false "helm workload instance search by name"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-instances [GET]
 func (h Handler) GetHelmWorkloadInstances(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.HelmWorkloadInstance).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeHelmWorkloadInstance
 
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	// bind filter
 	var filter api_v0.HelmWorkloadInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -759,7 +700,7 @@ func (h Handler) GetHelmWorkloadInstances(c echo.Context) error {
 		var totalCount int64
 		if result := h.RequestDB(c).Model(&api_v0.HelmWorkloadInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
 
 		// see if total count is greater than the limit
@@ -770,22 +711,25 @@ func (h Handler) GetHelmWorkloadInstances(c echo.Context) error {
 			// if we don't have to paginate, return all records
 			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
 			returnedCount = int64(len(*records))
 		case true:
-			// dispatch to the configured pagination strategy to fetch the first page
+			// if we have to paginate, create the materialized view and use it to fetch the first page of records
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.HelmWorkloadInstance{}).Where(&filter), records, queryTable, pageParams)
+			viewName, qid, err := h.CreateMaterializedView(queryTable)
 			if err != nil {
-				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-					return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-				}
-				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
-			pagination.QueryId = queryId
-			returnedCount = count
+			pagination.QueryId = qid
+
+			// fetch records from the new materialized view
+			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+			if err != nil {
+				h.Logger.Error("handler error: error finding records", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			}
 
 			// set the cursor for the next page of results
 			if len(*records) > 0 {
@@ -796,20 +740,24 @@ func (h Handler) GetHelmWorkloadInstances(c echo.Context) error {
 		}
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// continuation: dispatch to the configured pagination strategy to fetch the next page
-		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.HelmWorkloadInstance{}).Where(&filter), records, queryTable, pageParams)
+		// use query ID to find the materialized view name
+		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 		if err != nil {
-			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-				return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-			}
-			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
-		pagination.QueryId = queryId
-		returnedCount = count
+
+		// fetch records from the materialized view based on cursor
+		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+		if err != nil {
+			h.Logger.Error("handler error: error finding records", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		}
+
+		// set the query ID for the next page of results
+		pagination.QueryId = pageParams.QueryId
 
 		// set the cursor for the next page of results
 		if len(*records) > 0 {
@@ -829,11 +777,11 @@ func (h Handler) GetHelmWorkloadInstances(c echo.Context) error {
 			Pagination:  *pagination,
 		},
 		*records,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -850,26 +798,26 @@ func (h Handler) GetHelmWorkloadInstances(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-instances/{id} [GET]
 func (h Handler) GetHelmWorkloadInstance(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.HelmWorkloadInstance).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeHelmWorkloadInstance
 	helmWorkloadInstanceID := c.Param("id")
 	var helmWorkloadInstance api_v0.HelmWorkloadInstance
 	if result := h.RequestDB(c).
 		First(&helmWorkloadInstance, helmWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		helmWorkloadInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -889,62 +837,48 @@ func (h Handler) GetHelmWorkloadInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-instances/{id} [PATCH]
 func (h Handler) UpdateHelmWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeHelmWorkloadInstance
-	fullyQualifiedType := new(api_v0.HelmWorkloadInstance).GetFullyQualifiedType()
 	helmWorkloadInstanceID := c.Param("id")
 	var existingHelmWorkloadInstance api_v0.HelmWorkloadInstance
 	if result := h.RequestDB(c).First(&existingHelmWorkloadInstance, helmWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingHelmWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedHelmWorkloadInstance api_v0.HelmWorkloadInstance
 	if err := c.Bind(&updatedHelmWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
-	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
-	prevReconciliation := existingHelmWorkloadInstance.Reconciliation
-
 	// update object in database
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Model(&existingHelmWorkloadInstance).Updates(&updatedHelmWorkloadInstance)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingHelmWorkloadInstance).Updates(&updatedHelmWorkloadInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.HelmWorkloadInstance),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and the update is notifiable
-	if existingHelmWorkloadInstance.Reconciled != nil && !*existingHelmWorkloadInstance.Reconciled &&
-		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingHelmWorkloadInstance.Reconciliation) {
+	// notify controller if reconciliation is required
+	if !*existingHelmWorkloadInstance.Reconciled {
 		notifPayload, err := existingHelmWorkloadInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -952,7 +886,7 @@ func (h Handler) UpdateHelmWorkloadInstance(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 		}
 		h.JS.Publish(notif.HelmWorkloadInstanceUpdateSubject, *notifPayload)
 	}
@@ -960,11 +894,11 @@ func (h Handler) UpdateHelmWorkloadInstance(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingHelmWorkloadInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -985,99 +919,70 @@ func (h Handler) UpdateHelmWorkloadInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-instances/{id} [PUT]
 func (h Handler) ReplaceHelmWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeHelmWorkloadInstance
-	fullyQualifiedType := new(api_v0.HelmWorkloadInstance).GetFullyQualifiedType()
 	helmWorkloadInstanceID := c.Param("id")
 	var existingHelmWorkloadInstance api_v0.HelmWorkloadInstance
 	if result := h.RequestDB(c).First(&existingHelmWorkloadInstance, helmWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingHelmWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedHelmWorkloadInstance api_v0.HelmWorkloadInstance
 	if err := c.Bind(&updatedHelmWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, updatedHelmWorkloadInstance, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
-
-	// snapshot reconciliation state before replace so the notify block
-	// can skip publishing when the replace did not touch any state marker
-	prevReconciliation := existingHelmWorkloadInstance.Reconciliation
 
 	// persist provided data
 	updatedHelmWorkloadInstance.ID = existingHelmWorkloadInstance.ID
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedHelmWorkloadInstance)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedHelmWorkloadInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.HelmWorkloadInstance),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// reload updated data from DB
 	if result := h.RequestDB(c).First(&existingHelmWorkloadInstance, helmWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-	}
-
-	// notify controller if reconciliation is required and the update is notifiable
-	if existingHelmWorkloadInstance.Reconciled != nil && !*existingHelmWorkloadInstance.Reconciled &&
-		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingHelmWorkloadInstance.Reconciliation) {
-		notifPayload, err := existingHelmWorkloadInstance.NotificationPayload(
-			notifications.NotificationOperationUpdated,
-			false,
-			time.Now().Unix(),
-		)
-		if err != nil {
-			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
-		}
-		h.JS.Publish(notif.HelmWorkloadInstanceUpdateSubject, *notifPayload)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingHelmWorkloadInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1095,15 +1000,15 @@ func (h Handler) ReplaceHelmWorkloadInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/helm-workload-instances/{id} [DELETE]
 func (h Handler) DeleteHelmWorkloadInstance(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.HelmWorkloadInstance).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeHelmWorkloadInstance
 	helmWorkloadInstanceID := c.Param("id")
 	var helmWorkloadInstance api_v0.HelmWorkloadInstance
 	if result := h.RequestDB(c).First(&helmWorkloadInstance, helmWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -1116,7 +1021,7 @@ func (h Handler) DeleteHelmWorkloadInstance(c echo.Context) error {
 				blockedErr,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, checkErr, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, checkErr, objectType)
 	}
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
@@ -1130,11 +1035,9 @@ func (h Handler) DeleteHelmWorkloadInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-			return db.Model(&helmWorkloadInstance).Updates(&scheduledHelmWorkloadInstance)
-		}); result.Error != nil {
+		if result := h.RequestDB(c).Model(&helmWorkloadInstance).Updates(&scheduledHelmWorkloadInstance); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
 		// notify controller
 		notifPayload, err := helmWorkloadInstance.NotificationPayload(
@@ -1144,7 +1047,7 @@ func (h Handler) DeleteHelmWorkloadInstance(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 		}
 		h.JS.Publish(notif.HelmWorkloadInstanceDeleteSubject, *notifPayload)
 	} else {
@@ -1152,16 +1055,13 @@ func (h Handler) DeleteHelmWorkloadInstance(c echo.Context) error {
 			// if deletion scheduled but not reconciled, return 409 - deletion
 			// already underway
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
-				"object with ID %d %s",
+				"object with ID %d already being deleted",
 				*helmWorkloadInstance.ID,
-				api_v0.ErrMsgAlreadyBeingDeleted,
-			)), fullyQualifiedType)
+			)), objectType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-				return db.Delete(&helmWorkloadInstance)
-			}); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&helmWorkloadInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
@@ -1176,30 +1076,22 @@ func (h Handler) DeleteHelmWorkloadInstance(c echo.Context) error {
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
 					return apiserver_lib.ResponseStatusErr(
-						httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+						httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 					)
 				}
-				return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+				return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 			}
 		}
-	}
-
-	// the delete has committed; drop any process state that mirrored the
-	// row before answering. A persist hook cannot do this: a rollback
-	// would have dropped state for a row that survived.
-	if err := apiserver_lib.AfterCommitDelete(h.DB, &helmWorkloadInstance); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		helmWorkloadInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)

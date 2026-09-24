@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"time"
 
 	yamlv3 "gopkg.in/yaml.v3"
 	kubeerr "k8s.io/apimachinery/pkg/api/errors"
@@ -20,39 +19,6 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/yaml"
 )
-
-// createRetryAttempts is the number of times a transient kube-apiserver
-// error (server-side timeouts, quota-evaluator timeouts) is retried before
-// the caller sees the failure. Enough tries to ride out a short apiserver
-// backpressure spike during control plane bring-up, but not so many that a
-// genuine misconfiguration hides for minutes.
-const createRetryAttempts = 5
-
-// createRetryBaseDelay backs off exponentially between retries starting
-// from this base (250ms, 500ms, 1s, 2s) so the apiserver has a chance to
-// catch up on quota evaluation before the next attempt. It is a variable
-// rather than a constant so tests can shrink the wait.
-var createRetryBaseDelay = 250 * time.Millisecond
-
-// isTransientKubeError reports whether a Kubernetes API error is worth
-// retrying. Covers server-side timeouts, temporary service unavailable
-// responses, and the "Internal error occurred: resource quota evaluation
-// timed out" surface kube-apiserver emits when its quota evaluator is
-// backpressured during a burst of resource creates. Every other error
-// (AlreadyExists, NotFound, Forbidden, Invalid) is deterministic and
-// should not be retried.
-func isTransientKubeError(err error) bool {
-	if err == nil {
-		return false
-	}
-	if kubeerr.IsServerTimeout(err) || kubeerr.IsTimeout(err) || kubeerr.IsServiceUnavailable(err) || kubeerr.IsTooManyRequests(err) {
-		return true
-	}
-	if kubeerr.IsInternalError(err) && strings.Contains(err.Error(), "resource quota evaluation timed out") {
-		return true
-	}
-	return false
-}
 
 // GetResource returns a specific Kubernetes resource.  If an empty string for
 // namespace is provided, this function will search for a non-namespaced
@@ -111,31 +77,20 @@ func CreateResource(
 		return nil, fmt.Errorf("failed to get REST mapping for kubernetes resource: %w", err)
 	}
 
-	// create the kube resource, retrying transient apiserver errors
-	// (quota-evaluator timeout, server-side timeouts) so a busy control
-	// plane during genesis bring-up does not abort the whole install.
-	var result *unstructured.Unstructured
-	delay := createRetryBaseDelay
-	for attempt := 0; attempt < createRetryAttempts; attempt++ {
-		result, err = kubeClient.
-			Resource(mapping.Resource).
-			Namespace(kubeObject.GetNamespace()).
-			Create(context.Background(), kubeObject, kubemetav1.CreateOptions{})
-		if err == nil {
-			return result, nil
-		}
+	// create the kube resource
+	result, err := kubeClient.
+		Resource(mapping.Resource).
+		Namespace(kubeObject.GetNamespace()).
+		Create(context.Background(), kubeObject, kubemetav1.CreateOptions{})
+	if err != nil {
 		if kubeerr.IsAlreadyExists(err) {
 			return kubeObject, nil
-		}
-		if !isTransientKubeError(err) {
+		} else {
 			return nil, fmt.Errorf("failed to create kubernetes resource:%w", err)
 		}
-		if attempt < createRetryAttempts-1 {
-			time.Sleep(delay)
-			delay *= 2
-		}
 	}
-	return nil, fmt.Errorf("failed to create kubernetes resource after %d attempts:%w", createRetryAttempts, err)
+
+	return result, nil
 
 }
 
@@ -224,13 +179,6 @@ func UpdateResource(
 
 // DeleteResource takes an unstructured object, dynamic client interface and rest
 // mapper and deletes the resource in the target Kubernetes cluster.
-//
-// A missing CRD on the target cluster, meaning no REST mapping for the
-// object's GroupKind, counts as already deleted: an unregistered kind cannot
-// have instances, so there is nothing left to remove. That matches how a
-// NotFound on the delete call itself is treated, and together they keep a
-// delete reconciler from retrying forever on a resource that has nowhere to
-// live.
 func DeleteResource(
 	kubeObject *unstructured.Unstructured,
 	kubeClient dynamic.Interface,
@@ -239,9 +187,6 @@ func DeleteResource(
 	// get the mapping for resource from kube object's group, kind
 	mapping, err := getResourceMapping(kubeObject, mapper)
 	if err != nil {
-		if meta.IsNoMatchError(err) {
-			return nil
-		}
 		return fmt.Errorf("failed to get REST mapping for kubernetes resource: %w", err)
 	}
 

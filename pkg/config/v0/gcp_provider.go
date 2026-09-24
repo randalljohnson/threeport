@@ -25,25 +25,25 @@ type GcpProviderConfig struct {
 // GcpProviderValues contains all the attributes needed to manage
 // the GcpProvider API object.
 type GcpProviderValues struct {
-	Name *string
+	Name *string `json:",omitempty"`
 
 	// The GCP project ID. This is the unique identifier for the GCP project.
-	ProjectID *string
+	ProjectID *string `json:",omitempty"`
 
 	// If true, this GCP provider will be used as the default when none is specified.
-	DefaultProvider *bool
+	DefaultProvider *bool `json:",omitempty"`
 
 	// The default GCP region for resources created with this provider.
-	DefaultRegion *string
+	DefaultRegion *string `json:",omitempty"`
 
 	// If true, sync the GCP service account credentials with the GcpProvider API object.
 	// If true on create, a GCP service account will be created and the credentials will be exported.
 	// if true on delete, the GCP service account will be deleted and the credentials will be removed.
 	// Defaults to true when creating via tptctl.
-	SyncServiceAccount *bool
+	SyncServiceAccount *bool `json:",omitempty"`
 
 	// Age is a computed field showing how long ago the object was created.
-	Age *string
+	Age *string `json:",omitempty"`
 }
 
 // Get gets gcp providers from the Threeport API.

@@ -25,11 +25,11 @@ type KubernetesRuntimeDefinitionConfig struct {
 // KubernetesRuntimeDefinitionValues contains all the attributes needed to manage
 // the KubernetesRuntimeDefinition API object.
 type KubernetesRuntimeDefinitionValues struct {
-	Name                     *string
-	InfraProvider            *string
-	InfraProviderAccountName *string
-	HighAvailability         *bool
-	Age                      *string
+	Name                     *string `json:",omitempty"`
+	InfraProvider            *string `json:",omitempty"`
+	InfraProviderAccountName *string `json:",omitempty"`
+	HighAvailability         *bool   `json:",omitempty"`
+	Age                      *string `json:",omitempty"`
 }
 
 // Get gets kubernetes runtime definitions from the Threeport API.

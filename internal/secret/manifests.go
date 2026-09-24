@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	runtime "github.com/threeport/threeport/internal/kubernetes-runtime"
-	mapping "github.com/threeport/threeport/pkg/mapping/v0"
+	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )

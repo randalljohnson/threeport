@@ -39,61 +39,56 @@ func (h Handler) GetKubernetesWorkloadDefinitionVersions(c echo.Context) error {
 // @Param kubernetesWorkloadDefinition body api_v0.KubernetesWorkloadDefinition true "KubernetesWorkloadDefinition object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-definitions [POST]
 func (h Handler) AddKubernetesWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesWorkloadDefinition
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadDefinition).GetFullyQualifiedType()
 	var kubernetesWorkloadDefinition api_v0.KubernetesWorkloadDefinition
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, kubernetesWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	if err := c.Bind(&kubernetesWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, kubernetesWorkloadDefinition, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+	}
+
+	// check for duplicate names
+	var existingKubernetesWorkloadDefinition api_v0.KubernetesWorkloadDefinition
+	nameUsed := true
+	result := h.RequestDB(c).Where("name = ?", kubernetesWorkloadDefinition.Name).First(&existingKubernetesWorkloadDefinition)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			nameUsed = false
+		} else {
+			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		}
+	}
+	if nameUsed {
+		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
 	}
 
 	// persist to DB
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		// clear id so a retried create does not reuse a rolled-back key
-		kubernetesWorkloadDefinition.ID = nil
-		return db.Create(&kubernetesWorkloadDefinition)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Create(&kubernetesWorkloadDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.KubernetesWorkloadDefinition),
-			fullyQualifiedType,
-		)
-	}
-
-	// the write has committed; bring any process state that mirrors the
-	// database in line before answering, so a caller that gets a 200 can
-	// rely on it. A persist hook cannot do this: it runs inside the
-	// transaction, so it would act on a write that may never commit.
-	if err := apiserver_lib.AfterCommitCreate(h.DB, &kubernetesWorkloadDefinition); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// notify controller if reconciliation is required
@@ -105,7 +100,7 @@ func (h Handler) AddKubernetesWorkloadDefinition(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 		}
 		h.JS.Publish(notif.KubernetesWorkloadDefinitionCreateSubject, *notifPayload)
 	}
@@ -113,11 +108,11 @@ func (h Handler) AddKubernetesWorkloadDefinition(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesWorkloadDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
@@ -128,25 +123,25 @@ func (h Handler) AddKubernetesWorkloadDefinition(c echo.Context) error {
 // @ID get-v0-kubernetesWorkloadDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "filter by exact kubernetes workload definition name (case sensitive)"
+// @Param name query string false "kubernetes workload definition search by name"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-definitions [GET]
 func (h Handler) GetKubernetesWorkloadDefinitions(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadDefinition).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeKubernetesWorkloadDefinition
 
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	// bind filter
 	var filter api_v0.KubernetesWorkloadDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -162,7 +157,7 @@ func (h Handler) GetKubernetesWorkloadDefinitions(c echo.Context) error {
 		var totalCount int64
 		if result := h.RequestDB(c).Model(&api_v0.KubernetesWorkloadDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
 
 		// see if total count is greater than the limit
@@ -173,22 +168,25 @@ func (h Handler) GetKubernetesWorkloadDefinitions(c echo.Context) error {
 			// if we don't have to paginate, return all records
 			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
 			returnedCount = int64(len(*records))
 		case true:
-			// dispatch to the configured pagination strategy to fetch the first page
+			// if we have to paginate, create the materialized view and use it to fetch the first page of records
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.KubernetesWorkloadDefinition{}).Where(&filter), records, queryTable, pageParams)
+			viewName, qid, err := h.CreateMaterializedView(queryTable)
 			if err != nil {
-				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-					return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-				}
-				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
-			pagination.QueryId = queryId
-			returnedCount = count
+			pagination.QueryId = qid
+
+			// fetch records from the new materialized view
+			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+			if err != nil {
+				h.Logger.Error("handler error: error finding records", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			}
 
 			// set the cursor for the next page of results
 			if len(*records) > 0 {
@@ -199,20 +197,24 @@ func (h Handler) GetKubernetesWorkloadDefinitions(c echo.Context) error {
 		}
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// continuation: dispatch to the configured pagination strategy to fetch the next page
-		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.KubernetesWorkloadDefinition{}).Where(&filter), records, queryTable, pageParams)
+		// use query ID to find the materialized view name
+		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 		if err != nil {
-			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-				return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-			}
-			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
-		pagination.QueryId = queryId
-		returnedCount = count
+
+		// fetch records from the materialized view based on cursor
+		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+		if err != nil {
+			h.Logger.Error("handler error: error finding records", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		}
+
+		// set the query ID for the next page of results
+		pagination.QueryId = pageParams.QueryId
 
 		// set the cursor for the next page of results
 		if len(*records) > 0 {
@@ -232,11 +234,11 @@ func (h Handler) GetKubernetesWorkloadDefinitions(c echo.Context) error {
 			Pagination:  *pagination,
 		},
 		*records,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -253,26 +255,26 @@ func (h Handler) GetKubernetesWorkloadDefinitions(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-definitions/{id} [GET]
 func (h Handler) GetKubernetesWorkloadDefinition(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadDefinition).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeKubernetesWorkloadDefinition
 	kubernetesWorkloadDefinitionID := c.Param("id")
 	var kubernetesWorkloadDefinition api_v0.KubernetesWorkloadDefinition
 	if result := h.RequestDB(c).
 		First(&kubernetesWorkloadDefinition, kubernetesWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesWorkloadDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -292,62 +294,48 @@ func (h Handler) GetKubernetesWorkloadDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-definitions/{id} [PATCH]
 func (h Handler) UpdateKubernetesWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesWorkloadDefinition
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadDefinition).GetFullyQualifiedType()
 	kubernetesWorkloadDefinitionID := c.Param("id")
 	var existingKubernetesWorkloadDefinition api_v0.KubernetesWorkloadDefinition
 	if result := h.RequestDB(c).First(&existingKubernetesWorkloadDefinition, kubernetesWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingKubernetesWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedKubernetesWorkloadDefinition api_v0.KubernetesWorkloadDefinition
 	if err := c.Bind(&updatedKubernetesWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
-	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
-	prevReconciliation := existingKubernetesWorkloadDefinition.Reconciliation
-
 	// update object in database
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Model(&existingKubernetesWorkloadDefinition).Updates(&updatedKubernetesWorkloadDefinition)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingKubernetesWorkloadDefinition).Updates(&updatedKubernetesWorkloadDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.KubernetesWorkloadDefinition),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and the update is notifiable
-	if existingKubernetesWorkloadDefinition.Reconciled != nil && !*existingKubernetesWorkloadDefinition.Reconciled &&
-		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesWorkloadDefinition.Reconciliation) {
+	// notify controller if reconciliation is required
+	if !*existingKubernetesWorkloadDefinition.Reconciled {
 		notifPayload, err := existingKubernetesWorkloadDefinition.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -355,7 +343,7 @@ func (h Handler) UpdateKubernetesWorkloadDefinition(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 		}
 		h.JS.Publish(notif.KubernetesWorkloadDefinitionUpdateSubject, *notifPayload)
 	}
@@ -363,11 +351,11 @@ func (h Handler) UpdateKubernetesWorkloadDefinition(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingKubernetesWorkloadDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -388,99 +376,70 @@ func (h Handler) UpdateKubernetesWorkloadDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-definitions/{id} [PUT]
 func (h Handler) ReplaceKubernetesWorkloadDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesWorkloadDefinition
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadDefinition).GetFullyQualifiedType()
 	kubernetesWorkloadDefinitionID := c.Param("id")
 	var existingKubernetesWorkloadDefinition api_v0.KubernetesWorkloadDefinition
 	if result := h.RequestDB(c).First(&existingKubernetesWorkloadDefinition, kubernetesWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingKubernetesWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedKubernetesWorkloadDefinition api_v0.KubernetesWorkloadDefinition
 	if err := c.Bind(&updatedKubernetesWorkloadDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, updatedKubernetesWorkloadDefinition, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
-
-	// snapshot reconciliation state before replace so the notify block
-	// can skip publishing when the replace did not touch any state marker
-	prevReconciliation := existingKubernetesWorkloadDefinition.Reconciliation
 
 	// persist provided data
 	updatedKubernetesWorkloadDefinition.ID = existingKubernetesWorkloadDefinition.ID
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesWorkloadDefinition)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesWorkloadDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.KubernetesWorkloadDefinition),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// reload updated data from DB
 	if result := h.RequestDB(c).First(&existingKubernetesWorkloadDefinition, kubernetesWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-	}
-
-	// notify controller if reconciliation is required and the update is notifiable
-	if existingKubernetesWorkloadDefinition.Reconciled != nil && !*existingKubernetesWorkloadDefinition.Reconciled &&
-		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesWorkloadDefinition.Reconciliation) {
-		notifPayload, err := existingKubernetesWorkloadDefinition.NotificationPayload(
-			notifications.NotificationOperationUpdated,
-			false,
-			time.Now().Unix(),
-		)
-		if err != nil {
-			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
-		}
-		h.JS.Publish(notif.KubernetesWorkloadDefinitionUpdateSubject, *notifPayload)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingKubernetesWorkloadDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -498,21 +457,21 @@ func (h Handler) ReplaceKubernetesWorkloadDefinition(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-definitions/{id} [DELETE]
 func (h Handler) DeleteKubernetesWorkloadDefinition(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadDefinition).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeKubernetesWorkloadDefinition
 	kubernetesWorkloadDefinitionID := c.Param("id")
 	var kubernetesWorkloadDefinition api_v0.KubernetesWorkloadDefinition
 	if result := h.RequestDB(c).Preload("KubernetesWorkloadInstances").First(&kubernetesWorkloadDefinition, kubernetesWorkloadDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check to make sure no dependent instances exist for this definition
 	if len(kubernetesWorkloadDefinition.KubernetesWorkloadInstances) != 0 {
-		err := errors.New("kubernetes workload definition has related kubernetes workload instances - " + api_v0.ErrMsgDeleteBlocked)
-		return apiserver_lib.ResponseStatus409(c, nil, err, fullyQualifiedType)
+		err := errors.New("kubernetes workload definition has related kubernetes workload instances - cannot be deleted")
+		return apiserver_lib.ResponseStatus409(c, nil, err, objectType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -525,7 +484,7 @@ func (h Handler) DeleteKubernetesWorkloadDefinition(c echo.Context) error {
 				blockedErr,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, checkErr, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, checkErr, objectType)
 	}
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
@@ -539,11 +498,9 @@ func (h Handler) DeleteKubernetesWorkloadDefinition(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-			return db.Model(&kubernetesWorkloadDefinition).Updates(&scheduledKubernetesWorkloadDefinition)
-		}); result.Error != nil {
+		if result := h.RequestDB(c).Model(&kubernetesWorkloadDefinition).Updates(&scheduledKubernetesWorkloadDefinition); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
 		// notify controller
 		notifPayload, err := kubernetesWorkloadDefinition.NotificationPayload(
@@ -553,7 +510,7 @@ func (h Handler) DeleteKubernetesWorkloadDefinition(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 		}
 		h.JS.Publish(notif.KubernetesWorkloadDefinitionDeleteSubject, *notifPayload)
 	} else {
@@ -561,16 +518,13 @@ func (h Handler) DeleteKubernetesWorkloadDefinition(c echo.Context) error {
 			// if deletion scheduled but not reconciled, return 409 - deletion
 			// already underway
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
-				"object with ID %d %s",
+				"object with ID %d already being deleted",
 				*kubernetesWorkloadDefinition.ID,
-				api_v0.ErrMsgAlreadyBeingDeleted,
-			)), fullyQualifiedType)
+			)), objectType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-				return db.Delete(&kubernetesWorkloadDefinition)
-			}); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&kubernetesWorkloadDefinition); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
@@ -585,30 +539,22 @@ func (h Handler) DeleteKubernetesWorkloadDefinition(c echo.Context) error {
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
 					return apiserver_lib.ResponseStatusErr(
-						httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+						httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 					)
 				}
-				return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+				return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 			}
 		}
-	}
-
-	// the delete has committed; drop any process state that mirrored the
-	// row before answering. A persist hook cannot do this: a rollback
-	// would have dropped state for a row that survived.
-	if err := apiserver_lib.AfterCommitDelete(h.DB, &kubernetesWorkloadDefinition); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesWorkloadDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -636,61 +582,56 @@ func (h Handler) GetKubernetesWorkloadInstanceVersions(c echo.Context) error {
 // @Param kubernetesWorkloadInstance body api_v0.KubernetesWorkloadInstance true "KubernetesWorkloadInstance object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-instances [POST]
 func (h Handler) AddKubernetesWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesWorkloadInstance
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadInstance).GetFullyQualifiedType()
 	var kubernetesWorkloadInstance api_v0.KubernetesWorkloadInstance
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, kubernetesWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	if err := c.Bind(&kubernetesWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, kubernetesWorkloadInstance, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
+	}
+
+	// check for duplicate names
+	var existingKubernetesWorkloadInstance api_v0.KubernetesWorkloadInstance
+	nameUsed := true
+	result := h.RequestDB(c).Where("name = ?", kubernetesWorkloadInstance.Name).First(&existingKubernetesWorkloadInstance)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			nameUsed = false
+		} else {
+			h.Logger.Error("handler error: error checking for duplicate names", zap.Error(result.Error))
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
+		}
+	}
+	if nameUsed {
+		return apiserver_lib.ResponseStatus409(c, nil, errors.New("object with provided name already exists"), objectType)
 	}
 
 	// persist to DB
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		// clear id so a retried create does not reuse a rolled-back key
-		kubernetesWorkloadInstance.ID = nil
-		return db.Create(&kubernetesWorkloadInstance)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Create(&kubernetesWorkloadInstance); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.KubernetesWorkloadInstance),
-			fullyQualifiedType,
-		)
-	}
-
-	// the write has committed; bring any process state that mirrors the
-	// database in line before answering, so a caller that gets a 200 can
-	// rely on it. A persist hook cannot do this: it runs inside the
-	// transaction, so it would act on a write that may never commit.
-	if err := apiserver_lib.AfterCommitCreate(h.DB, &kubernetesWorkloadInstance); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// notify controller if reconciliation is required
@@ -702,7 +643,7 @@ func (h Handler) AddKubernetesWorkloadInstance(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 		}
 		h.JS.Publish(notif.KubernetesWorkloadInstanceCreateSubject, *notifPayload)
 	}
@@ -710,11 +651,11 @@ func (h Handler) AddKubernetesWorkloadInstance(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesWorkloadInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
@@ -725,25 +666,25 @@ func (h Handler) AddKubernetesWorkloadInstance(c echo.Context) error {
 // @ID get-v0-kubernetesWorkloadInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "filter by exact kubernetes workload instance name (case sensitive)"
+// @Param name query string false "kubernetes workload instance search by name"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-instances [GET]
 func (h Handler) GetKubernetesWorkloadInstances(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadInstance).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeKubernetesWorkloadInstance
 
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	// bind filter
 	var filter api_v0.KubernetesWorkloadInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -759,7 +700,7 @@ func (h Handler) GetKubernetesWorkloadInstances(c echo.Context) error {
 		var totalCount int64
 		if result := h.RequestDB(c).Model(&api_v0.KubernetesWorkloadInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
 
 		// see if total count is greater than the limit
@@ -770,22 +711,25 @@ func (h Handler) GetKubernetesWorkloadInstances(c echo.Context) error {
 			// if we don't have to paginate, return all records
 			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
 			returnedCount = int64(len(*records))
 		case true:
-			// dispatch to the configured pagination strategy to fetch the first page
+			// if we have to paginate, create the materialized view and use it to fetch the first page of records
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.KubernetesWorkloadInstance{}).Where(&filter), records, queryTable, pageParams)
+			viewName, qid, err := h.CreateMaterializedView(queryTable)
 			if err != nil {
-				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-					return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-				}
-				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
-			pagination.QueryId = queryId
-			returnedCount = count
+			pagination.QueryId = qid
+
+			// fetch records from the new materialized view
+			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+			if err != nil {
+				h.Logger.Error("handler error: error finding records", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			}
 
 			// set the cursor for the next page of results
 			if len(*records) > 0 {
@@ -796,20 +740,24 @@ func (h Handler) GetKubernetesWorkloadInstances(c echo.Context) error {
 		}
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// continuation: dispatch to the configured pagination strategy to fetch the next page
-		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.KubernetesWorkloadInstance{}).Where(&filter), records, queryTable, pageParams)
+		// use query ID to find the materialized view name
+		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 		if err != nil {
-			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-				return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-			}
-			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
-		pagination.QueryId = queryId
-		returnedCount = count
+
+		// fetch records from the materialized view based on cursor
+		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+		if err != nil {
+			h.Logger.Error("handler error: error finding records", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		}
+
+		// set the query ID for the next page of results
+		pagination.QueryId = pageParams.QueryId
 
 		// set the cursor for the next page of results
 		if len(*records) > 0 {
@@ -829,11 +777,11 @@ func (h Handler) GetKubernetesWorkloadInstances(c echo.Context) error {
 			Pagination:  *pagination,
 		},
 		*records,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -850,26 +798,26 @@ func (h Handler) GetKubernetesWorkloadInstances(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-instances/{id} [GET]
 func (h Handler) GetKubernetesWorkloadInstance(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadInstance).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeKubernetesWorkloadInstance
 	kubernetesWorkloadInstanceID := c.Param("id")
 	var kubernetesWorkloadInstance api_v0.KubernetesWorkloadInstance
 	if result := h.RequestDB(c).
 		First(&kubernetesWorkloadInstance, kubernetesWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesWorkloadInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -889,62 +837,48 @@ func (h Handler) GetKubernetesWorkloadInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-instances/{id} [PATCH]
 func (h Handler) UpdateKubernetesWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesWorkloadInstance
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadInstance).GetFullyQualifiedType()
 	kubernetesWorkloadInstanceID := c.Param("id")
 	var existingKubernetesWorkloadInstance api_v0.KubernetesWorkloadInstance
 	if result := h.RequestDB(c).First(&existingKubernetesWorkloadInstance, kubernetesWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingKubernetesWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedKubernetesWorkloadInstance api_v0.KubernetesWorkloadInstance
 	if err := c.Bind(&updatedKubernetesWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
-	// snapshot reconciliation state before the update so the notify block can skip publishing when no state marker changed
-	prevReconciliation := existingKubernetesWorkloadInstance.Reconciliation
-
 	// update object in database
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Model(&existingKubernetesWorkloadInstance).Updates(&updatedKubernetesWorkloadInstance)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingKubernetesWorkloadInstance).Updates(&updatedKubernetesWorkloadInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.KubernetesWorkloadInstance),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
-	// notify controller if reconciliation is required and the update is notifiable
-	if existingKubernetesWorkloadInstance.Reconciled != nil && !*existingKubernetesWorkloadInstance.Reconciled &&
-		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesWorkloadInstance.Reconciliation) {
+	// notify controller if reconciliation is required
+	if !*existingKubernetesWorkloadInstance.Reconciled {
 		notifPayload, err := existingKubernetesWorkloadInstance.NotificationPayload(
 			notifications.NotificationOperationUpdated,
 			false,
@@ -952,7 +886,7 @@ func (h Handler) UpdateKubernetesWorkloadInstance(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 		}
 		h.JS.Publish(notif.KubernetesWorkloadInstanceUpdateSubject, *notifPayload)
 	}
@@ -960,11 +894,11 @@ func (h Handler) UpdateKubernetesWorkloadInstance(c echo.Context) error {
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingKubernetesWorkloadInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -985,99 +919,70 @@ func (h Handler) UpdateKubernetesWorkloadInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-instances/{id} [PUT]
 func (h Handler) ReplaceKubernetesWorkloadInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesWorkloadInstance
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadInstance).GetFullyQualifiedType()
 	kubernetesWorkloadInstanceID := c.Param("id")
 	var existingKubernetesWorkloadInstance api_v0.KubernetesWorkloadInstance
 	if result := h.RequestDB(c).First(&existingKubernetesWorkloadInstance, kubernetesWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingKubernetesWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedKubernetesWorkloadInstance api_v0.KubernetesWorkloadInstance
 	if err := c.Bind(&updatedKubernetesWorkloadInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, updatedKubernetesWorkloadInstance, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
-
-	// snapshot reconciliation state before replace so the notify block
-	// can skip publishing when the replace did not touch any state marker
-	prevReconciliation := existingKubernetesWorkloadInstance.Reconciliation
 
 	// persist provided data
 	updatedKubernetesWorkloadInstance.ID = existingKubernetesWorkloadInstance.ID
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesWorkloadInstance)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesWorkloadInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.KubernetesWorkloadInstance),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// reload updated data from DB
 	if result := h.RequestDB(c).First(&existingKubernetesWorkloadInstance, kubernetesWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-	}
-
-	// notify controller if reconciliation is required and the update is notifiable
-	if existingKubernetesWorkloadInstance.Reconciled != nil && !*existingKubernetesWorkloadInstance.Reconciled &&
-		api_v0.ReconciliationUpdateNotifiable(prevReconciliation, existingKubernetesWorkloadInstance.Reconciliation) {
-		notifPayload, err := existingKubernetesWorkloadInstance.NotificationPayload(
-			notifications.NotificationOperationUpdated,
-			false,
-			time.Now().Unix(),
-		)
-		if err != nil {
-			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
-		}
-		h.JS.Publish(notif.KubernetesWorkloadInstanceUpdateSubject, *notifPayload)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingKubernetesWorkloadInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1095,15 +1000,15 @@ func (h Handler) ReplaceKubernetesWorkloadInstance(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-instances/{id} [DELETE]
 func (h Handler) DeleteKubernetesWorkloadInstance(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadInstance).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeKubernetesWorkloadInstance
 	kubernetesWorkloadInstanceID := c.Param("id")
 	var kubernetesWorkloadInstance api_v0.KubernetesWorkloadInstance
 	if result := h.RequestDB(c).First(&kubernetesWorkloadInstance, kubernetesWorkloadInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// pre-check synchronously so the client sees the 409 - without this, reconciled types only surface the block to the reconciler
@@ -1116,7 +1021,7 @@ func (h Handler) DeleteKubernetesWorkloadInstance(c echo.Context) error {
 				blockedErr,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, checkErr, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, checkErr, objectType)
 	}
 	// schedule for deletion if not already scheduled
 	// if scheduled and reconciled, delete object from DB
@@ -1130,11 +1035,9 @@ func (h Handler) DeleteKubernetesWorkloadInstance(c echo.Context) error {
 				DeletionScheduled: &timestamp,
 				Reconciled:        &reconciled,
 			}}
-		if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-			return db.Model(&kubernetesWorkloadInstance).Updates(&scheduledKubernetesWorkloadInstance)
-		}); result.Error != nil {
+		if result := h.RequestDB(c).Model(&kubernetesWorkloadInstance).Updates(&scheduledKubernetesWorkloadInstance); result.Error != nil {
 			h.Logger.Error("handler error: error creating scheduled deletion", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 		}
 		// notify controller
 		notifPayload, err := kubernetesWorkloadInstance.NotificationPayload(
@@ -1144,7 +1047,7 @@ func (h Handler) DeleteKubernetesWorkloadInstance(c echo.Context) error {
 		)
 		if err != nil {
 			h.Logger.Error("handler error: error creating NATS notification", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 		}
 		h.JS.Publish(notif.KubernetesWorkloadInstanceDeleteSubject, *notifPayload)
 	} else {
@@ -1152,16 +1055,13 @@ func (h Handler) DeleteKubernetesWorkloadInstance(c echo.Context) error {
 			// if deletion scheduled but not reconciled, return 409 - deletion
 			// already underway
 			return apiserver_lib.ResponseStatus409(c, nil, errors.New(fmt.Sprintf(
-				"object with ID %d %s",
+				"object with ID %d already being deleted",
 				*kubernetesWorkloadInstance.ID,
-				api_v0.ErrMsgAlreadyBeingDeleted,
-			)), fullyQualifiedType)
+			)), objectType)
 		} else {
 			// object scheduled for deletion and confirmed - it can be deleted
 			// from DB
-			if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-				return db.Delete(&kubernetesWorkloadInstance)
-			}); result.Error != nil {
+			if result := h.RequestDB(c).Delete(&kubernetesWorkloadInstance); result.Error != nil {
 				h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 				// surface BlockedDeleteError from gorm hook - backstop in case an attached object reference was created after the pre-check
 				var blockedErr *api_v0.BlockedDeleteError
@@ -1176,30 +1076,22 @@ func (h Handler) DeleteKubernetesWorkloadInstance(c echo.Context) error {
 				var httpErr *util_v0.HttpError
 				if errors.As(result.Error, &httpErr) {
 					return apiserver_lib.ResponseStatusErr(
-						httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+						httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 					)
 				}
-				return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+				return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 			}
 		}
-	}
-
-	// the delete has committed; drop any process state that mirrored the
-	// row before answering. A persist hook cannot do this: a rollback
-	// would have dropped state for a row that survived.
-	if err := apiserver_lib.AfterCommitDelete(h.DB, &kubernetesWorkloadInstance); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesWorkloadInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1227,71 +1119,50 @@ func (h Handler) GetKubernetesWorkloadResourceDefinitionVersions(c echo.Context)
 // @Param kubernetesWorkloadResourceDefinition body api_v0.KubernetesWorkloadResourceDefinition true "KubernetesWorkloadResourceDefinition object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-resource-definitions [POST]
 func (h Handler) AddKubernetesWorkloadResourceDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesWorkloadResourceDefinition
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadResourceDefinition).GetFullyQualifiedType()
 	var kubernetesWorkloadResourceDefinition api_v0.KubernetesWorkloadResourceDefinition
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, kubernetesWorkloadResourceDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	if err := c.Bind(&kubernetesWorkloadResourceDefinition); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, kubernetesWorkloadResourceDefinition, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// persist to DB
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		// clear id so a retried create does not reuse a rolled-back key
-		kubernetesWorkloadResourceDefinition.ID = nil
-		return db.Create(&kubernetesWorkloadResourceDefinition)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Create(&kubernetesWorkloadResourceDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.KubernetesWorkloadResourceDefinition),
-			fullyQualifiedType,
-		)
-	}
-
-	// the write has committed; bring any process state that mirrors the
-	// database in line before answering, so a caller that gets a 200 can
-	// rely on it. A persist hook cannot do this: it runs inside the
-	// transaction, so it would act on a write that may never commit.
-	if err := apiserver_lib.AfterCommitCreate(h.DB, &kubernetesWorkloadResourceDefinition); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesWorkloadResourceDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
@@ -1302,25 +1173,25 @@ func (h Handler) AddKubernetesWorkloadResourceDefinition(c echo.Context) error {
 // @ID get-v0-kubernetesWorkloadResourceDefinitions
 // @Accept json
 // @Produce json
-// @Param name query string false "filter by exact kubernetes workload resource definition name (case sensitive)"
+// @Param name query string false "kubernetes workload resource definition search by name"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-resource-definitions [GET]
 func (h Handler) GetKubernetesWorkloadResourceDefinitions(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadResourceDefinition).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeKubernetesWorkloadResourceDefinition
 
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	// bind filter
 	var filter api_v0.KubernetesWorkloadResourceDefinition
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1336,7 +1207,7 @@ func (h Handler) GetKubernetesWorkloadResourceDefinitions(c echo.Context) error 
 		var totalCount int64
 		if result := h.RequestDB(c).Model(&api_v0.KubernetesWorkloadResourceDefinition{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
 
 		// see if total count is greater than the limit
@@ -1347,22 +1218,25 @@ func (h Handler) GetKubernetesWorkloadResourceDefinitions(c echo.Context) error 
 			// if we don't have to paginate, return all records
 			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
 			returnedCount = int64(len(*records))
 		case true:
-			// dispatch to the configured pagination strategy to fetch the first page
+			// if we have to paginate, create the materialized view and use it to fetch the first page of records
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.KubernetesWorkloadResourceDefinition{}).Where(&filter), records, queryTable, pageParams)
+			viewName, qid, err := h.CreateMaterializedView(queryTable)
 			if err != nil {
-				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-					return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-				}
-				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
-			pagination.QueryId = queryId
-			returnedCount = count
+			pagination.QueryId = qid
+
+			// fetch records from the new materialized view
+			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+			if err != nil {
+				h.Logger.Error("handler error: error finding records", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			}
 
 			// set the cursor for the next page of results
 			if len(*records) > 0 {
@@ -1373,20 +1247,24 @@ func (h Handler) GetKubernetesWorkloadResourceDefinitions(c echo.Context) error 
 		}
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// continuation: dispatch to the configured pagination strategy to fetch the next page
-		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.KubernetesWorkloadResourceDefinition{}).Where(&filter), records, queryTable, pageParams)
+		// use query ID to find the materialized view name
+		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 		if err != nil {
-			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-				return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-			}
-			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
-		pagination.QueryId = queryId
-		returnedCount = count
+
+		// fetch records from the materialized view based on cursor
+		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+		if err != nil {
+			h.Logger.Error("handler error: error finding records", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		}
+
+		// set the query ID for the next page of results
+		pagination.QueryId = pageParams.QueryId
 
 		// set the cursor for the next page of results
 		if len(*records) > 0 {
@@ -1406,11 +1284,11 @@ func (h Handler) GetKubernetesWorkloadResourceDefinitions(c echo.Context) error 
 			Pagination:  *pagination,
 		},
 		*records,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1427,26 +1305,26 @@ func (h Handler) GetKubernetesWorkloadResourceDefinitions(c echo.Context) error 
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-resource-definitions/{id} [GET]
 func (h Handler) GetKubernetesWorkloadResourceDefinition(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadResourceDefinition).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeKubernetesWorkloadResourceDefinition
 	kubernetesWorkloadResourceDefinitionID := c.Param("id")
 	var kubernetesWorkloadResourceDefinition api_v0.KubernetesWorkloadResourceDefinition
 	if result := h.RequestDB(c).
 		First(&kubernetesWorkloadResourceDefinition, kubernetesWorkloadResourceDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesWorkloadResourceDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1466,64 +1344,54 @@ func (h Handler) GetKubernetesWorkloadResourceDefinition(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-resource-definitions/{id} [PATCH]
 func (h Handler) UpdateKubernetesWorkloadResourceDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesWorkloadResourceDefinition
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadResourceDefinition).GetFullyQualifiedType()
 	kubernetesWorkloadResourceDefinitionID := c.Param("id")
 	var existingKubernetesWorkloadResourceDefinition api_v0.KubernetesWorkloadResourceDefinition
 	if result := h.RequestDB(c).First(&existingKubernetesWorkloadResourceDefinition, kubernetesWorkloadResourceDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingKubernetesWorkloadResourceDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedKubernetesWorkloadResourceDefinition api_v0.KubernetesWorkloadResourceDefinition
 	if err := c.Bind(&updatedKubernetesWorkloadResourceDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// update object in database
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Model(&existingKubernetesWorkloadResourceDefinition).Updates(&updatedKubernetesWorkloadResourceDefinition)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingKubernetesWorkloadResourceDefinition).Updates(&updatedKubernetesWorkloadResourceDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.KubernetesWorkloadResourceDefinition),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingKubernetesWorkloadResourceDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1544,80 +1412,70 @@ func (h Handler) UpdateKubernetesWorkloadResourceDefinition(c echo.Context) erro
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-resource-definitions/{id} [PUT]
 func (h Handler) ReplaceKubernetesWorkloadResourceDefinition(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesWorkloadResourceDefinition
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadResourceDefinition).GetFullyQualifiedType()
 	kubernetesWorkloadResourceDefinitionID := c.Param("id")
 	var existingKubernetesWorkloadResourceDefinition api_v0.KubernetesWorkloadResourceDefinition
 	if result := h.RequestDB(c).First(&existingKubernetesWorkloadResourceDefinition, kubernetesWorkloadResourceDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingKubernetesWorkloadResourceDefinition); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedKubernetesWorkloadResourceDefinition api_v0.KubernetesWorkloadResourceDefinition
 	if err := c.Bind(&updatedKubernetesWorkloadResourceDefinition); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, updatedKubernetesWorkloadResourceDefinition, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// persist provided data
 	updatedKubernetesWorkloadResourceDefinition.ID = existingKubernetesWorkloadResourceDefinition.ID
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesWorkloadResourceDefinition)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesWorkloadResourceDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.KubernetesWorkloadResourceDefinition),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// reload updated data from DB
 	if result := h.RequestDB(c).First(&existingKubernetesWorkloadResourceDefinition, kubernetesWorkloadResourceDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingKubernetesWorkloadResourceDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1635,21 +1493,19 @@ func (h Handler) ReplaceKubernetesWorkloadResourceDefinition(c echo.Context) err
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-resource-definitions/{id} [DELETE]
 func (h Handler) DeleteKubernetesWorkloadResourceDefinition(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadResourceDefinition).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeKubernetesWorkloadResourceDefinition
 	kubernetesWorkloadResourceDefinitionID := c.Param("id")
 	var kubernetesWorkloadResourceDefinition api_v0.KubernetesWorkloadResourceDefinition
 	if result := h.RequestDB(c).First(&kubernetesWorkloadResourceDefinition, kubernetesWorkloadResourceDefinitionID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// delete object
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Delete(&kubernetesWorkloadResourceDefinition)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&kubernetesWorkloadResourceDefinition); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
 		var blockedErr *api_v0.BlockedDeleteError
@@ -1664,28 +1520,20 @@ func (h Handler) DeleteKubernetesWorkloadResourceDefinition(c echo.Context) erro
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-	}
-
-	// the delete has committed; drop any process state that mirrored the
-	// row before answering. A persist hook cannot do this: a rollback
-	// would have dropped state for a row that survived.
-	if err := apiserver_lib.AfterCommitDelete(h.DB, &kubernetesWorkloadResourceDefinition); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesWorkloadResourceDefinition,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1713,71 +1561,50 @@ func (h Handler) GetKubernetesWorkloadResourceInstanceVersions(c echo.Context) e
 // @Param kubernetesWorkloadResourceInstance body api_v0.KubernetesWorkloadResourceInstance true "KubernetesWorkloadResourceInstance object"
 // @Success 201 {object} v0.Response "Created"
 // @Failure 400 {object} v0.Response "Bad Request"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-resource-instances [POST]
 func (h Handler) AddKubernetesWorkloadResourceInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesWorkloadResourceInstance
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadResourceInstance).GetFullyQualifiedType()
 	var kubernetesWorkloadResourceInstance api_v0.KubernetesWorkloadResourceInstance
 
 	// check for empty payload, unsupported fields, GORM Model fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, false, objectType, kubernetesWorkloadResourceInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	if err := c.Bind(&kubernetesWorkloadResourceInstance); err != nil {
 		h.Logger.Error("handler error: error binding object", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, kubernetesWorkloadResourceInstance, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// persist to DB
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		// clear id so a retried create does not reuse a rolled-back key
-		kubernetesWorkloadResourceInstance.ID = nil
-		return db.Create(&kubernetesWorkloadResourceInstance)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Create(&kubernetesWorkloadResourceInstance); result.Error != nil {
 		h.Logger.Error("handler error: error creating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.KubernetesWorkloadResourceInstance),
-			fullyQualifiedType,
-		)
-	}
-
-	// the write has committed; bring any process state that mirrors the
-	// database in line before answering, so a caller that gets a 200 can
-	// rely on it. A persist hook cannot do this: it runs inside the
-	// transaction, so it would act on a write that may never commit.
-	if err := apiserver_lib.AfterCommitCreate(h.DB, &kubernetesWorkloadResourceInstance); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesWorkloadResourceInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus201(c, *response)
@@ -1788,25 +1615,25 @@ func (h Handler) AddKubernetesWorkloadResourceInstance(c echo.Context) error {
 // @ID get-v0-kubernetesWorkloadResourceInstances
 // @Accept json
 // @Produce json
-// @Param name query string false "filter by exact kubernetes workload resource instance name (case sensitive)"
+// @Param name query string false "kubernetes workload resource instance search by name"
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-resource-instances [GET]
 func (h Handler) GetKubernetesWorkloadResourceInstances(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadResourceInstance).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeKubernetesWorkloadResourceInstance
 
 	// get pagination parameters
 	pageParams, err := c.(*apiserver_lib.CustomContext).GetPaginationParams()
 	if err != nil {
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	// bind filter
 	var filter api_v0.KubernetesWorkloadResourceInstance
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	pagination := new(apiserver_lib.Pagination)
@@ -1822,7 +1649,7 @@ func (h Handler) GetKubernetesWorkloadResourceInstances(c echo.Context) error {
 		var totalCount int64
 		if result := h.RequestDB(c).Model(&api_v0.KubernetesWorkloadResourceInstance{}).Where(&filter).Count(&totalCount); result.Error != nil {
 			h.Logger.Error("handler error: error counting objects", zap.Error(result.Error))
-			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 		}
 
 		// see if total count is greater than the limit
@@ -1833,22 +1660,25 @@ func (h Handler) GetKubernetesWorkloadResourceInstances(c echo.Context) error {
 			// if we don't have to paginate, return all records
 			if result := h.RequestDB(c).Order("ID asc").Where(&filter).Find(records); result.Error != nil {
 				h.Logger.Error("handler error: error finding objects", zap.Error(result.Error))
-				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, fullyQualifiedType)
+				return apiserver_lib.ResponseStatus500(c, pageParams, result.Error, objectType)
 			}
 			returnedCount = int64(len(*records))
 		case true:
-			// dispatch to the configured pagination strategy to fetch the first page
+			// if we have to paginate, create the materialized view and use it to fetch the first page of records
 			queryTable := filter.TableName()
-			queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.KubernetesWorkloadResourceInstance{}).Where(&filter), records, queryTable, pageParams)
+			viewName, qid, err := h.CreateMaterializedView(queryTable)
 			if err != nil {
-				if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-					return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-				}
-				h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-				return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+				h.Logger.Error("handler error: error creating materialized view", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 			}
-			pagination.QueryId = queryId
-			returnedCount = count
+			pagination.QueryId = qid
+
+			// fetch records from the new materialized view
+			returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+			if err != nil {
+				h.Logger.Error("handler error: error finding records", zap.Error(err))
+				return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+			}
 
 			// set the cursor for the next page of results
 			if len(*records) > 0 {
@@ -1859,20 +1689,24 @@ func (h Handler) GetKubernetesWorkloadResourceInstances(c echo.Context) error {
 		}
 	case pageParams.QueryId != "" && pageParams.Cursor == 0:
 		// client provided a query ID but no cursor, so we cannot fetch the next page of results
-		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), fullyQualifiedType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, errors.New("cursor is required when query ID is provided"), objectType)
 	case pageParams.QueryId != "" && pageParams.Cursor != 0:
-		// continuation: dispatch to the configured pagination strategy to fetch the next page
-		queryTable := filter.TableName()
-		queryId, count, err := h.DispatchGetPaginatedRecords(h.RequestDB(c).Model(&api_v0.KubernetesWorkloadResourceInstance{}).Where(&filter), records, queryTable, pageParams)
+		// use query ID to find the materialized view name
+		viewName, err := h.GetMaterializedViewName(pageParams.QueryId)
 		if err != nil {
-			if errors.Is(err, apiserver_lib.ErrInvalidPaginationQueryId) || errors.Is(err, apiserver_lib.ErrPaginationSessionExpired) {
-				return apiserver_lib.ResponseStatus400(c, pageParams, err, fullyQualifiedType)
-			}
-			h.Logger.Error("handler error: error fetching paginated records", zap.Error(err))
-			return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+			h.Logger.Error("handler error: error finding materialized view", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 		}
-		pagination.QueryId = queryId
-		returnedCount = count
+
+		// fetch records from the materialized view based on cursor
+		returnedCount, err = h.GetMaterializedViewRecords(records, viewName, pageParams)
+		if err != nil {
+			h.Logger.Error("handler error: error finding records", zap.Error(err))
+			return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
+		}
+
+		// set the query ID for the next page of results
+		pagination.QueryId = pageParams.QueryId
 
 		// set the cursor for the next page of results
 		if len(*records) > 0 {
@@ -1892,11 +1726,11 @@ func (h Handler) GetKubernetesWorkloadResourceInstances(c echo.Context) error {
 			Pagination:  *pagination,
 		},
 		*records,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, pageParams, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, pageParams, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1913,26 +1747,26 @@ func (h Handler) GetKubernetesWorkloadResourceInstances(c echo.Context) error {
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-resource-instances/{id} [GET]
 func (h Handler) GetKubernetesWorkloadResourceInstance(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadResourceInstance).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeKubernetesWorkloadResourceInstance
 	kubernetesWorkloadResourceInstanceID := c.Param("id")
 	var kubernetesWorkloadResourceInstance api_v0.KubernetesWorkloadResourceInstance
 	if result := h.RequestDB(c).
 		First(&kubernetesWorkloadResourceInstance, kubernetesWorkloadResourceInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesWorkloadResourceInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -1952,64 +1786,54 @@ func (h Handler) GetKubernetesWorkloadResourceInstance(c echo.Context) error {
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-resource-instances/{id} [PATCH]
 func (h Handler) UpdateKubernetesWorkloadResourceInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesWorkloadResourceInstance
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadResourceInstance).GetFullyQualifiedType()
 	kubernetesWorkloadResourceInstanceID := c.Param("id")
 	var existingKubernetesWorkloadResourceInstance api_v0.KubernetesWorkloadResourceInstance
 	if result := h.RequestDB(c).First(&existingKubernetesWorkloadResourceInstance, kubernetesWorkloadResourceInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingKubernetesWorkloadResourceInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedKubernetesWorkloadResourceInstance api_v0.KubernetesWorkloadResourceInstance
 	if err := c.Bind(&updatedKubernetesWorkloadResourceInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// update object in database
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Model(&existingKubernetesWorkloadResourceInstance).Updates(&updatedKubernetesWorkloadResourceInstance)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Model(&existingKubernetesWorkloadResourceInstance).Updates(&updatedKubernetesWorkloadResourceInstance); result.Error != nil {
 		h.Logger.Error("handler error: error updating object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.KubernetesWorkloadResourceInstance),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingKubernetesWorkloadResourceInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -2030,80 +1854,70 @@ func (h Handler) UpdateKubernetesWorkloadResourceInstance(c echo.Context) error 
 // @Success 200 {object} v0.Response "OK"
 // @Failure 400 {object} v0.Response "Bad Request"
 // @Failure 404 {object} v0.Response "Not Found"
-// @Failure 409 {object} v0.Response "Conflict"
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-resource-instances/{id} [PUT]
 func (h Handler) ReplaceKubernetesWorkloadResourceInstance(c echo.Context) error {
 	objectType := api_v0.ObjectTypeKubernetesWorkloadResourceInstance
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadResourceInstance).GetFullyQualifiedType()
 	kubernetesWorkloadResourceInstanceID := c.Param("id")
 	var existingKubernetesWorkloadResourceInstance api_v0.KubernetesWorkloadResourceInstance
 	if result := h.RequestDB(c).First(&existingKubernetesWorkloadResourceInstance, kubernetesWorkloadResourceInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// check for empty payload, invalid or unsupported fields, optional associations, etc.
 	if id, err := apiserver_lib.PayloadCheck(c, false, true, objectType, existingKubernetesWorkloadResourceInstance); err != nil {
 		h.Logger.Error("handler error: error performing payload check", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// bind payload
 	var updatedKubernetesWorkloadResourceInstance api_v0.KubernetesWorkloadResourceInstance
 	if err := c.Bind(&updatedKubernetesWorkloadResourceInstance); err != nil {
 		h.Logger.Error("handler error: error binding payload", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	// check for missing required fields
 	if id, err := apiserver_lib.ValidateBoundData(c, updatedKubernetesWorkloadResourceInstance, objectType); err != nil {
 		h.Logger.Error("handler error: error validating bound data", zap.Error(err))
-		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), fullyQualifiedType)
+		return apiserver_lib.ResponseStatusErr(id, c, nil, errors.New(err.Error()), objectType)
 	}
 
 	// persist provided data
 	updatedKubernetesWorkloadResourceInstance.ID = existingKubernetesWorkloadResourceInstance.ID
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesWorkloadResourceInstance)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Session(&gorm.Session{FullSaveAssociations: false}).Omit("CreatedAt", "DeletedAt").Save(&updatedKubernetesWorkloadResourceInstance); result.Error != nil {
 		h.Logger.Error("handler error: error persisting object", zap.Error(result.Error))
 		// check if this is a custom HTTP error with specific status code
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.RespondWriteError(
-			c,
-			h.Logger,
-			result.Error,
-			new(api_v0.KubernetesWorkloadResourceInstance),
-			fullyQualifiedType,
-		)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// reload updated data from DB
 	if result := h.RequestDB(c).First(&existingKubernetesWorkloadResourceInstance, kubernetesWorkloadResourceInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		existingKubernetesWorkloadResourceInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)
@@ -2121,21 +1935,19 @@ func (h Handler) ReplaceKubernetesWorkloadResourceInstance(c echo.Context) error
 // @Failure 500 {object} v0.Response "Internal Server Error"
 // @Router /v0/kubernetes-workload-resource-instances/{id} [DELETE]
 func (h Handler) DeleteKubernetesWorkloadResourceInstance(c echo.Context) error {
-	fullyQualifiedType := new(api_v0.KubernetesWorkloadResourceInstance).GetFullyQualifiedType()
+	objectType := api_v0.ObjectTypeKubernetesWorkloadResourceInstance
 	kubernetesWorkloadResourceInstanceID := c.Param("id")
 	var kubernetesWorkloadResourceInstance api_v0.KubernetesWorkloadResourceInstance
 	if result := h.RequestDB(c).First(&kubernetesWorkloadResourceInstance, kubernetesWorkloadResourceInstanceID); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return apiserver_lib.ResponseStatus404(c, nil, result.Error, fullyQualifiedType)
+			return apiserver_lib.ResponseStatus404(c, nil, result.Error, objectType)
 		}
 		h.Logger.Error("handler error: error finding object", zap.Error(result.Error))
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	// delete object
-	if result := h.Write(c, func(db *gorm.DB) *gorm.DB {
-		return db.Delete(&kubernetesWorkloadResourceInstance)
-	}); result.Error != nil {
+	if result := h.RequestDB(c).Delete(&kubernetesWorkloadResourceInstance); result.Error != nil {
 		h.Logger.Error("handler error: error deleting object", zap.Error(result.Error))
 		// surface BlockedDeleteError from gorm hook - sole blocking check for non-reconciled types
 		var blockedErr *api_v0.BlockedDeleteError
@@ -2150,28 +1962,20 @@ func (h Handler) DeleteKubernetesWorkloadResourceInstance(c echo.Context) error 
 		var httpErr *util_v0.HttpError
 		if errors.As(result.Error, &httpErr) {
 			return apiserver_lib.ResponseStatusErr(
-				httpErr.GetStatusCode(), c, nil, result.Error, fullyQualifiedType,
+				httpErr.GetStatusCode(), c, nil, result.Error, objectType,
 			)
 		}
-		return apiserver_lib.ResponseStatus500(c, nil, result.Error, fullyQualifiedType)
-	}
-
-	// the delete has committed; drop any process state that mirrored the
-	// row before answering. A persist hook cannot do this: a rollback
-	// would have dropped state for a row that survived.
-	if err := apiserver_lib.AfterCommitDelete(h.DB, &kubernetesWorkloadResourceInstance); err != nil {
-		h.Logger.Error("handler error: error reconciling process state after commit", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, result.Error, objectType)
 	}
 
 	response, err := apiserver_lib.CreateResponse(
 		apiserver_lib.SingleObjectMeta(),
 		kubernetesWorkloadResourceInstance,
-		fullyQualifiedType,
+		objectType,
 	)
 	if err != nil {
 		h.Logger.Error("handler error: error creating response", zap.Error(err))
-		return apiserver_lib.ResponseStatus500(c, nil, err, fullyQualifiedType)
+		return apiserver_lib.ResponseStatus500(c, nil, err, objectType)
 	}
 
 	return apiserver_lib.ResponseStatus200(c, *response)

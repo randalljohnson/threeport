@@ -255,7 +255,7 @@ store_dir: /data
 						"containers": []interface{}{
 							map[string]interface{}{
 								"name":            "nats-box",
-								"image":           "docker.io/natsio/nats-box:0.16.0-nonroot",
+								"image":           "natsio/nats-box:0.16.0-nonroot",
 								"imagePullPolicy": "IfNotPresent",
 								"resources":       nil,
 								"env": []interface{}{
@@ -354,7 +354,7 @@ store_dir: /data
 						"containers": []interface{}{
 							map[string]interface{}{
 								"name":            "nats",
-								"image":           "docker.io/library/nats:2.10.25-alpine",
+								"image":           "nats:2.10.25-alpine",
 								"imagePullPolicy": "IfNotPresent",
 								"resources":       map[string]interface{}{},
 								"ports": []interface{}{
@@ -413,10 +413,6 @@ store_dir: /data
 									map[string]interface{}{
 										"name":      "pid",
 										"mountPath": "/var/run/nats",
-									},
-									map[string]interface{}{
-										"name":      "datadir",
-										"mountPath": "/data",
 									},
 								},
 								//######################
@@ -483,7 +479,7 @@ store_dir: /data
 							//################################
 							map[string]interface{}{
 								"name":            "reloader",
-								"image":           "docker.io/natsio/nats-server-config-reloader:0.16.1",
+								"image":           "natsio/nats-server-config-reloader:0.16.1",
 								"imagePullPolicy": "IfNotPresent",
 								"resources":       nil,
 								"command": []interface{}{
@@ -515,7 +511,7 @@ store_dir: /data
 							//#############################
 							map[string]interface{}{
 								"name":            "metrics",
-								"image":           "docker.io/natsio/prometheus-nats-exporter:0.16.0",
+								"image":           "natsio/prometheus-nats-exporter:0.16.0",
 								"imagePullPolicy": "IfNotPresent",
 								"resources":       map[string]interface{}{},
 								"args": []interface{}{
@@ -744,7 +740,7 @@ store_dir: /data
 						"containers": []interface{}{
 							map[string]interface{}{
 								"name":            "db",
-								"image":           fmt.Sprintf("docker.io/cockroachdb/cockroach:%s", DatabaseImageTag),
+								"image":           fmt.Sprintf("cockroachdb/cockroach:%s", DatabaseImageTag),
 								"imagePullPolicy": "IfNotPresent",
 								"args": []interface{}{
 									"shell",

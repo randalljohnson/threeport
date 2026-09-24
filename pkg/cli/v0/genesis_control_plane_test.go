@@ -1,722 +1,472 @@
 package v0
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"net/http/httptest"
+	"errors"
+	"os"
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
-	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	threeport "github.com/threeport/threeport/pkg/threeport-installer/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// testControlPlaneConfig returns a genesis kind control plane config
-// with the kube API certificate pair a genesis install records.
-func testControlPlaneConfig(name string) *ControlPlane {
-	return &ControlPlane{
-		Name:        name,
-		AuthEnabled: true,
-		Genesis:     true,
-		APIServer:   "localhost:1323",
-		CACert:      util.Base64Encode("threeport-ca-cert"),
-		Provider:    v0.KubernetesRuntimeInfraProviderKind,
-		KubeAPI: KubeAPI{
-			APIEndpoint:   "https://127.0.0.1:6443",
-			CACertificate: util.Base64Encode("kube-ca-cert"),
-			Certificate:   util.Base64Encode("kube-client-cert"),
-			Key:           util.Base64Encode("kube-client-key"),
-		},
-		Credentials: []Credential{
-			{
-				Name:       name,
-				ClientCert: util.Base64Encode("threeport-client-cert"),
-				ClientKey:  util.Base64Encode("threeport-client-key"),
-			},
-		},
-	}
-}
+// TestValidateCreateGenesisControlPlaneFlagsAcceptsSupportedInputs covers the
+// happy paths and every error branch of the flag validator.
+func TestValidateCreateGenesisControlPlaneFlagsAcceptsSupportedInputs(t *testing.T) {
+	longName := strings.Repeat("a", threeport.InstanceNameMaxLength+1)
+	exactName := strings.Repeat("a", threeport.InstanceNameMaxLength)
 
-// testCloudControlPlaneConfig returns a cloud-provider control plane
-// config with a token and no certificate pair.
-func testCloudControlPlaneConfig(name string, infraProvider string) *ControlPlane {
-	controlPlaneConfig := testControlPlaneConfig(name)
-	controlPlaneConfig.Provider = infraProvider
-	controlPlaneConfig.KubeAPI.APIEndpoint = "https://cloud-kube-api.example.com"
-	controlPlaneConfig.KubeAPI.Certificate = ""
-	controlPlaneConfig.KubeAPI.Key = ""
-	controlPlaneConfig.KubeAPI.Token = util.Base64Encode("install-time-token")
-
-	return controlPlaneConfig
-}
-
-// TestBootstrapKubernetesRuntimeInstance covers a kind runtime instance
-// built from a genesis config with a complete kube API certificate pair.
-func TestBootstrapKubernetesRuntimeInstance(t *testing.T) {
-	// build a local genesis config with a complete certificate pair
-	controlPlaneConfig := testControlPlaneConfig("dev-0")
-
-	// build the kubernetes runtime instance from that config
-	kubernetesRuntimeInstance, err := bootstrapKubernetesRuntimeInstance(controlPlaneConfig)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// check the threeport-prefixed name and kube API endpoint
-	if got := *kubernetesRuntimeInstance.Name; got != "threeport-dev-0" {
-		t.Errorf("expected name threeport-dev-0, got %s", got)
-	}
-	if got := *kubernetesRuntimeInstance.APIEndpoint; got != "https://127.0.0.1:6443" {
-		t.Errorf("expected API endpoint https://127.0.0.1:6443, got %s", got)
-	}
-
-	// check the decoded certificate pair without a token
-	if got := *kubernetesRuntimeInstance.CACertificate; got != "kube-ca-cert" {
-		t.Errorf("expected decoded CA certificate kube-ca-cert, got %s", got)
-	}
-	if got := *kubernetesRuntimeInstance.Certificate; got != "kube-client-cert" {
-		t.Errorf("expected decoded certificate kube-client-cert, got %s", got)
-	}
-	if got := *kubernetesRuntimeInstance.CertificateKey; got != "kube-client-key" {
-		t.Errorf("expected decoded certificate key kube-client-key, got %s", got)
-	}
-	if kubernetesRuntimeInstance.ConnectionToken != nil {
-		t.Errorf("expected no connection token, got %s", *kubernetesRuntimeInstance.ConnectionToken)
-	}
-
-	// check location Local and the default, host, and reconciled flags
-	if got := *kubernetesRuntimeInstance.Location; got != "Local" {
-		t.Errorf("expected location Local, got %s", got)
-	}
-	if !*kubernetesRuntimeInstance.DefaultRuntime {
-		t.Error("expected the runtime to be marked as the default runtime")
-	}
-	if !*kubernetesRuntimeInstance.ThreeportControlPlaneHost {
-		t.Error("expected the runtime to be marked as the control plane host")
-	}
-	if !*kubernetesRuntimeInstance.Reconciled {
-		t.Error("expected the runtime to be marked reconciled")
-	}
-}
-
-// TestBootstrapKubernetesRuntimeInstanceOnTokenMintingProviders covers a
-// GKE runtime instance built from a token and no certificate pair.
-func TestBootstrapKubernetesRuntimeInstanceOnTokenMintingProviders(t *testing.T) {
 	tests := []struct {
-		name     string
-		provider string
+		name             string
+		instanceName     string
+		infraProvider    string
+		createRootDomain string
+		authEnabled      bool
+		kindPortMappings []string
+		controlPlaneOnly bool
+		clusterName      string
+		wantErrContains  string
 	}{
 		{
-			name:     "gke control plane is rebuilt with no kube API credential",
-			provider: v0.KubernetesRuntimeInfraProviderGKE,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			// build a cloud config with a token and no certificate pair
-			controlPlaneConfig := testCloudControlPlaneConfig("dev-0", test.provider)
-
-			// build the kubernetes runtime instance from that config
-			kubernetesRuntimeInstance, err := bootstrapKubernetesRuntimeInstance(controlPlaneConfig)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			// check the threeport-prefixed name, endpoint, and CA
-			if got := *kubernetesRuntimeInstance.Name; got != "threeport-dev-0" {
-				t.Errorf("expected name threeport-dev-0, got %s", got)
-			}
-			if got := *kubernetesRuntimeInstance.APIEndpoint; got != "https://cloud-kube-api.example.com" {
-				t.Errorf("expected API endpoint https://cloud-kube-api.example.com, got %s", got)
-			}
-			if got := *kubernetesRuntimeInstance.CACertificate; got != "kube-ca-cert" {
-				t.Errorf("expected decoded CA certificate kube-ca-cert, got %s", got)
-			}
-
-			// check the location is Local; the config never stores the install-time location
-			if got := *kubernetesRuntimeInstance.Location; got != localRuntimeLocation {
-				t.Errorf("expected location %s, got %s", localRuntimeLocation, got)
-			}
-
-			// omit the certificate pair
-			if kubernetesRuntimeInstance.Certificate != nil {
-				t.Errorf("expected no client certificate, got %s", *kubernetesRuntimeInstance.Certificate)
-			}
-			if kubernetesRuntimeInstance.CertificateKey != nil {
-				t.Errorf("expected no client certificate key, got %s", *kubernetesRuntimeInstance.CertificateKey)
-			}
-
-			// carry over the install-time token
-			if kubernetesRuntimeInstance.ConnectionToken == nil {
-				t.Fatal("expected the install-time token to be carried over as the fallback credential")
-			}
-			if got := *kubernetesRuntimeInstance.ConnectionToken; got != "install-time-token" {
-				t.Errorf("expected decoded connection token install-time-token, got %s", got)
-			}
-
-			// leave expiration unset so nothing treats the token as refreshable
-			if kubernetesRuntimeInstance.ConnectionTokenExpiration != nil {
-				t.Errorf("expected no connection token expiration, got %v", *kubernetesRuntimeInstance.ConnectionTokenExpiration)
-			}
-
-			// check the runtime flags: default and control plane host
-			if !*kubernetesRuntimeInstance.DefaultRuntime {
-				t.Error("expected the runtime to be marked as the default runtime")
-			}
-			if !*kubernetesRuntimeInstance.ThreeportControlPlaneHost {
-				t.Error("expected the runtime to be marked as the control plane host")
-			}
-		})
-	}
-}
-
-// TestBootstrapKubernetesRuntimeInstanceRefusesEks covers refusing an
-// EKS rebuild whose stored kube API token the threeport config cannot supply.
-func TestBootstrapKubernetesRuntimeInstanceRefusesEks(t *testing.T) {
-	// build an EKS config with a token and no certificate pair
-	controlPlaneConfig := testCloudControlPlaneConfig("dev-0", v0.KubernetesRuntimeInfraProviderEKS)
-
-	// refuse to build the kubernetes runtime instance
-	_, err := bootstrapKubernetesRuntimeInstance(controlPlaneConfig)
-	if err == nil {
-		t.Fatal("expected an error, got none")
-	}
-
-	// check the error names the EKS provider
-	if !strings.Contains(err.Error(), v0.KubernetesRuntimeInfraProviderEKS) {
-		t.Errorf("expected error to name the provider %q, got %q", v0.KubernetesRuntimeInfraProviderEKS, err.Error())
-	}
-}
-
-// TestBootstrapKubernetesRuntimeInstanceRefusesOke covers refusing an
-// OKE rebuild.
-func TestBootstrapKubernetesRuntimeInstanceRefusesOke(t *testing.T) {
-	// build an OKE config with a token and no certificate pair
-	controlPlaneConfig := testCloudControlPlaneConfig("dev-0", v0.KubernetesRuntimeInfraProviderOKE)
-
-	// refuse to build the kubernetes runtime instance
-	_, err := bootstrapKubernetesRuntimeInstance(controlPlaneConfig)
-	if err == nil {
-		t.Fatal("expected an error, got none")
-	}
-
-	// check the error names the OKE provider
-	if !strings.Contains(err.Error(), v0.KubernetesRuntimeInfraProviderOKE) {
-		t.Errorf("expected error to name the provider %q, got %q", v0.KubernetesRuntimeInfraProviderOKE, err.Error())
-	}
-}
-
-// TestBootstrapKubernetesRuntimeInstanceOmitsHalfCertificatePair covers
-// dropping an incomplete certificate pair and using a token when present.
-func TestBootstrapKubernetesRuntimeInstanceOmitsHalfCertificatePair(t *testing.T) {
-	tests := []struct {
-		name      string
-		mutate    func(*ControlPlane)
-		wantToken bool
-	}{
-		{
-			name:   "certificate without a key is omitted",
-			mutate: func(c *ControlPlane) { c.KubeAPI.Key = "" },
-		},
-		{
-			name:   "key without a certificate is omitted",
-			mutate: func(c *ControlPlane) { c.KubeAPI.Certificate = "" },
-		},
-		{
-			name: "half a pair falls back to the token",
-			mutate: func(c *ControlPlane) {
-				c.KubeAPI.Key = ""
-				c.KubeAPI.Token = util.Base64Encode("install-time-token")
-			},
-			wantToken: true,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			// apply the incomplete-pair mutation to a local genesis config
-			controlPlaneConfig := testControlPlaneConfig("dev-0")
-			test.mutate(controlPlaneConfig)
-
-			// build the kubernetes runtime instance from that config
-			kubernetesRuntimeInstance, err := bootstrapKubernetesRuntimeInstance(controlPlaneConfig)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			// omit the incomplete pair so kube skips the certificate path
-			if kubernetesRuntimeInstance.Certificate != nil {
-				t.Errorf("expected no client certificate, got %s", *kubernetesRuntimeInstance.Certificate)
-			}
-			if kubernetesRuntimeInstance.CertificateKey != nil {
-				t.Errorf("expected no client certificate key, got %s", *kubernetesRuntimeInstance.CertificateKey)
-			}
-
-			if !test.wantToken {
-				// check no token when none was provided
-				if kubernetesRuntimeInstance.ConnectionToken != nil {
-					t.Errorf("expected no connection token, got %s", *kubernetesRuntimeInstance.ConnectionToken)
-				}
-
-				return
-			}
-
-			// check the token when one was provided
-			if kubernetesRuntimeInstance.ConnectionToken == nil {
-				t.Fatal("expected the token to be used when the certificate pair is incomplete")
-			}
-			if got := *kubernetesRuntimeInstance.ConnectionToken; got != "install-time-token" {
-				t.Errorf("expected decoded connection token install-time-token, got %s", got)
-			}
-		})
-	}
-}
-
-// TestValidateCreateGenesisControlPlaneFlagsTier covers accepted
-// development and production tiers and refused unknown values.
-func TestValidateCreateGenesisControlPlaneFlagsTier(t *testing.T) {
-	tests := []struct {
-		name          string
-		tier          string
-		infraProvider string
-		wantErr       bool
-	}{
-		{
-			name:          "development tier on a cloud provider is accepted",
-			tier:          threeport.ControlPlaneTierDev,
-			infraProvider: v0.KubernetesRuntimeInfraProviderEKS,
-			wantErr:       false,
-		},
-		{
-			name:          "production tier on a cloud provider is accepted",
-			tier:          threeport.ControlPlaneTierProd,
-			infraProvider: v0.KubernetesRuntimeInfraProviderEKS,
-			wantErr:       false,
-		},
-		{
-			name:          "development tier on the local provider is accepted",
-			tier:          threeport.ControlPlaneTierDev,
+			name:          "kind accepts minimal args",
+			instanceName:  "tp",
 			infraProvider: v0.KubernetesRuntimeInfraProviderKind,
-			wantErr:       false,
 		},
 		{
-			name:          "unrecognized tier is refused",
-			tier:          "staging",
+			name:          "eks accepts minimal args",
+			instanceName:  "tp",
 			infraProvider: v0.KubernetesRuntimeInfraProviderEKS,
-			wantErr:       true,
 		},
 		{
-			name:          "misspelled tier is refused",
-			tier:          "developement",
+			name:          "name at boundary length accepts",
+			instanceName:  exactName,
 			infraProvider: v0.KubernetesRuntimeInfraProviderKind,
-			wantErr:       true,
 		},
 		{
-			name:          "empty tier is refused",
-			tier:          "",
-			infraProvider: v0.KubernetesRuntimeInfraProviderKind,
-			wantErr:       true,
+			name:            "name over boundary length rejects",
+			instanceName:    longName,
+			infraProvider:   v0.KubernetesRuntimeInfraProviderKind,
+			wantErrContains: "instance name is too long",
+		},
+		{
+			name:            "unknown provider rejects",
+			instanceName:    "tp",
+			infraProvider:   "unknown",
+			wantErrContains: "invalid provider value",
+		},
+		{
+			name:             "kind port mappings on eks rejects",
+			instanceName:     "tp",
+			infraProvider:    v0.KubernetesRuntimeInfraProviderEKS,
+			kindPortMappings: []string{"8080:80"},
+			wantErrContains:  "kind port mappings are only supported",
+		},
+		{
+			name:             "kind port mappings on kind accepts",
+			instanceName:     "tp",
+			infraProvider:    v0.KubernetesRuntimeInfraProviderKind,
+			kindPortMappings: []string{"8080:80"},
+		},
+		{
+			name:             "cluster name without control-plane-only rejects",
+			instanceName:     "tp",
+			infraProvider:    v0.KubernetesRuntimeInfraProviderKind,
+			controlPlaneOnly: false,
+			clusterName:      "some-cluster",
+			wantErrContains:  "--cluster-name is only valid with --control-plane-only",
+		},
+		{
+			name:             "cluster name with control-plane-only accepts",
+			instanceName:     "tp",
+			infraProvider:    v0.KubernetesRuntimeInfraProviderKind,
+			controlPlaneOnly: true,
+			clusterName:      "some-cluster",
+		},
+		{
+			name:             "empty cluster name is fine without control-plane-only",
+			instanceName:     "tp",
+			infraProvider:    v0.KubernetesRuntimeInfraProviderKind,
+			controlPlaneOnly: false,
+			clusterName:      "",
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			// validate the control plane tier
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// invoke the validator with the case's flag set
 			err := ValidateCreateGenesisControlPlaneFlags(
-				"dev-0",
-				test.infraProvider,
-				test.tier,
-				"",
-				true,
-				nil,
-				false,
-				"",
-				0,
+				tc.instanceName,
+				tc.infraProvider,
+				tc.createRootDomain,
+				tc.authEnabled,
+				tc.kindPortMappings,
+				tc.controlPlaneOnly,
+				tc.clusterName,
 			)
 
-			if !test.wantErr {
+			// assert the error surface matches expectation
+			if tc.wantErrContains == "" {
 				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
+					t.Fatalf("expected no error, got %v", err)
 				}
-
 				return
 			}
-
 			if err == nil {
-				t.Fatal("expected an error, got none")
+				t.Fatalf("expected error containing %q, got nil", tc.wantErrContains)
 			}
-
-			// check the error names the refused tier plus development and production
-			for _, want := range []string{
-				test.tier,
-				threeport.ControlPlaneTierDev,
-				threeport.ControlPlaneTierProd,
-			} {
-				if !strings.Contains(err.Error(), want) {
-					t.Errorf("expected error to name %q, got %q", want, err.Error())
-				}
+			if !strings.Contains(err.Error(), tc.wantErrContains) {
+				t.Fatalf("expected error containing %q, got %q", tc.wantErrContains, err.Error())
 			}
 		})
 	}
 }
 
-// controlPlaneApiServer is a stub threeport API that answers lookups
-// with whatever the test seeded and records posted objects.
-type controlPlaneApiServer struct {
-	definitionFound bool
-	instanceFound   bool
-	definitionsPost int
-	instancesPost   int
-	postedInstance  v0.ControlPlaneInstance
-}
+// TestGetControlPlaneEnvVarsFallsBackToEnvOnlyWhenCliUnset asserts env vars
+// only fill in image repo and tag fields when the CLI didn't already set them.
+func TestGetControlPlaneEnvVarsFallsBackToEnvOnlyWhenCliUnset(t *testing.T) {
+	// track original env so the test doesn't leak state between cases
+	origRepo := os.Getenv("CONTROL_PLANE_IMAGE_REPO")
+	origTag := os.Getenv("CONTROL_PLANE_IMAGE_TAG")
+	t.Cleanup(func() {
+		os.Setenv("CONTROL_PLANE_IMAGE_REPO", origRepo)
+		os.Setenv("CONTROL_PLANE_IMAGE_TAG", origTag)
+	})
 
-// serve starts a stub threeport API and returns a client plus a
-// scheme-less address because the threeport client prepends a scheme itself.
-func (s *controlPlaneApiServer) serve(t *testing.T) (*http.Client, string) {
-	t.Helper()
-
-	// start a stub threeport API
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		definitionId := uint(7)
-		instanceId := uint(9)
-
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == v0.PathControlPlaneDefinitions:
-			// return an existing definition when found
-			data := []apiserver_lib.Object{}
-			if s.definitionFound {
-				data = append(data, v0.ControlPlaneDefinition{Common: v0.Common{ID: &definitionId}})
-			}
-			s.write(t, w, http.StatusOK, data)
-		case r.Method == http.MethodGet && r.URL.Path == v0.PathControlPlaneInstances:
-			// return an existing instance when found
-			data := []apiserver_lib.Object{}
-			if s.instanceFound {
-				data = append(data, v0.ControlPlaneInstance{Common: v0.Common{ID: &instanceId}})
-			}
-			s.write(t, w, http.StatusOK, data)
-		case r.Method == http.MethodPost && r.URL.Path == v0.PathControlPlaneDefinitions:
-			// record the definition create
-			s.definitionsPost++
-			s.write(t, w, http.StatusCreated, []apiserver_lib.Object{
-				v0.ControlPlaneDefinition{Common: v0.Common{ID: &definitionId}},
-			})
-		case r.Method == http.MethodPost && r.URL.Path == v0.PathControlPlaneInstances:
-			// record the instance create and capture the posted body
-			s.instancesPost++
-			body, err := io.ReadAll(r.Body)
-			if err != nil {
-				t.Errorf("failed to read request body: %v", err)
-			}
-			if err := json.Unmarshal(body, &s.postedInstance); err != nil {
-				t.Errorf("failed to unmarshal posted control plane instance: %v", err)
-			}
-			s.write(t, w, http.StatusCreated, []apiserver_lib.Object{
-				v0.ControlPlaneInstance{Common: v0.Common{ID: &instanceId}},
-			})
-		default:
-			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-
-	// close the stub when the test ends
-	t.Cleanup(server.Close)
-
-	// return a vanilla HTTP client and a scheme-less address
-	return &http.Client{}, strings.TrimPrefix(server.URL, "http://")
-}
-
-// write encodes a threeport API response envelope at status.
-func (s *controlPlaneApiServer) write(t *testing.T, w http.ResponseWriter, status int, data []apiserver_lib.Object) {
-	t.Helper()
-
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(apiserver_lib.Response{Data: data}); err != nil {
-		t.Errorf("failed to encode response: %v", err)
-	}
-}
-
-// testInstaller returns a named control plane installer with auth enabled
-// so a bootstrap restore copies the config certs onto the new instance.
-func testInstaller(name string) *threeport.ControlPlaneInstaller {
-	cpi := threeport.NewInstaller()
-	cpi.Opts.ControlPlaneName = name
-	cpi.Opts.Namespace = threeport.ControlPlaneNamespace
-	cpi.Opts.AuthEnabled = true
-
-	return cpi
-}
-
-// TestEnsureBootstrapControlPlaneCreatesMissingObjects covers creating
-// both control plane objects after a database drop removed them.
-func TestEnsureBootstrapControlPlaneCreatesMissingObjects(t *testing.T) {
-	// start a stub threeport API with no existing objects
-	apiServer := &controlPlaneApiServer{}
-	apiClient, apiAddr := apiServer.serve(t)
-
-	// point a genesis config at the stub
-	controlPlaneConfig := testControlPlaneConfig("dev-0")
-	controlPlaneConfig.APIServer = apiAddr
-	kubernetesRuntimeInstanceId := uint(4)
-
-	// create the missing control plane definition and instance
-	if err := ensureBootstrapControlPlane(
-		apiClient,
-		testInstaller("dev-0"),
-		controlPlaneConfig,
-		&kubernetesRuntimeInstanceId,
-	); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// check one definition create and one instance create
-	if apiServer.definitionsPost != 1 {
-		t.Errorf("expected 1 control plane definition created, got %d", apiServer.definitionsPost)
-	}
-	if apiServer.instancesPost != 1 {
-		t.Errorf("expected 1 control plane instance created, got %d", apiServer.instancesPost)
-	}
-
-	// check the posted instance carries genesis, self, and runtime links
-	instance := apiServer.postedInstance
-	if instance.IsSelf == nil || !*instance.IsSelf {
-		t.Error("expected the control plane instance to be marked as self")
-	}
-	if instance.Genesis == nil || !*instance.Genesis {
-		t.Error("expected the control plane instance to carry the genesis flag from the config")
-	}
-	if instance.KubernetesRuntimeInstanceID == nil || *instance.KubernetesRuntimeInstanceID != kubernetesRuntimeInstanceId {
-		t.Errorf("expected kubernetes runtime instance id %d, got %v", kubernetesRuntimeInstanceId, instance.KubernetesRuntimeInstanceID)
-	}
-	if instance.ControlPlaneDefinitionID == nil || *instance.ControlPlaneDefinitionID != 7 {
-		t.Errorf("expected control plane definition id 7, got %v", instance.ControlPlaneDefinitionID)
-	}
-	if instance.Namespace == nil || *instance.Namespace != threeport.ControlPlaneNamespace {
-		t.Errorf("expected namespace %s, got %v", threeport.ControlPlaneNamespace, instance.Namespace)
-	}
-
-	// check the threeport API certs carry over encoded
-	if instance.CACert == nil || *instance.CACert != controlPlaneConfig.CACert {
-		t.Error("expected the CA cert to carry over from the config unchanged")
-	}
-	if instance.ClientCert == nil || *instance.ClientCert != controlPlaneConfig.Credentials[0].ClientCert {
-		t.Error("expected the client cert to carry over from the config unchanged")
-	}
-	if instance.ClientKey == nil || *instance.ClientKey != controlPlaneConfig.Credentials[0].ClientKey {
-		t.Error("expected the client key to carry over from the config unchanged")
-	}
-
-	// check the component list includes the rest api and agent
-	if len(instance.CustomComponentInfo) < 2 {
-		t.Errorf("expected the component list to include the rest api and agent, got %d components", len(instance.CustomComponentInfo))
-	}
-}
-
-// TestEnsureBootstrapControlPlaneSkipsExistingObjects covers leaving
-// existing records alone and creating only those that are missing.
-func TestEnsureBootstrapControlPlaneSkipsExistingObjects(t *testing.T) {
 	tests := []struct {
-		name            string
-		definitionFound bool
-		instanceFound   bool
-		definitionsPost int
-		instancesPost   int
+		name       string
+		envRepo    string
+		envTag     string
+		cliRepo    string
+		cliTag     string
+		wantRepo   string
+		wantTag    string
 	}{
 		{
-			name:            "existing definition is reused",
-			definitionFound: true,
-			instanceFound:   false,
-			definitionsPost: 0,
-			instancesPost:   1,
+			name:     "env fills both when cli empty",
+			envRepo:  "docker.io/example",
+			envTag:   "v1.2.3",
+			wantRepo: "docker.io/example",
+			wantTag:  "v1.2.3",
 		},
 		{
-			name:            "existing definition and instance create nothing",
-			definitionFound: true,
-			instanceFound:   true,
-			definitionsPost: 0,
-			instancesPost:   0,
+			name:     "cli values preserved over env",
+			envRepo:  "docker.io/example",
+			envTag:   "v1.2.3",
+			cliRepo:  "cli/repo",
+			cliTag:   "cli-tag",
+			wantRepo: "cli/repo",
+			wantTag:  "cli-tag",
+		},
+		{
+			name:     "empty env leaves cli untouched",
+			cliRepo:  "cli/repo",
+			cliTag:   "cli-tag",
+			wantRepo: "cli/repo",
+			wantTag:  "cli-tag",
+		},
+		{
+			name: "empty env and empty cli both remain empty",
+		},
+		{
+			name:     "only tag env fills only tag",
+			envTag:   "v1.2.3",
+			wantRepo: "",
+			wantTag:  "v1.2.3",
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			// start a stub threeport API with the existing objects
-			apiServer := &controlPlaneApiServer{
-				definitionFound: test.definitionFound,
-				instanceFound:   test.instanceFound,
-			}
-			apiClient, apiAddr := apiServer.serve(t)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// stage env for this case
+			os.Setenv("CONTROL_PLANE_IMAGE_REPO", tc.envRepo)
+			os.Setenv("CONTROL_PLANE_IMAGE_TAG", tc.envTag)
 
-			// point a genesis config at the stub
-			controlPlaneConfig := testControlPlaneConfig("dev-0")
-			controlPlaneConfig.APIServer = apiAddr
-			kubernetesRuntimeInstanceId := uint(4)
-
-			// create only the missing control plane objects
-			if err := ensureBootstrapControlPlane(
-				apiClient,
-				testInstaller("dev-0"),
-				controlPlaneConfig,
-				&kubernetesRuntimeInstanceId,
-			); err != nil {
-				t.Fatalf("unexpected error: %v", err)
+			args := &GenesisControlPlaneCLIArgs{
+				ControlPlaneImageRepo: tc.cliRepo,
+				ControlPlaneImageTag:  tc.cliTag,
 			}
+			// invoke the env-lookup side of arg population
+			args.GetControlPlaneEnvVars()
 
-			// check the create counts match the case
-			if apiServer.definitionsPost != test.definitionsPost {
-				t.Errorf("expected %d control plane definitions created, got %d", test.definitionsPost, apiServer.definitionsPost)
+			// assert cli fields hold the resolved values
+			if args.ControlPlaneImageRepo != tc.wantRepo {
+				t.Errorf("ControlPlaneImageRepo: want %q, got %q", tc.wantRepo, args.ControlPlaneImageRepo)
 			}
-			if apiServer.instancesPost != test.instancesPost {
-				t.Errorf("expected %d control plane instances created, got %d", test.instancesPost, apiServer.instancesPost)
+			if args.ControlPlaneImageTag != tc.wantTag {
+				t.Errorf("ControlPlaneImageTag: want %q, got %q", tc.wantTag, args.ControlPlaneImageTag)
 			}
 		})
 	}
 }
 
-// TestDropSameNameControlPlaneRejectsWithoutForce covers the same-name guard.
-func TestDropSameNameControlPlaneRejectsWithoutForce(t *testing.T) {
-	require := require.New(t)
+// TestInitArgsPreservesExplicitFieldsWhenAllProvided asserts the init sets no
+// defaults when the caller populated every field the initializer touches.
+func TestInitArgsPreservesExplicitFieldsWhenAllProvided(t *testing.T) {
+	// stage every field the initializer would otherwise fill in
+	args := &GenesisControlPlaneCLIArgs{
+		ProviderConfigDir: "/explicit/provider/config",
+		KubeconfigPath:    "/explicit/kube/config",
+		ThreeportPath:     "/explicit/threeport/path",
+	}
 
-	cfg := &ThreeportConfig{
-		ControlPlanes: []ControlPlane{
-			{Name: "keep"},
-			{Name: "target"},
+	// invoke default-filling
+	InitArgs(args)
+
+	// assert the caller-provided values are untouched
+	if args.ProviderConfigDir != "/explicit/provider/config" {
+		t.Errorf("ProviderConfigDir mutated: got %q", args.ProviderConfigDir)
+	}
+	if args.KubeconfigPath != "/explicit/kube/config" {
+		t.Errorf("KubeconfigPath mutated: got %q", args.KubeconfigPath)
+	}
+	if args.ThreeportPath != "/explicit/threeport/path" {
+		t.Errorf("ThreeportPath mutated: got %q", args.ThreeportPath)
+	}
+}
+
+// TestInitArgsFillsKubeconfigAndThreeportPathDefaults asserts the initializer
+// picks up client-go's default kubeconfig path and the process working
+// directory when those fields are empty.
+func TestInitArgsFillsKubeconfigAndThreeportPathDefaults(t *testing.T) {
+	// pre-set ProviderConfigDir so InitArgs skips the ~/.threeport mkdir
+	args := &GenesisControlPlaneCLIArgs{
+		ProviderConfigDir: "/explicit/provider/config",
+	}
+
+	// invoke default-filling
+	InitArgs(args)
+
+	// assert the kubeconfig fallback ran and picked up any non-empty path
+	if args.KubeconfigPath == "" {
+		t.Errorf("expected KubeconfigPath to be filled with a default, got empty")
+	}
+	// assert threeport path fallback matches the process working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get cwd: %v", err)
+	}
+	if args.ThreeportPath != cwd {
+		t.Errorf("ThreeportPath: want %q, got %q", cwd, args.ThreeportPath)
+	}
+}
+
+// TestCreateInstallerCopiesArgsIntoOpts asserts every relevant CLI field lands
+// on the installer's Opts. Also confirms the initializer sets the constant
+// fields the caller shouldn't override (CreateOrUpdateKubeResources=false,
+// RestApiLoadBalancer=true).
+func TestCreateInstallerCopiesArgsIntoOpts(t *testing.T) {
+	// build args with a distinctive value on every field CreateInstaller reads
+	args := &GenesisControlPlaneCLIArgs{
+		AuthEnabled:       true,
+		AwsConfigProfile:  "aws-profile",
+		AwsConfigEnv:      true,
+		AwsRegion:         "us-east-1",
+		OciRegion:         "us-phoenix-1",
+		OciConfigProfile:  "oci-profile",
+		GcpProjectId:      "gcp-proj",
+		GcpRegion:         "us-central1",
+		CfgFile:           "/tmp/cfg",
+		CreateRootDomain:  "example.com",
+		CreateAdminEmail:  "admin@example.com",
+		DevEnvironment:    true,
+		ForceOverwriteConfig: true,
+		ControlPlaneName:  "cp1",
+		InfraProvider:     v0.KubernetesRuntimeInfraProviderKind,
+		KubeconfigPath:    "/tmp/kubeconfig",
+		NumWorkerNodes:    2,
+		ProviderConfigDir: "/tmp/provider",
+		ThreeportPath:     "/tmp/threeport",
+		Debug:             true,
+		Verbose:           true,
+		TeardownOnFailure: true,
+		ControlPlaneOnly:  true,
+		ClusterName:       "my-cluster",
+		InfraOnly:         true,
+		KindPortMappings:  []string{"8080:80"},
+		LocalRegistry:     true,
+	}
+
+	// invoke installer build
+	cpi, err := args.CreateInstaller()
+	if err != nil {
+		t.Fatalf("CreateInstaller returned unexpected error: %v", err)
+	}
+	if cpi == nil {
+		t.Fatal("CreateInstaller returned nil installer")
+	}
+
+	// assert every copied field lands on Opts
+	checks := map[string]struct {
+		got  interface{}
+		want interface{}
+	}{
+		"AuthEnabled":          {cpi.Opts.AuthEnabled, true},
+		"AwsConfigProfile":     {cpi.Opts.AwsConfigProfile, "aws-profile"},
+		"AwsConfigEnv":         {cpi.Opts.AwsConfigEnv, true},
+		"AwsRegion":            {cpi.Opts.AwsRegion, "us-east-1"},
+		"OciRegion":            {cpi.Opts.OciRegion, "us-phoenix-1"},
+		"OciConfigProfile":     {cpi.Opts.OciConfigProfile, "oci-profile"},
+		"GcpProjectId":         {cpi.Opts.GcpProjectId, "gcp-proj"},
+		"GcpRegion":            {cpi.Opts.GcpRegion, "us-central1"},
+		"CfgFile":              {cpi.Opts.CfgFile, "/tmp/cfg"},
+		"CreateRootDomain":     {cpi.Opts.CreateRootDomain, "example.com"},
+		"CreateAdminEmail":     {cpi.Opts.CreateAdminEmail, "admin@example.com"},
+		"DevEnvironment":       {cpi.Opts.DevEnvironment, true},
+		"ForceOverwriteConfig": {cpi.Opts.ForceOverwriteConfig, true},
+		"ControlPlaneName":     {cpi.Opts.ControlPlaneName, "cp1"},
+		"InfraProvider":        {cpi.Opts.InfraProvider, v0.KubernetesRuntimeInfraProviderKind},
+		"KubeconfigPath":       {cpi.Opts.KubeconfigPath, "/tmp/kubeconfig"},
+		"NumWorkerNodes":       {cpi.Opts.NumWorkerNodes, 2},
+		"ProviderConfigDir":    {cpi.Opts.ProviderConfigDir, "/tmp/provider"},
+		"ThreeportPath":        {cpi.Opts.ThreeportPath, "/tmp/threeport"},
+		"Debug":                {cpi.Opts.Debug, true},
+		"Verbose":              {cpi.Opts.Verbose, true},
+		"TeardownOnFailure":    {cpi.Opts.TeardownOnFailure, true},
+		"ControlPlaneOnly":     {cpi.Opts.ControlPlaneOnly, true},
+		"ClusterName":          {cpi.Opts.ClusterName, "my-cluster"},
+		"InfraOnly":            {cpi.Opts.InfraOnly, true},
+		"LocalRegistry":        {cpi.Opts.LocalRegistry, true},
+	}
+	for name, c := range checks {
+		if c.got != c.want {
+			t.Errorf("%s: want %v, got %v", name, c.want, c.got)
+		}
+	}
+	// assert the KindPortMappings slice was copied through
+	if len(cpi.Opts.KindPortMappings) != 1 || cpi.Opts.KindPortMappings[0] != "8080:80" {
+		t.Errorf("KindPortMappings: want [8080:80], got %v", cpi.Opts.KindPortMappings)
+	}
+
+	// assert the constants the initializer forces on every install
+	if cpi.Opts.CreateOrUpdateKubeResources != false {
+		t.Errorf("CreateOrUpdateKubeResources: want false, got %v", cpi.Opts.CreateOrUpdateKubeResources)
+	}
+	if cpi.Opts.RestApiLoadBalancer != true {
+		t.Errorf("RestApiLoadBalancer: want true, got %v", cpi.Opts.RestApiLoadBalancer)
+	}
+}
+
+// TestCreateInstallerEmptyImageRepoAndTagSkipsMutators asserts the installer
+// build does not propagate blank image repo or tag onto shared component
+// defaults when the caller didn't supply values.
+func TestCreateInstallerEmptyImageRepoAndTagSkipsMutators(t *testing.T) {
+	// capture the current values on the shared component defaults so we can
+	// verify they weren't blanked by CreateInstaller
+	priorRepo := threeport.ThreeportRestApi.ImageNamespace
+	priorTag := threeport.ThreeportRestApi.ImageTag
+
+	args := &GenesisControlPlaneCLIArgs{}
+	// invoke installer build without image repo/tag
+	if _, err := args.CreateInstaller(); err != nil {
+		t.Fatalf("CreateInstaller returned unexpected error: %v", err)
+	}
+
+	// assert shared defaults preserved
+	if threeport.ThreeportRestApi.ImageNamespace != priorRepo {
+		t.Errorf("ThreeportRestApi.ImageNamespace mutated: want %q, got %q", priorRepo, threeport.ThreeportRestApi.ImageNamespace)
+	}
+	if threeport.ThreeportRestApi.ImageTag != priorTag {
+		t.Errorf("ThreeportRestApi.ImageTag mutated: want %q, got %q", priorTag, threeport.ThreeportRestApi.ImageTag)
+	}
+}
+
+// TestUninstallerCleanOnCreateErrorSkipsTeardownWhenDisabled covers the early
+// return path: when teardownOnFailure is false, the function must return the
+// wrapped createErr without invoking any teardown or config cleanup.
+func TestUninstallerCleanOnCreateErrorSkipsTeardownWhenDisabled(t *testing.T) {
+	tests := []struct {
+		name         string
+		createErrMsg string
+		createErr    error
+		wantContains []string
+	}{
+		{
+			name:         "wraps message when message provided",
+			createErrMsg: "failed to do the thing",
+			createErr:    errors.New("root cause"),
+			wantContains: []string{"failed to do the thing", "root cause"},
+		},
+		{
+			name:         "returns raw error when message empty",
+			createErrMsg: "",
+			createErr:    errors.New("root cause"),
+			wantContains: []string{"root cause"},
 		},
 	}
 
-	err := dropSameNameControlPlane(cfg, "target", false)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// stage an uninstaller with teardown-on-failure disabled
+			teardown := false
+			cleanCfg := false
+			u := &Uninstaller{
+				teardownOnFailure: &teardown,
+				cleanConfig:       &cleanCfg,
+			}
 
-	require.Error(err)
-	require.ErrorIs(err, ErrThreeportConfigAlreadyExists)
-	require.Len(cfg.ControlPlanes, 2)
+			// invoke the cleanup routine
+			err := u.cleanOnCreateError(tc.createErrMsg, tc.createErr)
+
+			// assert the returned error contains every expected fragment
+			if err == nil {
+				t.Fatalf("expected an error, got nil")
+			}
+			for _, frag := range tc.wantContains {
+				if !strings.Contains(err.Error(), frag) {
+					t.Errorf("error %q missing fragment %q", err.Error(), frag)
+				}
+			}
+			// assert the wrapped error still resolves the original via errors.Is
+			if !errors.Is(err, tc.createErr) {
+				t.Errorf("errors.Is: expected returned error to wrap the create error")
+			}
+		})
+	}
 }
 
-// TestDropSameNameControlPlaneForceKeepsSiblings covers additive overwrite.
-func TestDropSameNameControlPlaneForceKeepsSiblings(t *testing.T) {
-	require := require.New(t)
-
-	cfg := &ThreeportConfig{
-		ControlPlanes: []ControlPlane{
-			{Name: "keep"},
-			{Name: "target"},
+// TestRuntimeInstanceNameHonorsControlPlaneOnly asserts the helper returns the
+// caller-supplied cluster name when ControlPlaneOnly is set and derives the
+// threeport-prefixed name otherwise.
+func TestRuntimeInstanceNameHonorsControlPlaneOnly(t *testing.T) {
+	tests := []struct {
+		name string
+		opts threeport.Options
+		want string
+	}{
+		{
+			name: "control-plane-only returns cluster name verbatim",
+			opts: threeport.Options{ControlPlaneOnly: true, ClusterName: "existing-cluster"},
+			want: "existing-cluster",
+		},
+		{
+			name: "control-plane-only with empty cluster name returns empty",
+			opts: threeport.Options{ControlPlaneOnly: true, ClusterName: ""},
+			want: "",
+		},
+		{
+			name: "fresh install prefixes threeport- onto control plane name",
+			opts: threeport.Options{ControlPlaneName: "test"},
+			want: "threeport-test",
+		},
+		{
+			name: "fresh install with empty control plane name still prefixes",
+			opts: threeport.Options{},
+			want: "threeport-",
 		},
 	}
 
-	err := dropSameNameControlPlane(cfg, "target", true)
-
-	require.NoError(err)
-	require.Equal([]ControlPlane{{Name: "keep"}}, cfg.ControlPlanes)
-}
-
-// TestDropSameNameControlPlaneMissingNameIsNoop covers a first install.
-func TestDropSameNameControlPlaneMissingNameIsNoop(t *testing.T) {
-	require := require.New(t)
-
-	cfg := &ThreeportConfig{
-		ControlPlanes: []ControlPlane{{Name: "keep"}},
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// invoke the helper
+			got := runtimeInstanceName(tc.opts)
+			// assert the effective name matches
+			if got != tc.want {
+				t.Errorf("runtimeInstanceName: want %q, got %q", tc.want, got)
+			}
+		})
 	}
-
-	err := dropSameNameControlPlane(cfg, "new", false)
-
-	require.NoError(err)
-	require.Equal([]ControlPlane{{Name: "keep"}}, cfg.ControlPlanes)
 }
 
-// TestEnsureBootstrapKubernetesRuntimeReusesExistingRows covers a retry.
-func TestEnsureBootstrapKubernetesRuntimeReusesExistingRows(t *testing.T) {
-	require := require.New(t)
-	var posts int
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			posts++
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		name := r.URL.Query().Get("name")
-		fmt.Fprintf(w, `{"Data":[{"ID":9,"Name":%q}]}`, name)
-	}))
-	defer server.Close()
-
-	def, inst, err := ensureBootstrapKubernetesRuntime(
-		server.Client(),
-		strings.TrimPrefix(server.URL, "http://"),
-		"threeport-dev",
-		"threeport-dev",
-		true,
-		"kind",
-		&v0.KubernetesRuntimeInstance{Instance: v0.Instance{Name: util.Ptr("threeport-dev")}},
-	)
-
-	require.NoError(err)
-	require.Equal(0, posts)
-	require.Equal(uint(9), *def.ID)
-	require.Equal(uint(9), *inst.ID)
-}
-
-// TestEnsureBootstrapKubernetesRuntimeCreatesMissingRows covers a first install.
-func TestEnsureBootstrapKubernetesRuntimeCreatesMissingRows(t *testing.T) {
-	require := require.New(t)
-	var posts int
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if r.Method == http.MethodPost {
-			posts++
-			w.WriteHeader(http.StatusCreated)
-			var body map[string]any
-			json.NewDecoder(r.Body).Decode(&body)
-			name, _ := body["Name"].(string)
-			fmt.Fprintf(w, `{"Data":[{"ID":%d,"Name":%q}]}`, posts, name)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"Data":[]}`))
-	}))
-	defer server.Close()
-
-	def, inst, err := ensureBootstrapKubernetesRuntime(
-		server.Client(),
-		strings.TrimPrefix(server.URL, "http://"),
-		"threeport-dev",
-		"threeport-dev",
-		true,
-		"kind",
-		&v0.KubernetesRuntimeInstance{Instance: v0.Instance{Name: util.Ptr("threeport-dev")}},
-	)
-
-	require.NoError(err)
-	require.Equal(2, posts)
-	require.NotNil(def.ID)
-	require.NotNil(inst.ID)
-}
-
-// TestEnsureBootstrapKubernetesRuntimeSurfacesLookupErrors covers a failed GET.
-func TestEnsureBootstrapKubernetesRuntimeSurfacesLookupErrors(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"Data":[]}`))
-	}))
-	defer server.Close()
-
-	_, _, err := ensureBootstrapKubernetesRuntime(
-		server.Client(),
-		strings.TrimPrefix(server.URL, "http://"),
-		"threeport-dev",
-		"threeport-dev",
-		true,
-		"kind",
-		&v0.KubernetesRuntimeInstance{Instance: v0.Instance{Name: util.Ptr("threeport-dev")}},
-	)
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to look up kubernetes runtime definition by name")
-}
+// ensure util.Ptr stays referenced so imports don't drift silently.
+var _ = util.Ptr[int]

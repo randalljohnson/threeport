@@ -3,92 +3,169 @@ package v0
 import (
 	"errors"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
-// TestRunParallelRunsEveryTaskDespiteAnError covers RunParallel running
-// every task when one of them returns an error.
-func TestRunParallelRunsEveryTaskDespiteAnError(t *testing.T) {
-	// three tasks that increment a counter, the middle one failing
-	var ran int32
-	failure := errors.New("boom")
-	tasks := []func() error{
-		func() error { atomic.AddInt32(&ran, 1); return nil },
-		func() error { atomic.AddInt32(&ran, 1); return failure },
-		func() error { atomic.AddInt32(&ran, 1); return nil },
+// TestRunParallel_AllTasksSucceed covers the happy path: every task returns nil,
+// so RunParallel returns nil and each task runs exactly once.
+func TestRunParallel_AllTasksSucceed(t *testing.T) {
+	// setup: five tasks that increment a shared counter
+	var counter int64
+	tasks := make([]func() error, 0, 5)
+	for i := 0; i < 5; i++ {
+		tasks = append(tasks, func() error {
+			atomic.AddInt64(&counter, 1)
+			return nil
+		})
 	}
-	// run the tasks
+
+	// action: run with two workers
 	err := RunParallel(2, tasks)
-	// assert a failure does not short-circuit the other tasks
-	if got := atomic.LoadInt32(&ran); got != 3 {
-		t.Errorf("ran %d tasks, want all 3", got)
+
+	// assert: no error and every task ran exactly once
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
 	}
-	// assert the returned error contains boom
-	if err == nil || !strings.Contains(err.Error(), "boom") {
-		t.Errorf("RunParallel error = %v, want it to surface boom", err)
+	if got := atomic.LoadInt64(&counter); got != 5 {
+		t.Fatalf("expected counter=5, got %d", got)
 	}
 }
 
-// TestRunParallelRunsAllSequentiallyBelowOne covers RunParallel running
-// every task at a worker count below one.
-func TestRunParallelRunsAllSequentiallyBelowOne(t *testing.T) {
-	// two tasks that increment a counter
-	var ran int32
+// TestRunParallel_AggregatesErrors covers the error path: failing tasks feed
+// into MultiError and RunParallel returns a single aggregated error containing
+// every message, while non-failing tasks still run.
+func TestRunParallel_AggregatesErrors(t *testing.T) {
+	// setup: mix of failing and succeeding tasks
+	var counter int64
 	tasks := []func() error{
-		func() error { atomic.AddInt32(&ran, 1); return nil },
-		func() error { atomic.AddInt32(&ran, 1); return nil },
+		func() error { atomic.AddInt64(&counter, 1); return errors.New("boom-1") },
+		func() error { atomic.AddInt64(&counter, 1); return nil },
+		func() error { atomic.AddInt64(&counter, 1); return errors.New("boom-2") },
+		func() error { atomic.AddInt64(&counter, 1); return nil },
 	}
-	// run with a worker count of zero
-	if err := RunParallel(0, tasks); err != nil {
-		t.Fatalf("RunParallel returned error: %v", err)
-	}
-	// assert every task ran
-	if got := atomic.LoadInt32(&ran); got != 2 {
-		t.Errorf("ran %d tasks, want all 2", got)
-	}
-}
 
-// TestRunParallelAggregatesEveryError covers RunParallel returning every
-// failing task's error.
-func TestRunParallelAggregatesEveryError(t *testing.T) {
-	// two failing tasks around one that succeeds
-	tasks := []func() error{
-		func() error { return errors.New("first failure") },
-		func() error { return nil },
-		func() error { return errors.New("second failure") },
-	}
-	// run mixed success and failure tasks
+	// action: run with three workers
 	err := RunParallel(3, tasks)
-	// assert an error is returned
+
+	// assert: error contains both failure messages
 	if err == nil {
-		t.Fatalf("RunParallel returned nil, want an aggregate error")
+		t.Fatal("expected aggregated error, got nil")
 	}
-	// assert both failures appear in the returned error
-	if !strings.Contains(err.Error(), "first failure") || !strings.Contains(err.Error(), "second failure") {
-		t.Errorf("aggregate error = %q, want both failures", err.Error())
+	msg := err.Error()
+	if !strings.Contains(msg, "boom-1") || !strings.Contains(msg, "boom-2") {
+		t.Fatalf("expected both messages in %q", msg)
 	}
-}
-
-// TestRunParallelEmptyTasksReturnsNil covers RunParallel returning nil
-// for a nil task list.
-func TestRunParallelEmptyTasksReturnsNil(t *testing.T) {
-	// run a nil task list
-	if err := RunParallel(4, nil); err != nil {
-		t.Errorf("RunParallel(nil) = %v, want nil", err)
+	// assert: succeeding tasks still executed
+	if got := atomic.LoadInt64(&counter); got != 4 {
+		t.Fatalf("expected all 4 tasks to run, got counter=%d", got)
 	}
 }
 
-// TestRunParallelAllSuccessReturnsNil covers RunParallel returning nil
-// when every task succeeds.
-func TestRunParallelAllSuccessReturnsNil(t *testing.T) {
-	// two tasks that return nil
-	tasks := []func() error{
-		func() error { return nil },
-		func() error { return nil },
+// TestRunParallel_EmptyTasks covers the boundary: nil-return on empty input
+// without spawning stray work.
+func TestRunParallel_EmptyTasks(t *testing.T) {
+	// setup + action: no tasks
+	err := RunParallel(4, nil)
+
+	// assert: nil result
+	if err != nil {
+		t.Fatalf("expected nil, got %v", err)
 	}
-	// run the tasks
-	if err := RunParallel(2, tasks); err != nil {
-		t.Errorf("RunParallel = %v, want nil", err)
+
+	// action: explicit empty slice
+	err = RunParallel(4, []func() error{})
+
+	// assert: nil result again
+	if err != nil {
+		t.Fatalf("expected nil for empty slice, got %v", err)
+	}
+}
+
+// TestRunParallel_ParallelismCollapse covers the subtle branch where a
+// parallel value less than 1 collapses to a single sequential worker rather
+// than deadlocking on a zero-worker pool.
+func TestRunParallel_ParallelismCollapse(t *testing.T) {
+	cases := []struct {
+		name     string
+		parallel int
+	}{
+		{"zero", 0},
+		{"negative", -3},
+		{"one", 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// setup: three tasks incrementing a counter
+			var counter int64
+			tasks := []func() error{
+				func() error { atomic.AddInt64(&counter, 1); return nil },
+				func() error { atomic.AddInt64(&counter, 1); return nil },
+				func() error { atomic.AddInt64(&counter, 1); return nil },
+			}
+
+			// action: run under sub-1 or 1 parallelism
+			done := make(chan error, 1)
+			go func() { done <- RunParallel(tc.parallel, tasks) }()
+
+			// assert: completes without deadlock and runs every task
+			select {
+			case err := <-done:
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			case <-time.After(2 * time.Second):
+				t.Fatal("RunParallel deadlocked under collapsed worker count")
+			}
+			if got := atomic.LoadInt64(&counter); got != 3 {
+				t.Fatalf("expected 3 tasks run, got %d", got)
+			}
+		})
+	}
+}
+
+// TestRunParallel_ConcurrentExecution covers that worker count enables real
+// concurrency: with parallel=N and N tasks that block on a barrier, all tasks
+// must be in flight simultaneously for the barrier to release.
+func TestRunParallel_ConcurrentExecution(t *testing.T) {
+	// setup: barrier that releases only when three tasks are in flight
+	const workers = 3
+	var wg sync.WaitGroup
+	wg.Add(workers)
+	release := make(chan struct{})
+	tasks := make([]func() error, workers)
+	for i := 0; i < workers; i++ {
+		tasks[i] = func() error {
+			wg.Done()
+			<-release
+			return nil
+		}
+	}
+
+	// action: run with three workers, then release once all are waiting
+	done := make(chan error, 1)
+	go func() { done <- RunParallel(workers, tasks) }()
+
+	waitDone := make(chan struct{})
+	go func() { wg.Wait(); close(waitDone) }()
+
+	// assert: all three tasks reach the barrier concurrently
+	select {
+	case <-waitDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("tasks did not run concurrently under parallel=3")
+	}
+	close(release)
+
+	// assert: RunParallel returns nil once tasks complete
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("RunParallel did not return after tasks released")
 	}
 }

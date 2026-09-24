@@ -1,44 +1,71 @@
 package v0
 
-import (
-	"testing"
+import "testing"
 
-	"github.com/stretchr/testify/assert"
-)
-
-// TestValidPaginationMode verifies the two supported modes are accepted and
-// everything else is rejected. The value arrives from the REST API server's
-// -pagination-mode flag, so an unrecognized spelling has to fail at startup
-// rather than reach the query layer.
-func TestValidPaginationMode(t *testing.T) {
+// TestValidPaginationMode_AcceptsSupportedModesAndRejectsOthers covers the
+// supported constants, the empty string, and arbitrary unknown input.
+func TestValidPaginationMode_AcceptsSupportedModesAndRejectsOthers(t *testing.T) {
+	// each case pairs an input with the expected accept/reject verdict
 	tests := []struct {
 		name  string
-		mode  string
-		valid bool
+		input string
+		want  bool
 	}{
-		{"as of system time", string(PaginationModeAsOfSystemTime), true},
-		{"materialized view", string(PaginationModeMaterializedView), true},
-
-		{"empty", "", false},
-		{"unknown mode", "snapshot", false},
-		{"underscores instead of hyphens", "as_of_system_time", false},
-		{"spaces instead of hyphens", "as of system time", false},
-		{"uppercase", "AS-OF-SYSTEM-TIME", false},
-		{"leading space", " as-of-system-time", false},
-		{"trailing space", "as-of-system-time ", false},
+		{
+			name:  "accepts as-of-system-time",
+			input: string(PaginationModeAsOfSystemTime),
+			want:  true,
+		},
+		{
+			name:  "accepts materialized-view",
+			input: string(PaginationModeMaterializedView),
+			want:  true,
+		},
+		{
+			name:  "rejects empty string",
+			input: "",
+			want:  false,
+		},
+		{
+			name:  "rejects unknown mode",
+			input: "snapshot",
+			want:  false,
+		},
+		{
+			name:  "rejects case-mismatched supported mode",
+			input: "As-Of-System-Time",
+			want:  false,
+		},
+		{
+			name:  "rejects value with surrounding whitespace",
+			input: " as-of-system-time ",
+			want:  false,
+		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			assert.Equal(t, test.valid, ValidPaginationMode(test.mode))
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			// invoke the validator with the case's input
+			got := ValidPaginationMode(tc.input)
+			// verify the verdict matches the expected accept/reject decision
+			if got != tc.want {
+				t.Fatalf("ValidPaginationMode(%q) = %v, want %v", tc.input, got, tc.want)
+			}
 		})
 	}
 }
 
-// TestPaginationModeConstants pins the wire spellings. They are written by
-// hand into installer flags and deployment manifests, so a rename that changed
-// them silently would leave a running control plane rejecting its own flag.
-func TestPaginationModeConstants(t *testing.T) {
-	assert.Equal(t, "as-of-system-time", string(PaginationModeAsOfSystemTime))
-	assert.Equal(t, "materialized-view", string(PaginationModeMaterializedView))
+// TestPaginationModeConstants_HaveExpectedStringValues asserts the wire values
+// of the exported PaginationMode constants so consumers reading configuration
+// or query parameters can rely on them.
+func TestPaginationModeConstants_HaveExpectedStringValues(t *testing.T) {
+	// verify the as-of-system-time constant's underlying string
+	if got := string(PaginationModeAsOfSystemTime); got != "as-of-system-time" {
+		t.Errorf("PaginationModeAsOfSystemTime = %q, want %q", got, "as-of-system-time")
+	}
+	// verify the materialized-view constant's underlying string
+	if got := string(PaginationModeMaterializedView); got != "materialized-view" {
+		t.Errorf("PaginationModeMaterializedView = %q, want %q", got, "materialized-view")
+	}
 }

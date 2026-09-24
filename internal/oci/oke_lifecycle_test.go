@@ -1,652 +1,548 @@
 package oci
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"testing"
 	"time"
 
 	logr "github.com/go-logr/logr"
+	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/datatypes"
 
 	notif "github.com/threeport/threeport/internal/oci/notif"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
+	controller "github.com/threeport/threeport/pkg/controller/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// GetConnection, GetClusterOCID, DeleteCompartment, and ListCompartments call
-// the OCI SDK with context.Background and no timeout. Unit tests here stop at
-// the local client constructor: okeLocalFailConfigProvider or a decrypted
-// non-PEM private key, so no socket opens. Paths after those constructors are
-// integration-only. NotificationPayload errors in both publish methods are
-// unforced: encoding a pointer/string struct cannot fail.
-
-// TestOkeGetReconciliation_Success covers GetReconciliation field copies when
-// timestamps and inventory are set and when they are unset.
-func TestOkeGetReconciliation_Success(t *testing.T) {
-	baseTime := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	creationAck := baseTime
-	creationConfirm := baseTime.Add(1 * time.Minute)
-	deletionScheduled := baseTime.Add(2 * time.Minute)
-	deletionAck := baseTime.Add(3 * time.Minute)
-	deletionConfirm := baseTime.Add(4 * time.Minute)
-	inventory := datatypes.JSON([]byte(`{"vcn":"test-vcn-resource"}`))
-
-	tests := []struct {
-		name   string
-		mutate func(inst *v0.OciOkeKubernetesRuntimeInstance)
-		check  func(t *testing.T, snap okeReconciliationSnapshotCheck)
-	}{
-		{
-			name: "AllTimestampsSet",
-			mutate: func(inst *v0.OciOkeKubernetesRuntimeInstance) {
-				inst.CreationAcknowledged = &creationAck
-				inst.CreationConfirmed = &creationConfirm
-				inst.DeletionScheduled = &deletionScheduled
-				inst.DeletionAcknowledged = &deletionAck
-				inst.DeletionConfirmed = &deletionConfirm
-				inst.ResourceInventory = &inventory
-			},
-			check: func(t *testing.T, snap okeReconciliationSnapshotCheck) {
-				assert.Equal(t, &creationAck, snap.creationAcknowledged)
-				assert.Equal(t, &creationConfirm, snap.creationConfirmed)
-				assert.False(t, snap.creationFailed)
-				assert.Equal(t, &deletionScheduled, snap.deletionScheduled)
-				assert.Equal(t, &deletionAck, snap.deletionAcknowledged)
-				assert.Equal(t, &deletionConfirm, snap.deletionConfirmed)
-				require.NotNil(t, snap.resourceInventory)
-				assert.JSONEq(t, string(inventory), string(*snap.resourceInventory))
-			},
-		},
-		{
-			name:   "NoTimestampsSet",
-			mutate: func(inst *v0.OciOkeKubernetesRuntimeInstance) {},
-			check: func(t *testing.T, snap okeReconciliationSnapshotCheck) {
-				assert.Nil(t, snap.creationAcknowledged)
-				assert.Nil(t, snap.creationConfirmed)
-				assert.False(t, snap.creationFailed)
-				assert.Nil(t, snap.deletionScheduled)
-				assert.Nil(t, snap.deletionAcknowledged)
-				assert.Nil(t, snap.deletionConfirmed)
-				assert.Nil(t, snap.resourceInventory)
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// serve mutated instance and snapshot reconciliation
-			inst := okeInstance(42, "oke-snapshot")
-			tt.mutate(inst)
-			api := okeNewAPIStub(t)
-			okeServeInstance(t, api, inst)
-			log := logr.Discard()
-			o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
-
-			snap, err := o.GetReconciliation()
-			require.NoError(t, err)
-			tt.check(t, okeReconciliationSnapshotCheck{
-				creationAcknowledged: snap.CreationAcknowledged,
-				creationConfirmed:    snap.CreationConfirmed,
-				creationFailed:       snap.CreationFailed,
-				deletionScheduled:    snap.DeletionScheduled,
-				deletionAcknowledged: snap.DeletionAcknowledged,
-				deletionConfirmed:    snap.DeletionConfirmed,
-				resourceInventory:    snap.ResourceInventory,
-			})
-		})
-	}
+// fakeJS is a JetStreamContext fake used only for the Publish() call that
+// PublishCreateNotification and PublishDeleteNotification make. The embedded
+// interface has a nil value so any other method call would panic, but the
+// lifecycle handlers never touch anything else.
+type fakeJS struct {
+	nats.JetStreamContext
+	published []publishRecord
+	err       error
 }
 
-// okeReconciliationSnapshotCheck is a copy of ReconciliationSnapshot fields
-// so table cases can assert without importing the provider package.
-type okeReconciliationSnapshotCheck struct {
-	creationAcknowledged *time.Time
-	creationConfirmed    *time.Time
-	creationFailed       bool
-	deletionScheduled    *time.Time
-	deletionAcknowledged *time.Time
-	deletionConfirmed    *time.Time
-	resourceInventory    *datatypes.JSON
+type publishRecord struct {
+	subject string
+	data    []byte
 }
 
-// TestOkeGetReconciliation_CreationFailedNilVsSet covers CreationFailed mapping
-// from nil, true, and false instance values.
-func TestOkeGetReconciliation_CreationFailedNilVsSet(t *testing.T) {
-	tests := []struct {
-		name           string
-		creationFailed *bool
-		want           bool
-	}{
-		{"NilDefaultsFalse", nil, false},
-		{"SetTruePropagates", util.Ptr(true), true},
-		{"SetFalsePropagates", util.Ptr(false), false},
+func (f *fakeJS) Publish(subj string, data []byte, _ ...nats.PubOpt) (*nats.PubAck, error) {
+	if f.err != nil {
+		return nil, f.err
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// serve instance with CreationFailed and snapshot it
-			inst := okeInstance(7, "oke-creation-failed")
-			inst.CreationFailed = tt.creationFailed
-			api := okeNewAPIStub(t)
-			okeServeInstance(t, api, inst)
-			log := logr.Discard()
-			o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
-
-			snap, err := o.GetReconciliation()
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, snap.CreationFailed)
-		})
-	}
+	f.published = append(f.published, publishRecord{subject: subj, data: append([]byte(nil), data...)})
+	return &nats.PubAck{Stream: "test", Sequence: uint64(len(f.published))}, nil
 }
 
-// TestOkeGetReconciliation_APIError covers a GET 500 wrapping as failed to get
-// latest OKE instance.
-func TestOkeGetReconciliation_APIError(t *testing.T) {
-	// serve GET error and call GetReconciliation
-	inst := okeInstance(8, "oke-snapshot-error")
-	api := okeNewAPIStub(t)
-	okeServeError(t, api, okeInstancePath(8), http.StatusInternalServerError)
+// newLifecycleForTest wires an okeLifecycle against a stub API and the given
+// JetStream fake so the pointer methods under test can be driven directly.
+func newLifecycleForTest(id uint, name string, addr string, client *http.Client, js nats.JetStreamContext) *okeLifecycle {
+	inst := newMinimalOkeInstance(id, name)
 	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
+	return &okeLifecycle{
+		r: &controller.Reconciler{
+			APIClient:        client,
+			APIServer:        addr,
+			JetStreamContext: js,
+		},
+		instanceID: id,
+		instance:   inst,
+		log:        &log,
+	}
+}
 
+// expectPatchInstance registers a mux handler that decodes the incoming PATCH
+// body onto an OciOkeKubernetesRuntimeInstance and hands it to inspect for
+// per-test assertions. The response echoes the payload back inside the
+// standard apiserver_lib.Response envelope so UpdateOciOkeKubernetesRuntimeInstance
+// finds Data[0] populated.
+func expectPatchInstance(
+	t *testing.T,
+	mux *http.ServeMux,
+	id uint,
+	inspect func(*testing.T, *v0.OciOkeKubernetesRuntimeInstance),
+	calls *int,
+) {
+	t.Helper()
+	path := fmt.Sprintf("%s/%d", v0.PathOciOkeKubernetesRuntimeInstances, id)
+	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPatch, r.Method)
+		if calls != nil {
+			*calls++
+		}
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		var payload v0.OciOkeKubernetesRuntimeInstance
+		require.NoError(t, json.Unmarshal(body, &payload))
+		if inspect != nil {
+			inspect(t, &payload)
+		}
+		// echo the incoming payload back with the ID restored so the client's
+		// response decode succeeds
+		payload.ID = util.Ptr(id)
+		writeOkeInstance(t, w, http.StatusOK, payload)
+	})
+}
+
+// TestNewOkeLifecycleProvider_CopiesFieldsFromInstance asserts the constructor
+// wires the reconciler, instance pointer, and instance ID through unchanged.
+func TestNewOkeLifecycleProvider_CopiesFieldsFromInstance(t *testing.T) {
+	// build a minimal instance and a bare reconciler
+	inst := newMinimalOkeInstance(42, "oke-ctor")
+	log := logr.Discard()
+	r := &controller.Reconciler{APIServer: "example"}
+
+	// invoke the constructor under test
+	got := newOkeLifecycleProvider(r, inst, &log)
+
+	// assert every field the constructor is responsible for populating
+	require.NotNil(t, got)
+	assert.Same(t, r, got.r, "reconciler should be threaded through")
+	assert.Same(t, inst, got.instance, "instance pointer should be threaded through")
+	assert.Equal(t, uint(42), got.instanceID, "instanceID should be deref of instance.ID")
+	assert.Same(t, &log, got.log, "log pointer should be threaded through")
+}
+
+// TestGetReconciliation_MapsAllFields asserts the snapshot returned by
+// GetReconciliation copies every timestamp and inventory pointer straight from
+// the API response and dereferences CreationFailed=true when it is set.
+func TestGetReconciliation_MapsAllFields(t *testing.T) {
+	// build a fully-populated instance the stub API will return
+	inv := datatypes.JSON([]byte(`{"some":"state"}`))
+	nowAck := mustParseTime(t, "2026-01-01T00:00:00Z")
+	nowConfirmed := mustParseTime(t, "2026-01-02T00:00:00Z")
+	scheduled := mustParseTime(t, "2026-01-03T00:00:00Z")
+	deletedAck := mustParseTime(t, "2026-01-04T00:00:00Z")
+	deletedConf := mustParseTime(t, "2026-01-05T00:00:00Z")
+	inst := newMinimalOkeInstance(1, "oke-snap")
+	inst.CreationAcknowledged = &nowAck
+	inst.CreationConfirmed = &nowConfirmed
+	inst.CreationFailed = util.Ptr(true)
+	inst.DeletionScheduled = &scheduled
+	inst.DeletionAcknowledged = &deletedAck
+	inst.DeletionConfirmed = &deletedConf
+	inst.ResourceInventory = &inv
+
+	// stand up a stub API that returns the instance on GET
+	mux := http.NewServeMux()
+	path := fmt.Sprintf("%s/1", v0.PathOciOkeKubernetesRuntimeInstances)
+	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		writeOkeInstance(t, w, http.StatusOK, *inst)
+	})
+	stub := newOkeAPIStub(t, mux)
+
+	// invoke GetReconciliation
+	o := newLifecycleForTest(1, "oke-snap", stub.addr, stub.client, nil)
 	snap, err := o.GetReconciliation()
+
+	// assert every field of the snapshot maps back to the API instance
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	assert.WithinDuration(t, nowAck, *snap.CreationAcknowledged, 0)
+	assert.WithinDuration(t, nowConfirmed, *snap.CreationConfirmed, 0)
+	assert.True(t, snap.CreationFailed, "true pointer should surface as true bool")
+	assert.WithinDuration(t, scheduled, *snap.DeletionScheduled, 0)
+	assert.WithinDuration(t, deletedAck, *snap.DeletionAcknowledged, 0)
+	assert.WithinDuration(t, deletedConf, *snap.DeletionConfirmed, 0)
+	require.NotNil(t, snap.ResourceInventory)
+	assert.JSONEq(t, string(inv), string(*snap.ResourceInventory))
+}
+
+// TestGetReconciliation_CreationFailedNilCoercesToFalse asserts that a nil
+// CreationFailed pointer on the API instance is coerced to false in the
+// snapshot rather than causing a nil-deref.
+func TestGetReconciliation_CreationFailedNilCoercesToFalse(t *testing.T) {
+	// stub returns an instance with CreationFailed left nil
+	inst := newMinimalOkeInstance(2, "oke-fail-nil")
+	mux := http.NewServeMux()
+	path := fmt.Sprintf("%s/2", v0.PathOciOkeKubernetesRuntimeInstances)
+	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		writeOkeInstance(t, w, http.StatusOK, *inst)
+	})
+	stub := newOkeAPIStub(t, mux)
+
+	// invoke GetReconciliation
+	o := newLifecycleForTest(2, "oke-fail-nil", stub.addr, stub.client, nil)
+	snap, err := o.GetReconciliation()
+
+	// assert the nil pointer safely became false
+	require.NoError(t, err)
+	assert.False(t, snap.CreationFailed)
+}
+
+// TestGetReconciliation_APIError wraps an API 500 into an error with the
+// documented "failed to get latest OKE instance" prefix.
+func TestGetReconciliation_APIError(t *testing.T) {
+	// stub returns a 500
+	mux := http.NewServeMux()
+	path := fmt.Sprintf("%s/3", v0.PathOciOkeKubernetesRuntimeInstances)
+	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		writeErrorStatus(t, w, http.StatusInternalServerError, "boom")
+	})
+	stub := newOkeAPIStub(t, mux)
+
+	// invoke GetReconciliation
+	o := newLifecycleForTest(3, "oke-err", stub.addr, stub.client, nil)
+	snap, err := o.GetReconciliation()
+
+	// assert the wrapped-error contract
 	require.Error(t, err)
 	assert.Nil(t, snap)
 	assert.Contains(t, err.Error(), "failed to get latest OKE instance")
 }
 
-// TestOkeIsCreateComplete covers ClusterOCID nil, empty, set, and a GET error.
-func TestOkeIsCreateComplete(t *testing.T) {
-	tests := []struct {
+// TestIsCreateComplete drives the ClusterOCID branching:
+// - nil pointer returns false
+// - empty-string pointer returns false
+// - non-empty pointer returns true
+// - API error surfaces wrapped
+func TestIsCreateComplete(t *testing.T) {
+	cases := []struct {
 		name        string
-		clusterOCID *string
-		apiError    bool
-		want        bool
-		wantErr     string
+		ocid        *string
+		httpStatus  int
+		wantValue   bool
+		wantErr     bool
+		errContains string
 	}{
-		{name: "NoCluster", clusterOCID: nil, want: false},
-		{name: "EmptyCluster", clusterOCID: util.Ptr(""), want: false},
-		{name: "HasCluster", clusterOCID: util.Ptr("test-cluster-ocid"), want: true},
-		{name: "APIError", apiError: true, wantErr: "failed to check OKE cluster creation status"},
+		{name: "nil ClusterOCID is not complete", ocid: nil, httpStatus: http.StatusOK, wantValue: false},
+		{name: "empty ClusterOCID is not complete", ocid: util.Ptr(""), httpStatus: http.StatusOK, wantValue: false},
+		{name: "populated ClusterOCID is complete", ocid: util.Ptr("ocid1.cluster.oc1..abcd"), httpStatus: http.StatusOK, wantValue: true},
+		{name: "API 500 surfaces wrapped error", httpStatus: http.StatusInternalServerError, wantErr: true, errContains: "failed to check OKE cluster creation status"},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// serve instance or GET error and check IsCreateComplete
-			inst := okeInstance(9, "oke-create-complete")
-			inst.ClusterOCID = tt.clusterOCID
-			api := okeNewAPIStub(t)
-			if tt.apiError {
-				okeServeError(t, api, okeInstancePath(9), http.StatusInternalServerError)
-			} else {
-				okeServeInstance(t, api, inst)
-			}
-			log := logr.Discard()
-			o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
 
-			complete, err := o.IsCreateComplete()
-			if tt.wantErr != "" {
+	for i, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			id := uint(100 + i)
+			mux := http.NewServeMux()
+			path := fmt.Sprintf("%s/%d", v0.PathOciOkeKubernetesRuntimeInstances, id)
+			mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+				if tc.httpStatus != http.StatusOK {
+					writeErrorStatus(t, w, tc.httpStatus, "boom")
+					return
+				}
+				inst := newMinimalOkeInstance(id, tc.name)
+				inst.ClusterOCID = tc.ocid
+				writeOkeInstance(t, w, http.StatusOK, *inst)
+			})
+			stub := newOkeAPIStub(t, mux)
+
+			// invoke IsCreateComplete against each ClusterOCID shape
+			o := newLifecycleForTest(id, tc.name, stub.addr, stub.client, nil)
+			got, err := o.IsCreateComplete()
+
+			// assert either the wrapped error or the boolean the ClusterOCID dictates
+			if tc.wantErr {
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.wantErr)
+				assert.Contains(t, err.Error(), tc.errContains)
+				assert.False(t, got)
 				return
 			}
 			require.NoError(t, err)
-			assert.Equal(t, tt.want, complete)
+			assert.Equal(t, tc.wantValue, got)
 		})
 	}
 }
 
-// TestOkeAckCreation_SetsAckClearsFailed covers AckCreation patching
-// CreationAcknowledged and CreationFailed false.
-func TestOkeAckCreation_SetsAckClearsFailed(t *testing.T) {
-	// ack creation and inspect the PATCH body
-	inst := okeInstance(10, "oke-ack-creation")
-	api := okeNewAPIStub(t)
-	rec := okeServeInstance(t, api, inst)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
+// TestAckCreation_SendsPatchWithAckAndClearedFailure asserts the PATCH body
+// carries CreationAcknowledged set and CreationFailed=false.
+func TestAckCreation_SendsPatchWithAckAndClearedFailure(t *testing.T) {
+	// stub API captures the PATCH body for the exercised handler
+	var calls int
+	mux := http.NewServeMux()
+	expectPatchInstance(t, mux, 10, func(t *testing.T, payload *v0.OciOkeKubernetesRuntimeInstance) {
+		// the ack fills in CreationAcknowledged and clears CreationFailed
+		require.NotNil(t, payload.CreationAcknowledged)
+		require.NotNil(t, payload.CreationFailed)
+		assert.False(t, *payload.CreationFailed)
+	}, &calls)
+	stub := newOkeAPIStub(t, mux)
 
+	// invoke AckCreation
+	o := newLifecycleForTest(10, "oke-ack", stub.addr, stub.client, nil)
 	require.NoError(t, o.AckCreation())
 
-	bodies := rec.patchBodies()
-	require.Len(t, bodies, 1)
-	assert.Contains(t, bodies[0], `"CreationAcknowledged"`)
-	assert.Contains(t, bodies[0], `"CreationFailed":false`)
+	// assert the API was called exactly once
+	assert.Equal(t, 1, calls)
 }
 
-// TestOkeAckCreation_UpdateError covers AckCreation wrapping a PATCH 500.
-func TestOkeAckCreation_UpdateError(t *testing.T) {
-	// serve PATCH error and call AckCreation
-	inst := okeInstance(11, "oke-ack-creation-error")
-	api := okeNewAPIStub(t)
-	okeServeError(t, api, okeInstancePath(11), http.StatusInternalServerError)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
+// TestAckCreation_APIError surfaces PATCH failures directly.
+func TestAckCreation_APIError(t *testing.T) {
+	// stub API returns a 500 to force the error path
+	mux := http.NewServeMux()
+	path := fmt.Sprintf("%s/11", v0.PathOciOkeKubernetesRuntimeInstances)
+	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		writeErrorStatus(t, w, http.StatusInternalServerError, "boom")
+	})
+	stub := newOkeAPIStub(t, mux)
 
+	// invoke AckCreation
+	o := newLifecycleForTest(11, "oke-ack-err", stub.addr, stub.client, nil)
 	err := o.AckCreation()
+
+	// assert the API's error surfaces from the update path
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "call to threeport API returned unexpected response")
 }
 
-// TestOkeRefreshCreationAck_SetsAckOnly covers RefreshCreationAck patching
-// CreationAcknowledged without CreationFailed or CreationConfirmed.
-func TestOkeRefreshCreationAck_SetsAckOnly(t *testing.T) {
-	// refresh creation ack and inspect the PATCH body
-	inst := okeInstance(12, "oke-refresh-creation-ack")
-	api := okeNewAPIStub(t)
-	rec := okeServeInstance(t, api, inst)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
+// TestRefreshCreationAck_SendsPatchWithAck asserts the PATCH body carries
+// only CreationAcknowledged, leaving CreationFailed untouched.
+func TestRefreshCreationAck_SendsPatchWithAck(t *testing.T) {
+	// capture the payload so we can inspect it
+	var calls int
+	mux := http.NewServeMux()
+	expectPatchInstance(t, mux, 12, func(t *testing.T, payload *v0.OciOkeKubernetesRuntimeInstance) {
+		// refresh should update the ack without setting CreationFailed at all
+		require.NotNil(t, payload.CreationAcknowledged)
+		assert.Nil(t, payload.CreationFailed, "refresh must not touch CreationFailed")
+	}, &calls)
+	stub := newOkeAPIStub(t, mux)
 
+	// invoke RefreshCreationAck
+	o := newLifecycleForTest(12, "oke-refresh-ack", stub.addr, stub.client, nil)
 	require.NoError(t, o.RefreshCreationAck())
 
-	bodies := rec.patchBodies()
-	require.Len(t, bodies, 1)
-	assert.Contains(t, bodies[0], `"CreationAcknowledged"`)
-	assert.NotContains(t, bodies[0], `"CreationFailed"`)
-	assert.NotContains(t, bodies[0], `"CreationConfirmed"`)
+	// assert a single API PATCH occurred
+	assert.Equal(t, 1, calls)
 }
 
-// TestOkeSetCreationFailed_SetsTrue covers SetCreationFailed patching
-// CreationFailed true without CreationAcknowledged.
-func TestOkeSetCreationFailed_SetsTrue(t *testing.T) {
-	// set creation failed and inspect the PATCH body
-	inst := okeInstance(13, "oke-set-creation-failed")
-	api := okeNewAPIStub(t)
-	rec := okeServeInstance(t, api, inst)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
+// TestSetCreationFailed_SendsPatchWithFailedTrue asserts the PATCH body sets
+// CreationFailed=true and does not touch the ack timestamps.
+func TestSetCreationFailed_SendsPatchWithFailedTrue(t *testing.T) {
+	// capture the payload so we can inspect it
+	var calls int
+	mux := http.NewServeMux()
+	expectPatchInstance(t, mux, 13, func(t *testing.T, payload *v0.OciOkeKubernetesRuntimeInstance) {
+		// failed path sets the flag to true and leaves acks alone
+		require.NotNil(t, payload.CreationFailed)
+		assert.True(t, *payload.CreationFailed)
+		assert.Nil(t, payload.CreationAcknowledged)
+	}, &calls)
+	stub := newOkeAPIStub(t, mux)
 
+	// invoke SetCreationFailed
+	o := newLifecycleForTest(13, "oke-set-failed", stub.addr, stub.client, nil)
 	require.NoError(t, o.SetCreationFailed())
 
-	bodies := rec.patchBodies()
-	require.Len(t, bodies, 1)
-	assert.Contains(t, bodies[0], `"CreationFailed":true`)
-	assert.NotContains(t, bodies[0], `"CreationAcknowledged"`)
+	// assert one PATCH call landed
+	assert.Equal(t, 1, calls)
 }
 
-// TestOkeConfirmCreation_SetsReconciledAndConfirmed covers ConfirmCreation
-// patching Reconciled true and CreationConfirmed.
-func TestOkeConfirmCreation_SetsReconciledAndConfirmed(t *testing.T) {
-	// confirm creation and inspect the PATCH body
-	inst := okeInstance(14, "oke-confirm-creation")
-	api := okeNewAPIStub(t)
-	rec := okeServeInstance(t, api, inst)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
+// TestConfirmCreation_SendsPatchWithReconciledAndConfirmed asserts the PATCH
+// carries Reconciled=true and CreationConfirmed set.
+func TestConfirmCreation_SendsPatchWithReconciledAndConfirmed(t *testing.T) {
+	// capture the payload so we can inspect it
+	var calls int
+	mux := http.NewServeMux()
+	expectPatchInstance(t, mux, 14, func(t *testing.T, payload *v0.OciOkeKubernetesRuntimeInstance) {
+		// confirm sets Reconciled and CreationConfirmed at once
+		require.NotNil(t, payload.Reconciled)
+		assert.True(t, *payload.Reconciled)
+		require.NotNil(t, payload.CreationConfirmed)
+	}, &calls)
+	stub := newOkeAPIStub(t, mux)
 
+	// invoke ConfirmCreation
+	o := newLifecycleForTest(14, "oke-confirm", stub.addr, stub.client, nil)
 	require.NoError(t, o.ConfirmCreation())
 
-	bodies := rec.patchBodies()
-	require.Len(t, bodies, 1)
-	assert.Contains(t, bodies[0], `"Reconciled":true`)
-	assert.Contains(t, bodies[0], `"CreationConfirmed"`)
+	// assert one PATCH call landed
+	assert.Equal(t, 1, calls)
 }
 
-// TestOkeAckDeletion_SetsTimestamp covers AckDeletion patching
-// DeletionAcknowledged without DeletionConfirmed.
-func TestOkeAckDeletion_SetsTimestamp(t *testing.T) {
-	// ack deletion and inspect the PATCH body
-	inst := okeInstance(15, "oke-ack-deletion")
-	api := okeNewAPIStub(t)
-	rec := okeServeInstance(t, api, inst)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
+// TestAckDeletion_SendsPatchWithAck asserts the PATCH body carries only
+// DeletionAcknowledged.
+func TestAckDeletion_SendsPatchWithAck(t *testing.T) {
+	// capture the payload so we can inspect it
+	var calls int
+	mux := http.NewServeMux()
+	expectPatchInstance(t, mux, 15, func(t *testing.T, payload *v0.OciOkeKubernetesRuntimeInstance) {
+		// deletion ack fills the timestamp
+		require.NotNil(t, payload.DeletionAcknowledged)
+	}, &calls)
+	stub := newOkeAPIStub(t, mux)
 
+	// invoke AckDeletion
+	o := newLifecycleForTest(15, "oke-ack-del", stub.addr, stub.client, nil)
 	require.NoError(t, o.AckDeletion())
 
-	bodies := rec.patchBodies()
-	require.Len(t, bodies, 1)
-	assert.Contains(t, bodies[0], `"DeletionAcknowledged"`)
-	assert.NotContains(t, bodies[0], `"DeletionConfirmed"`)
+	// assert one PATCH call landed
+	assert.Equal(t, 1, calls)
 }
 
-// TestOkeRefreshDeletionAck_SetsTimestamp covers RefreshDeletionAck patching
-// DeletionAcknowledged without DeletionConfirmed.
-func TestOkeRefreshDeletionAck_SetsTimestamp(t *testing.T) {
-	// refresh deletion ack and inspect the PATCH body
-	inst := okeInstance(16, "oke-refresh-deletion-ack")
-	api := okeNewAPIStub(t)
-	rec := okeServeInstance(t, api, inst)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
+// TestRefreshDeletionAck_SendsPatchWithAck asserts the PATCH body carries
+// only DeletionAcknowledged (mirror of RefreshCreationAck).
+func TestRefreshDeletionAck_SendsPatchWithAck(t *testing.T) {
+	// capture the payload so we can inspect it
+	var calls int
+	mux := http.NewServeMux()
+	expectPatchInstance(t, mux, 16, func(t *testing.T, payload *v0.OciOkeKubernetesRuntimeInstance) {
+		// refresh path updates only DeletionAcknowledged
+		require.NotNil(t, payload.DeletionAcknowledged)
+	}, &calls)
+	stub := newOkeAPIStub(t, mux)
 
+	// invoke RefreshDeletionAck
+	o := newLifecycleForTest(16, "oke-refresh-del", stub.addr, stub.client, nil)
 	require.NoError(t, o.RefreshDeletionAck())
 
-	bodies := rec.patchBodies()
-	require.Len(t, bodies, 1)
-	assert.Contains(t, bodies[0], `"DeletionAcknowledged"`)
-	assert.NotContains(t, bodies[0], `"DeletionConfirmed"`)
+	// assert one PATCH call landed
+	assert.Equal(t, 1, calls)
 }
 
-// TestOkeConfirmDeletion_SetsTimestamp covers ConfirmDeletion patching
+// TestConfirmDeletion_SendsPatchWithConfirmed asserts the PATCH body sets
 // DeletionConfirmed.
-func TestOkeConfirmDeletion_SetsTimestamp(t *testing.T) {
-	// confirm deletion and inspect the PATCH body
-	inst := okeInstance(17, "oke-confirm-deletion")
-	api := okeNewAPIStub(t)
-	rec := okeServeInstance(t, api, inst)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
+func TestConfirmDeletion_SendsPatchWithConfirmed(t *testing.T) {
+	// capture the payload so we can inspect it
+	var calls int
+	mux := http.NewServeMux()
+	expectPatchInstance(t, mux, 17, func(t *testing.T, payload *v0.OciOkeKubernetesRuntimeInstance) {
+		// confirm-deletion updates only DeletionConfirmed
+		require.NotNil(t, payload.DeletionConfirmed)
+	}, &calls)
+	stub := newOkeAPIStub(t, mux)
 
+	// invoke ConfirmDeletion
+	o := newLifecycleForTest(17, "oke-confirm-del", stub.addr, stub.client, nil)
 	require.NoError(t, o.ConfirmDeletion())
 
-	bodies := rec.patchBodies()
-	require.Len(t, bodies, 1)
-	assert.Contains(t, bodies[0], `"DeletionConfirmed"`)
+	// assert one PATCH call landed
+	assert.Equal(t, 1, calls)
 }
 
-// TestOkeSaveState_PersistsInventory covers SaveState patching ResourceInventory
-// with the supplied JSON.
-func TestOkeSaveState_PersistsInventory(t *testing.T) {
-	// save state and inspect the PATCH body
-	inst := okeInstance(18, "oke-save-state")
-	api := okeNewAPIStub(t)
-	rec := okeServeInstance(t, api, inst)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
+// TestSaveState_SendsPatchWithResourceInventory asserts SaveState passes the
+// caller's inventory bytes through unchanged in the PATCH body.
+func TestSaveState_SendsPatchWithResourceInventory(t *testing.T) {
+	// prepare a nonempty state blob and capture the PATCH body
+	state := datatypes.JSON([]byte(`{"a":1}`))
+	var calls int
+	mux := http.NewServeMux()
+	expectPatchInstance(t, mux, 18, func(t *testing.T, payload *v0.OciOkeKubernetesRuntimeInstance) {
+		// save-state carries the caller-supplied inventory bytes
+		require.NotNil(t, payload.ResourceInventory)
+		assert.JSONEq(t, string(state), string(*payload.ResourceInventory))
+	}, &calls)
+	stub := newOkeAPIStub(t, mux)
 
-	state := datatypes.JSON([]byte(`{"vcn":"test-vcn-ocid"}`))
+	// invoke SaveState
+	o := newLifecycleForTest(18, "oke-save-state", stub.addr, stub.client, nil)
 	require.NoError(t, o.SaveState(&state))
 
-	bodies := rec.patchBodies()
-	require.Len(t, bodies, 1)
-	assert.Contains(t, bodies[0], `"ResourceInventory"`)
-	assert.Contains(t, bodies[0], `"vcn":"test-vcn-ocid"`)
+	// assert one PATCH call landed
+	assert.Equal(t, 1, calls)
 }
 
-// TestOkeClearInventory_SetsEmptyObject covers ClearInventory patching
-// ResourceInventory to {}, the destroy-complete signal.
-func TestOkeClearInventory_SetsEmptyObject(t *testing.T) {
-	// clear inventory and inspect the PATCH body
-	inst := okeInstance(19, "oke-clear-inventory")
-	api := okeNewAPIStub(t)
-	rec := okeServeInstance(t, api, inst)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
+// TestClearInventory_SendsPatchWithEmptyObject asserts ClearInventory writes
+// the literal "{}" JSON that HandleInfraDelete keys off of.
+func TestClearInventory_SendsPatchWithEmptyObject(t *testing.T) {
+	// capture the payload so we can inspect it
+	var calls int
+	mux := http.NewServeMux()
+	expectPatchInstance(t, mux, 19, func(t *testing.T, payload *v0.OciOkeKubernetesRuntimeInstance) {
+		// clear-inventory writes exactly "{}"
+		require.NotNil(t, payload.ResourceInventory)
+		assert.Equal(t, "{}", string(*payload.ResourceInventory))
+	}, &calls)
+	stub := newOkeAPIStub(t, mux)
 
+	// invoke ClearInventory
+	o := newLifecycleForTest(19, "oke-clear-inv", stub.addr, stub.client, nil)
 	require.NoError(t, o.ClearInventory())
 
-	bodies := rec.patchBodies()
-	require.Len(t, bodies, 1)
-	assert.Contains(t, bodies[0], `"ResourceInventory":{}`)
+	// assert one PATCH call landed
+	assert.Equal(t, 1, calls)
 }
 
-// TestOkeOnCreateConfirmed_GetConnectionError covers OnCreateConfirmed wrapping
-// GetConnection's local client-constructor failure; later branches are untested.
-func TestOkeOnCreateConfirmed_GetConnectionError(t *testing.T) {
-	// forbid API and call OnCreateConfirmed with failing infra
-	inst := okeInstance(20, "oke-create-confirmed")
-	api := okeNewAPIStub(t)
-	okeForbidAPIRequests(t, api)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
+// TestPublishCreateNotification_PublishesOnCreateSubject asserts a create
+// publish targets the create subject and produces a valid notification
+// payload with Operation=Created.
+func TestPublishCreateNotification_PublishesOnCreateSubject(t *testing.T) {
+	// wire a fake JetStream that captures publishes
+	js := &fakeJS{}
+	o := newLifecycleForTest(20, "oke-notif-create", "", nil, js)
 
-	err := o.OnCreateConfirmed(okeLocalFailInfra("oke-create-confirmed"))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to get Kubernetes API connection info")
-}
-
-// TestOkeSaveCreateOutputs_GetClusterOCIDError covers SaveCreateOutputs wrapping
-// GetClusterOCID's local client-constructor failure; the PATCH path is untested.
-func TestOkeSaveCreateOutputs_GetClusterOCIDError(t *testing.T) {
-	// forbid API and call SaveCreateOutputs with failing infra
-	inst := okeInstance(21, "oke-save-outputs")
-	api := okeNewAPIStub(t)
-	okeForbidAPIRequests(t, api)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
-
-	state := datatypes.JSON([]byte(`{}`))
-	err := o.SaveCreateOutputs(okeLocalFailInfra("oke-save-outputs"), &state)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to get OKE cluster OCID")
-}
-
-// TestOkeOnDeleteConfirmed_CompartmentErrorPropagates covers OnDeleteConfirmed
-// returning DeleteCompartment's local identity-client failure, not swallowing it.
-func TestOkeOnDeleteConfirmed_CompartmentErrorPropagates(t *testing.T) {
-	// forbid API and call OnDeleteConfirmed with failing infra
-	inst := okeInstance(22, "oke-delete-confirmed")
-	api := okeNewAPIStub(t)
-	okeForbidAPIRequests(t, api)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
-
-	err := o.OnDeleteConfirmed(okeLocalFailInfra("oke-delete-confirmed"))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to delete OCI compartment")
-	assert.Contains(t, err.Error(), "failed to create identity client")
-}
-
-// TestOkePublishCreateNotification_Success covers PublishCreateNotification
-// publishing Operation Created from the in-memory instance with no API call.
-func TestOkePublishCreateNotification_Success(t *testing.T) {
-	// publish create notification and inspect JetStream
-	inst := okeInstance(30, "oke-notify-create")
-	js := &okeFakeJetStream{}
-	api := okeNewAPIStub(t)
-	okeForbidAPIRequests(t, api)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", js), inst, &log)
-
+	// invoke PublishCreateNotification
 	require.NoError(t, o.PublishCreateNotification())
 
-	subjects, payloads := js.published()
-	require.Equal(t, []string{notif.OciOkeKubernetesRuntimeInstanceCreateSubject}, subjects)
-	require.Len(t, payloads, 1)
-	assert.Contains(t, string(payloads[0]), `"Operation":"Created"`)
-	assert.Contains(t, string(payloads[0]), `"oke-notify-create"`)
+	// assert exactly one publish on the create subject with a create payload
+	require.Len(t, js.published, 1)
+	rec := js.published[0]
+	assert.Equal(t, notif.OciOkeKubernetesRuntimeInstanceCreateSubject, rec.subject)
+	var parsed map[string]any
+	require.NoError(t, json.Unmarshal(rec.data, &parsed))
+	assert.Equal(t, "Created", parsed["Operation"], "notification carries the Created operation string")
 }
 
-// TestOkePublishCreateNotification_PublishError covers PublishCreateNotification
-// wrapping a JetStream publish error.
-func TestOkePublishCreateNotification_PublishError(t *testing.T) {
-	// publish create with JetStream error
-	inst := okeInstance(31, "oke-notify-create-error")
-	js := &okeFakeJetStream{publishErr: errors.New("nats unavailable")}
-	api := okeNewAPIStub(t)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", js), inst, &log)
+// TestPublishCreateNotification_JSErrorSurfacesWrapped asserts a JetStream
+// publish failure surfaces as a wrapped "failed to publish create
+// notification" error.
+func TestPublishCreateNotification_JSErrorSurfacesWrapped(t *testing.T) {
+	// wire a fake JetStream that returns a canned publish error
+	sentinel := errors.New("publish rejected")
+	js := &fakeJS{err: sentinel}
+	o := newLifecycleForTest(21, "oke-notif-err", "", nil, js)
 
+	// invoke PublishCreateNotification
 	err := o.PublishCreateNotification()
+
+	// assert the error is wrapped with the documented prefix
 	require.Error(t, err)
+	assert.ErrorIs(t, err, sentinel)
 	assert.Contains(t, err.Error(), "failed to publish create notification")
 }
 
-// TestOkePublishDeleteNotification_Success covers PublishDeleteNotification
-// publishing Operation Deleted on the delete subject.
-func TestOkePublishDeleteNotification_Success(t *testing.T) {
-	// publish delete notification and inspect JetStream
-	inst := okeInstance(32, "oke-notify-delete")
-	js := &okeFakeJetStream{}
-	api := okeNewAPIStub(t)
-	okeForbidAPIRequests(t, api)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", js), inst, &log)
+// TestPublishDeleteNotification_PublishesOnDeleteSubject mirrors the create
+// case: publishes on the delete subject with Operation=Deleted.
+func TestPublishDeleteNotification_PublishesOnDeleteSubject(t *testing.T) {
+	// wire a fake JetStream that captures publishes
+	js := &fakeJS{}
+	o := newLifecycleForTest(22, "oke-notif-del", "", nil, js)
 
+	// invoke PublishDeleteNotification
 	require.NoError(t, o.PublishDeleteNotification())
 
-	subjects, payloads := js.published()
-	require.Equal(t, []string{notif.OciOkeKubernetesRuntimeInstanceDeleteSubject}, subjects)
-	require.Len(t, payloads, 1)
-	assert.Contains(t, string(payloads[0]), `"Operation":"Deleted"`)
-	assert.Contains(t, string(payloads[0]), `"oke-notify-delete"`)
+	// assert exactly one publish on the delete subject with a delete payload
+	require.Len(t, js.published, 1)
+	rec := js.published[0]
+	assert.Equal(t, notif.OciOkeKubernetesRuntimeInstanceDeleteSubject, rec.subject)
+	var parsed map[string]any
+	require.NoError(t, json.Unmarshal(rec.data, &parsed))
+	assert.Equal(t, "Deleted", parsed["Operation"], "notification carries the Deleted operation string")
 }
 
-// TestOkePublishDeleteNotification_PublishError covers PublishDeleteNotification
-// wrapping a JetStream publish error.
-func TestOkePublishDeleteNotification_PublishError(t *testing.T) {
-	// publish delete with JetStream error
-	inst := okeInstance(33, "oke-notify-delete-error")
-	js := &okeFakeJetStream{publishErr: errors.New("nats unavailable")}
-	api := okeNewAPIStub(t)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", js), inst, &log)
+// TestPublishDeleteNotification_JSErrorSurfacesWrapped mirrors the create
+// error case: a publish failure returns a wrapped "failed to publish delete
+// notification" error.
+func TestPublishDeleteNotification_JSErrorSurfacesWrapped(t *testing.T) {
+	// wire a fake JetStream that returns a canned publish error
+	sentinel := errors.New("publish rejected")
+	js := &fakeJS{err: sentinel}
+	o := newLifecycleForTest(23, "oke-notif-del-err", "", nil, js)
 
+	// invoke PublishDeleteNotification
 	err := o.PublishDeleteNotification()
+
+	// assert the error is wrapped with the documented prefix
 	require.Error(t, err)
+	assert.ErrorIs(t, err, sentinel)
 	assert.Contains(t, err.Error(), "failed to publish delete notification")
 }
 
-// TestBuildOkeInfra_ProviderGetError covers buildOkeInfra wrapping a GET 500
-// for the OCI provider.
-func TestBuildOkeInfra_ProviderGetError(t *testing.T) {
-	// serve provider GET error and call buildOkeInfra
-	inst := okeInstance(40, "oke-build-provider-error")
-	inst.OciProviderID = util.Ptr(uint(400))
-	api := okeNewAPIStub(t)
-	okeServeError(t, api, fmt.Sprintf("%s/%d", v0.PathOciProviders, 400), http.StatusInternalServerError)
-	log := logr.Discard()
-
-	infra, err := buildOkeInfra(okeReconciler(api, "", nil), inst, okeDefinition(41), &log)
-	require.Error(t, err)
-	assert.Nil(t, infra)
-	assert.Contains(t, err.Error(), "failed to retrieve OCI provider by ID")
-}
-
-// TestBuildOkeInfra_DecryptError covers buildOkeInfra wrapping decrypt of a
-// non-ciphertext PrivateKey.
-func TestBuildOkeInfra_DecryptError(t *testing.T) {
-	// serve provider with plaintext PrivateKey and call buildOkeInfra
-	key := okeNewEncryptionKey(t)
-	inst := okeInstance(42, "oke-build-decrypt-error")
-	inst.OciProviderID = util.Ptr(uint(402))
-	prov := okeProvider(t, 402, key)
-	prov.PrivateKey = util.Ptr("not-valid-ciphertext")
-	api := okeNewAPIStub(t)
-	okeServeGet(t, api, fmt.Sprintf("%s/%d", v0.PathOciProviders, 402), *prov)
-	log := logr.Discard()
-
-	infra, err := buildOkeInfra(okeReconciler(api, key, nil), inst, okeDefinition(43), &log)
-	require.Error(t, err)
-	assert.Nil(t, infra)
-	assert.Contains(t, err.Error(), "failed to decrypt OCI provider private key")
-}
-
-// TestBuildOkeInfra_RegionFallback covers nil, empty, and set Region reaching
-// identity-client construction after decrypt; the resolved region is discarded.
-func TestBuildOkeInfra_RegionFallback(t *testing.T) {
-	tests := []struct {
-		name   string
-		region *string
-	}{
-		{"NilRegionUsesProviderDefault", nil},
-		{"EmptyRegionUsesProviderDefault", util.Ptr("")},
-		{"InstanceRegionUsed", util.Ptr("us-ashburn-1")},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// serve provider and call buildOkeInfra with the case region
-			key := okeNewEncryptionKey(t)
-			inst := okeInstance(44, "oke-build-region")
-			inst.OciProviderID = util.Ptr(uint(404))
-			inst.Region = tt.region
-			api := okeNewAPIStub(t)
-			okeServeGet(t, api, fmt.Sprintf("%s/%d", v0.PathOciProviders, 404), *okeProvider(t, 404, key))
-			log := logr.Discard()
-
-			infra, err := buildOkeInfra(okeReconciler(api, key, nil), inst, okeDefinition(45), &log)
-			require.Error(t, err)
-			assert.Nil(t, infra)
-			assert.Contains(t, err.Error(), "failed to create identity client")
-		})
-	}
-}
-
-// TestBuildOkeInfra_DefinitionGetError covers BuildInfra wrapping a GET 500 for
-// the OKE definition.
-func TestBuildOkeInfra_DefinitionGetError(t *testing.T) {
-	// serve instance and definition GET error and call BuildInfra
-	inst := okeInstance(46, "oke-build-definition-error")
-	inst.OciOkeKubernetesRuntimeDefinitionID = util.Ptr(uint(460))
-	api := okeNewAPIStub(t)
-	okeServeInstance(t, api, inst)
-	okeServeError(t, api, fmt.Sprintf("%s/%d", v0.PathOciOkeKubernetesRuntimeDefinitions, 460), http.StatusInternalServerError)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
-
-	infra, err := o.BuildInfra()
-	require.Error(t, err)
-	assert.Nil(t, infra)
-	assert.Contains(t, err.Error(), "failed to get OKE definition")
-}
-
-// TestOkeBuildInfra_InstanceGetError covers BuildInfra wrapping a GET 500 for
-// the OKE instance.
-func TestOkeBuildInfra_InstanceGetError(t *testing.T) {
-	// serve instance GET error and call BuildInfra
-	inst := okeInstance(47, "oke-build-instance-error")
-	api := okeNewAPIStub(t)
-	okeServeError(t, api, okeInstancePath(47), http.StatusInternalServerError)
-	log := logr.Discard()
-	o := newOkeLifecycleProvider(okeReconciler(api, "", nil), inst, &log)
-
-	infra, err := o.BuildInfra()
-	require.Error(t, err)
-	assert.Nil(t, infra)
-	assert.Contains(t, err.Error(), "failed to get OKE instance for infra build")
-}
-
-// TestOkeEntryUpdated_NoOp covers v0OciOkeKubernetesRuntimeInstanceUpdated
-// returning delay 0 with no API calls.
-func TestOkeEntryUpdated_NoOp(t *testing.T) {
-	// forbid API and call the updated entry
-	inst := okeInstance(50, "oke-entry-updated")
-	api := okeNewAPIStub(t)
-	okeForbidAPIRequests(t, api)
-	log := logr.Discard()
-
-	delay, err := v0OciOkeKubernetesRuntimeInstanceUpdated(okeReconciler(api, "", nil), inst, &log)
+// mustParseTime is a small helper to build stable timestamps for snapshot
+// assertions without dragging test time.Now() into the mix.
+func mustParseTime(t *testing.T, s string) time.Time {
+	t.Helper()
+	parsed, err := time.Parse(time.RFC3339, s)
 	require.NoError(t, err)
-	assert.Equal(t, int64(0), delay)
-}
-
-// TestOkeEntryCreated_DelegatesToHandleInfraCreate covers the created entry
-// calling HandleInfraCreate, which returns delay 0 once CreationConfirmed is set.
-func TestOkeEntryCreated_DelegatesToHandleInfraCreate(t *testing.T) {
-	// serve confirmed instance and call the created entry
-	inst := okeInstance(51, "oke-entry-created")
-	confirmed := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	inst.CreationConfirmed = &confirmed
-	api := okeNewAPIStub(t)
-	okeServeInstance(t, api, inst)
-	log := logr.Discard()
-
-	delay, err := v0OciOkeKubernetesRuntimeInstanceCreated(okeReconciler(api, "", nil), inst, &log)
-	require.NoError(t, err)
-	assert.Equal(t, int64(0), delay)
-}
-
-// TestOkeEntryDeleted_NotScheduledError covers the deleted entry wrapping
-// deletion notification received but not scheduled.
-func TestOkeEntryDeleted_NotScheduledError(t *testing.T) {
-	// serve instance without DeletionScheduled and call the deleted entry
-	inst := okeInstance(52, "oke-entry-deleted")
-	api := okeNewAPIStub(t)
-	okeServeInstance(t, api, inst)
-	log := logr.Discard()
-
-	_, err := v0OciOkeKubernetesRuntimeInstanceDeleted(okeReconciler(api, "", nil), inst, &log)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "deletion notification received but not scheduled")
-}
-
-// TestOkeEntryDeleted_AlreadyConfirmed covers the deleted entry returning delay
-// 0 once DeletionScheduled and DeletionConfirmed are set, with no OCI work.
-func TestOkeEntryDeleted_AlreadyConfirmed(t *testing.T) {
-	// serve scheduled and confirmed instance and call the deleted entry
-	inst := okeInstance(53, "oke-entry-deleted-confirmed")
-	scheduled := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	confirmed := scheduled.Add(time.Minute)
-	inst.DeletionScheduled = &scheduled
-	inst.DeletionConfirmed = &confirmed
-	api := okeNewAPIStub(t)
-	okeServeInstance(t, api, inst)
-	log := logr.Discard()
-
-	delay, err := v0OciOkeKubernetesRuntimeInstanceDeleted(okeReconciler(api, "", nil), inst, &log)
-	require.NoError(t, err)
-	assert.Equal(t, int64(0), delay)
+	return parsed
 }

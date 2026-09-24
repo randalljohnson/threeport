@@ -1,10 +1,3 @@
-// Tests for the GKE lifecycle adapter. They drive the real adapter against an
-// in-process httptest stub of the threeport API (via internal/machinetest) plus
-// a small fake provider.InfraProvider; no GCP, Pulumi, or NATS infrastructure is
-// touched.
-//
-// Every package-level identifier is gke-prefixed and there is no TestMain, so
-// GCE tests sharing this package do not collide.
 package gcp
 
 import (
@@ -12,1164 +5,770 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httptest"
-	"strconv"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	logr "github.com/go-logr/logr"
-	nats "github.com/nats-io/nats.go"
+	"github.com/go-logr/logr"
+	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/datatypes"
 
 	notif "github.com/threeport/threeport/internal/gcp/notif"
-	machinetest "github.com/threeport/threeport/internal/machinetest"
+	"github.com/threeport/threeport/internal/machinetest"
 	"github.com/threeport/threeport/internal/provider"
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
-	encryption "github.com/threeport/threeport/pkg/encryption/v0"
-	kube "github.com/threeport/threeport/pkg/kube/v0"
-	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-const (
-	// gkeTestInstanceID is the default API ID used by single-instance test cases.
-	gkeTestInstanceID uint = 42
-	// gkeTestInstanceName is the default name used by single-instance test cases.
-	gkeTestInstanceName = "gke-test-instance"
-	// gkeTestDefinitionID is the GKE definition ID referenced by test instances.
-	gkeTestDefinitionID uint = 9
-	// gkeTestProviderID is the GCP provider ID referenced by test instances.
-	gkeTestProviderID uint = 5
-	// gkeTestKriID is the linked kubernetes runtime instance ID used by connection tests.
-	gkeTestKriID uint = 77
-)
+// makeInstance returns a minimally-populated GcpGkeKubernetesRuntimeInstance
+// with the fields the lifecycle helpers touch: ID, Name, Region, and the FK
+// pointers to the definition, provider, and kubernetes runtime instance.
+func makeInstance(id uint) *v0.GcpGkeKubernetesRuntimeInstance {
+	return &v0.GcpGkeKubernetesRuntimeInstance{
+		Common:                              v0.Common{ID: util.Ptr(id)},
+		Instance:                            v0.Instance{Name: util.Ptr("gke-fixture")},
+		Region:                              util.Ptr("us-central1"),
+		GcpProviderID:                       util.Ptr(uint(11)),
+		GcpGkeKubernetesRuntimeDefinitionID: util.Ptr(uint(22)),
+		KubernetesRuntimeInstanceID:         util.Ptr(uint(33)),
+	}
+}
 
-// gkeFakeInfra is a provider.InfraProvider that is not *provider.KubernetesRuntimeInfraGKE.
-// It drives OnCreateConfirmed's wrong-type branch and supplies SaveCreateOutputs'
-// unused infra argument.
-type gkeFakeInfra struct{}
+// newTestLifecycle wires a gkeLifecycle backed by the supplied APIStub. Tests
+// register per-path handlers on the stub before invoking lifecycle methods.
+func newTestLifecycle(t *testing.T, api *machinetest.APIStub, instance *v0.GcpGkeKubernetesRuntimeInstance) *gkeLifecycle {
+	t.Helper()
+	log := logr.Discard()
+	r := &controller.Reconciler{
+		APIClient: api.Client,
+		APIServer: api.Addr,
+	}
+	return newGkeLifecycleProvider(r, instance, &log)
+}
 
-func (gkeFakeInfra) DeployInfra() error                      { return nil }
-func (gkeFakeInfra) DestroyInfra() error                     { return nil }
-func (gkeFakeInfra) SetStackState(*datatypes.JSON) error     { return nil }
-func (gkeFakeInfra) GetStackState() (*datatypes.JSON, error) { return nil, nil }
+// TestNewGkeLifecycleProvider covers that the constructor copies the instance
+// pointer and unwraps the ID, so subsequent lifecycle calls can target the
+// right record.
+func TestNewGkeLifecycleProvider(t *testing.T) {
+	// build a minimal instance and reconciler
+	instance := makeInstance(42)
+	log := logr.Discard()
+	r := &controller.Reconciler{}
 
-// gkePublishedMessage is one JetStream Publish call captured by gkeFakeJetStream.
-type gkePublishedMessage struct {
+	// invoke the constructor
+	got := newGkeLifecycleProvider(r, instance, &log)
+
+	// assert every field on the lifecycle struct is populated
+	require.NotNil(t, got)
+	assert.Equal(t, uint(42), got.instanceID)
+	assert.Same(t, instance, got.instance)
+	assert.Same(t, r, got.r)
+	assert.Same(t, &log, got.log)
+}
+
+// TestGetReconciliation_HappyPath covers the successful path: the client
+// fetches the instance, and every reconciliation field is copied into the
+// snapshot including the CreationFailed pointer being dereferenced.
+func TestGetReconciliation_HappyPath(t *testing.T) {
+	// arrange: register a stub that returns an instance with a full set of
+	// reconciliation timestamps and CreationFailed=true
+	api := machinetest.NewAPIStub(t)
+	instance := makeInstance(1)
+	inventory := datatypes.JSON([]byte(`{"key":"value"}`))
+	stored := *instance
+	stored.Reconciliation = v0.Reconciliation{
+		CreationAcknowledged: util.Ptr(mustTime(t, "2026-01-01T00:00:00Z")),
+		CreationConfirmed:    util.Ptr(mustTime(t, "2026-01-02T00:00:00Z")),
+		CreationFailed:       util.Ptr(true),
+		DeletionScheduled:    util.Ptr(mustTime(t, "2026-01-03T00:00:00Z")),
+		DeletionAcknowledged: util.Ptr(mustTime(t, "2026-01-04T00:00:00Z")),
+		DeletionConfirmed:    util.Ptr(mustTime(t, "2026-01-05T00:00:00Z")),
+	}
+	stored.ResourceInventory = &inventory
+	api.Mux.HandleFunc(
+		fmt.Sprintf("%s/%d", v0.PathGcpGkeKubernetesRuntimeInstances, 1),
+		func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodGet, r.Method)
+			machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{stored})
+		},
+	)
+
+	// act: fetch the snapshot
+	lc := newTestLifecycle(t, api, instance)
+	snap, err := lc.GetReconciliation()
+
+	// assert: no error and every field surfaced
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	assert.True(t, snap.CreationFailed)
+	assert.NotNil(t, snap.CreationAcknowledged)
+	assert.NotNil(t, snap.CreationConfirmed)
+	assert.NotNil(t, snap.DeletionScheduled)
+	assert.NotNil(t, snap.DeletionAcknowledged)
+	assert.NotNil(t, snap.DeletionConfirmed)
+	require.NotNil(t, snap.ResourceInventory)
+	assert.JSONEq(t, `{"key":"value"}`, string(*snap.ResourceInventory))
+}
+
+// TestGetReconciliation_NilCreationFailed covers that when CreationFailed is
+// absent (nil), the snapshot defaults it to false rather than dereferencing
+// a nil pointer.
+func TestGetReconciliation_NilCreationFailed(t *testing.T) {
+	// arrange: instance has no CreationFailed set
+	api := machinetest.NewAPIStub(t)
+	instance := makeInstance(2)
+	api.Mux.HandleFunc(
+		fmt.Sprintf("%s/%d", v0.PathGcpGkeKubernetesRuntimeInstances, 2),
+		func(w http.ResponseWriter, r *http.Request) {
+			machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{*instance})
+		},
+	)
+
+	// act
+	lc := newTestLifecycle(t, api, instance)
+	snap, err := lc.GetReconciliation()
+
+	// assert: CreationFailed defaulted to false, no panic
+	require.NoError(t, err)
+	assert.False(t, snap.CreationFailed)
+}
+
+// TestGetReconciliation_APIError covers the error path: when the API returns
+// a non-200 status, the error is wrapped with the "failed to get latest GKE
+// instance" prefix.
+func TestGetReconciliation_APIError(t *testing.T) {
+	// arrange: server returns 500 on the GET path
+	api := machinetest.NewAPIStub(t)
+	instance := makeInstance(3)
+	api.Mux.HandleFunc(
+		fmt.Sprintf("%s/%d", v0.PathGcpGkeKubernetesRuntimeInstances, 3),
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"Status":{"code":500,"message":"boom","error":"boom"}}`))
+		},
+	)
+
+	// act
+	lc := newTestLifecycle(t, api, instance)
+	snap, err := lc.GetReconciliation()
+
+	// assert: error wrapped, snapshot nil
+	require.Error(t, err)
+	assert.Nil(t, snap)
+	assert.Contains(t, err.Error(), "failed to get latest GKE instance")
+}
+
+// TestIsCreateComplete covers the inventory-vs-complete truth table:
+// nil, empty, "{}", "null" all read incomplete; a populated JSON reads
+// complete.
+func TestIsCreateComplete(t *testing.T) {
+	tests := []struct {
+		name      string
+		inventory *datatypes.JSON
+		want      bool
+	}{
+		{name: "nil inventory reads incomplete", inventory: nil, want: false},
+		{name: "brace-empty inventory reads incomplete", inventory: ptrJSON("{}"), want: false},
+		{name: "literal null inventory reads incomplete", inventory: ptrJSON("null"), want: false},
+		{name: "populated inventory reads complete", inventory: ptrJSON(`{"stack":"ok"}`), want: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// arrange: stub returns an instance whose ResourceInventory matches
+			// the test row
+			api := machinetest.NewAPIStub(t)
+			instance := makeInstance(4)
+			stored := *instance
+			stored.ResourceInventory = tc.inventory
+			api.Mux.HandleFunc(
+				fmt.Sprintf("%s/%d", v0.PathGcpGkeKubernetesRuntimeInstances, 4),
+				func(w http.ResponseWriter, r *http.Request) {
+					machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{stored})
+				},
+			)
+
+			// act
+			lc := newTestLifecycle(t, api, instance)
+			got, err := lc.IsCreateComplete()
+
+			// assert
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+// TestIsCreateComplete_APIError covers that a failed GET wraps the error
+// with the "failed to check GKE creation status" prefix and returns false.
+func TestIsCreateComplete_APIError(t *testing.T) {
+	// arrange: server returns 500
+	api := machinetest.NewAPIStub(t)
+	instance := makeInstance(5)
+	api.Mux.HandleFunc(
+		fmt.Sprintf("%s/%d", v0.PathGcpGkeKubernetesRuntimeInstances, 5),
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"Status":{"code":500,"message":"boom","error":"boom"}}`))
+		},
+	)
+
+	// act
+	lc := newTestLifecycle(t, api, instance)
+	done, err := lc.IsCreateComplete()
+
+	// assert
+	require.Error(t, err)
+	assert.False(t, done)
+	assert.Contains(t, err.Error(), "failed to check GKE creation status")
+}
+
+// TestOnDeleteConfirmed covers the no-op contract: it returns nil regardless
+// of the infra provider argument (including nil).
+func TestOnDeleteConfirmed(t *testing.T) {
+	// arrange: bare lifecycle, no API interactions expected
+	api := machinetest.NewAPIStub(t)
+	lc := newTestLifecycle(t, api, makeInstance(6))
+
+	// act + assert: nil infra, nil error
+	assert.NoError(t, lc.OnDeleteConfirmed(nil))
+}
+
+// TestBuildInfra_HappyPath covers the successful build: instance, definition,
+// and provider all fetched, and buildGkeInfra composes them into a
+// KubernetesRuntimeInfraGKE with the expected fields.
+func TestBuildInfra_HappyPath(t *testing.T) {
+	// arrange: stubs for all three API objects
+	api := machinetest.NewAPIStub(t)
+	instance := makeInstance(7)
+	def := &v0.GcpGkeKubernetesRuntimeDefinition{
+		Common:                      v0.Common{ID: util.Ptr(uint(22))},
+		DefaultNodeGroupInitialSize: util.Ptr(3),
+	}
+	provider := &v0.GcpProvider{
+		Common:                    v0.Common{ID: util.Ptr(uint(11))},
+		ProjectID:                 util.Ptr("proj-x"),
+		ServiceAccountCredentials: util.Ptr("json-creds"),
+	}
+	registerStubs(t, api, instance, def, provider)
+
+	// act
+	lc := newTestLifecycle(t, api, instance)
+	got, err := lc.BuildInfra()
+
+	// assert: correct concrete type and field mapping
+	require.NoError(t, err)
+	infraGKE, ok := got.(*infraGKEType)
+	require.True(t, ok)
+	assert.Equal(t, "proj-x", infraGKE.ProjectID)
+	assert.Equal(t, "us-central1", infraGKE.Region)
+	assert.Equal(t, int32(3), infraGKE.WorkerNodeInitialCount)
+	assert.Equal(t, "json-creds", infraGKE.ServiceAccountCredentials)
+	assert.Equal(t, "gke-fixture", infraGKE.RuntimeInstanceName)
+}
+
+// TestBuildInfra_InstanceLookupError covers the first-hop failure: the GET
+// for the instance fails, so BuildInfra returns the wrapped
+// "failed to get GKE instance for infra build" error.
+func TestBuildInfra_InstanceLookupError(t *testing.T) {
+	// arrange: GET returns 500 for the instance path
+	api := machinetest.NewAPIStub(t)
+	instance := makeInstance(8)
+	api.Mux.HandleFunc(
+		fmt.Sprintf("%s/%d", v0.PathGcpGkeKubernetesRuntimeInstances, 8),
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"Status":{"code":500,"error":"boom"}}`))
+		},
+	)
+
+	// act
+	lc := newTestLifecycle(t, api, instance)
+	got, err := lc.BuildInfra()
+
+	// assert
+	require.Error(t, err)
+	assert.Nil(t, got)
+	assert.Contains(t, err.Error(), "failed to get GKE instance for infra build")
+}
+
+// TestBuildInfra_DefinitionLookupError covers the second-hop failure: the
+// instance fetches fine but the definition lookup fails, and the error is
+// wrapped with the "failed to get GKE definition" prefix.
+func TestBuildInfra_DefinitionLookupError(t *testing.T) {
+	// arrange: instance stub returns OK, definition returns 500
+	api := machinetest.NewAPIStub(t)
+	instance := makeInstance(9)
+	api.Mux.HandleFunc(
+		fmt.Sprintf("%s/%d", v0.PathGcpGkeKubernetesRuntimeInstances, 9),
+		func(w http.ResponseWriter, r *http.Request) {
+			machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{*instance})
+		},
+	)
+	api.Mux.HandleFunc(
+		fmt.Sprintf("%s/%d", v0.PathGcpGkeKubernetesRuntimeDefinitions, 22),
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"Status":{"code":500,"error":"boom"}}`))
+		},
+	)
+
+	// act
+	lc := newTestLifecycle(t, api, instance)
+	got, err := lc.BuildInfra()
+
+	// assert
+	require.Error(t, err)
+	assert.Nil(t, got)
+	assert.Contains(t, err.Error(), "failed to get GKE definition")
+}
+
+// TestBuildGkeInfra_ProviderLookupError covers the third-hop failure inside
+// buildGkeInfra: the provider lookup fails, wrapped as
+// "failed to retrieve GCP provider by ID".
+func TestBuildGkeInfra_ProviderLookupError(t *testing.T) {
+	// arrange: provider path returns 500; instance/definition are unused
+	// because we call buildGkeInfra directly with the objects we already have
+	api := machinetest.NewAPIStub(t)
+	api.Mux.HandleFunc(
+		fmt.Sprintf("%s/%d", v0.PathGcpProviders, 11),
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"Status":{"code":500,"error":"boom"}}`))
+		},
+	)
+	log := logr.Discard()
+	r := &controller.Reconciler{
+		APIClient: api.Client,
+		APIServer: api.Addr,
+	}
+	instance := makeInstance(10)
+	def := &v0.GcpGkeKubernetesRuntimeDefinition{
+		Common:                      v0.Common{ID: util.Ptr(uint(22))},
+		DefaultNodeGroupInitialSize: util.Ptr(2),
+	}
+
+	// act: call the unexported helper directly
+	got, err := buildGkeInfra(r, instance, def, &log)
+
+	// assert
+	require.Error(t, err)
+	assert.Nil(t, got)
+	assert.Contains(t, err.Error(), "failed to retrieve GCP provider by ID")
+}
+
+// TestBuildGkeInfra_EmptyServiceAccountCredentials covers the credentials
+// branch: when the provider stores empty credentials, buildGkeInfra leaves
+// the field on the infra object empty rather than setting the string.
+func TestBuildGkeInfra_EmptyServiceAccountCredentials(t *testing.T) {
+	// arrange: provider returns an empty ServiceAccountCredentials pointer
+	api := machinetest.NewAPIStub(t)
+	provider := &v0.GcpProvider{
+		Common:                    v0.Common{ID: util.Ptr(uint(11))},
+		ProjectID:                 util.Ptr("proj-y"),
+		ServiceAccountCredentials: util.Ptr(""),
+	}
+	api.Mux.HandleFunc(
+		fmt.Sprintf("%s/%d", v0.PathGcpProviders, 11),
+		func(w http.ResponseWriter, r *http.Request) {
+			machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{*provider})
+		},
+	)
+	log := logr.Discard()
+	r := &controller.Reconciler{
+		APIClient: api.Client,
+		APIServer: api.Addr,
+	}
+	instance := makeInstance(11)
+	def := &v0.GcpGkeKubernetesRuntimeDefinition{
+		Common:                      v0.Common{ID: util.Ptr(uint(22))},
+		DefaultNodeGroupInitialSize: util.Ptr(1),
+	}
+
+	// act
+	got, err := buildGkeInfra(r, instance, def, &log)
+
+	// assert: credentials remain unset while ProjectID still flows through
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, "", got.ServiceAccountCredentials)
+	assert.Equal(t, "proj-y", got.ProjectID)
+	assert.Equal(t, int32(1), got.WorkerNodeInitialCount)
+}
+
+// TestSaveCreateOutputs covers persisting the final Pulumi state: the client
+// issues a PATCH carrying the ResourceInventory blob, and the recorded body
+// contains the expected JSON.
+func TestSaveCreateOutputs(t *testing.T) {
+	// arrange: PATCH handler captures the body
+	api := machinetest.NewAPIStub(t)
+	instance := makeInstance(20)
+	body := captureLastPatchBody(t, api, 20, instance)
+
+	// act
+	lc := newTestLifecycle(t, api, instance)
+	state := datatypes.JSON([]byte(`{"resources":[1,2]}`))
+	err := lc.SaveCreateOutputs(nil, &state)
+
+	// assert: no error and the persisted body echoes the inventory bytes
+	require.NoError(t, err)
+	assert.Contains(t, string(body.get()), `"resources":[1,2]`)
+}
+
+// TestSaveCreateOutputs_APIError covers the error path: a 500 on PATCH is
+// wrapped with the "failed to update GKE instance with resource inventory"
+// prefix.
+func TestSaveCreateOutputs_APIError(t *testing.T) {
+	// arrange: PATCH returns 500
+	api := machinetest.NewAPIStub(t)
+	instance := makeInstance(21)
+	api.Mux.HandleFunc(
+		fmt.Sprintf("%s/%d", v0.PathGcpGkeKubernetesRuntimeInstances, 21),
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"Status":{"code":500,"error":"boom"}}`))
+		},
+	)
+
+	// act
+	lc := newTestLifecycle(t, api, instance)
+	state := datatypes.JSON([]byte(`{}`))
+	err := lc.SaveCreateOutputs(nil, &state)
+
+	// assert
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to update GKE instance with resource inventory")
+}
+
+// TestPatchHelpers covers every method that issues a single PATCH to update a
+// specific reconciliation field. The table asserts the invoker returns no
+// error and that the persisted body contains the expected marker JSON
+// fragment.
+func TestPatchHelpers(t *testing.T) {
+	tests := []struct {
+		name    string
+		call    func(lc *gkeLifecycle) error
+		wantSub string
+	}{
+		{
+			name:    "AckCreation sets CreationAcknowledged and clears CreationFailed",
+			call:    func(lc *gkeLifecycle) error { return lc.AckCreation() },
+			wantSub: `"CreationFailed":false`,
+		},
+		{
+			name:    "RefreshCreationAck touches CreationAcknowledged only",
+			call:    func(lc *gkeLifecycle) error { return lc.RefreshCreationAck() },
+			wantSub: `"CreationAcknowledged"`,
+		},
+		{
+			name:    "SetCreationFailed marks CreationFailed=true",
+			call:    func(lc *gkeLifecycle) error { return lc.SetCreationFailed() },
+			wantSub: `"CreationFailed":true`,
+		},
+		{
+			name:    "ConfirmCreation flips Reconciled=true",
+			call:    func(lc *gkeLifecycle) error { return lc.ConfirmCreation() },
+			wantSub: `"Reconciled":true`,
+		},
+		{
+			name:    "AckDeletion sets DeletionAcknowledged",
+			call:    func(lc *gkeLifecycle) error { return lc.AckDeletion() },
+			wantSub: `"DeletionAcknowledged"`,
+		},
+		{
+			name:    "RefreshDeletionAck touches DeletionAcknowledged only",
+			call:    func(lc *gkeLifecycle) error { return lc.RefreshDeletionAck() },
+			wantSub: `"DeletionAcknowledged"`,
+		},
+		{
+			name:    "ConfirmDeletion sets DeletionConfirmed",
+			call:    func(lc *gkeLifecycle) error { return lc.ConfirmDeletion() },
+			wantSub: `"DeletionConfirmed"`,
+		},
+		{
+			name:    "SaveState persists ResourceInventory bytes",
+			call:    func(lc *gkeLifecycle) error { state := datatypes.JSON([]byte(`{"marker":"save"}`)); return lc.SaveState(&state) },
+			wantSub: `"marker":"save"`,
+		},
+		{
+			name:    "ClearInventory writes an empty JSON object",
+			call:    func(lc *gkeLifecycle) error { return lc.ClearInventory() },
+			wantSub: `"ResourceInventory":{}`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// arrange: a fresh stub for each row, PATCH handler captures the body
+			api := machinetest.NewAPIStub(t)
+			instance := makeInstance(30)
+			body := captureLastPatchBody(t, api, 30, instance)
+
+			// act
+			lc := newTestLifecycle(t, api, instance)
+			err := tc.call(lc)
+
+			// assert: no error and the request body contains the marker
+			require.NoError(t, err)
+			assert.Contains(t, string(body.get()), tc.wantSub)
+		})
+	}
+}
+
+// TestPatchHelpers_APIError covers that every PATCH-driven method surfaces
+// the client error verbatim when the API returns 500.
+func TestPatchHelpers_APIError(t *testing.T) {
+	calls := map[string]func(lc *gkeLifecycle) error{
+		"AckCreation":        func(lc *gkeLifecycle) error { return lc.AckCreation() },
+		"RefreshCreationAck": func(lc *gkeLifecycle) error { return lc.RefreshCreationAck() },
+		"SetCreationFailed":  func(lc *gkeLifecycle) error { return lc.SetCreationFailed() },
+		"ConfirmCreation":    func(lc *gkeLifecycle) error { return lc.ConfirmCreation() },
+		"AckDeletion":        func(lc *gkeLifecycle) error { return lc.AckDeletion() },
+		"RefreshDeletionAck": func(lc *gkeLifecycle) error { return lc.RefreshDeletionAck() },
+		"ConfirmDeletion":    func(lc *gkeLifecycle) error { return lc.ConfirmDeletion() },
+		"SaveState": func(lc *gkeLifecycle) error {
+			state := datatypes.JSON([]byte(`{}`))
+			return lc.SaveState(&state)
+		},
+		"ClearInventory": func(lc *gkeLifecycle) error { return lc.ClearInventory() },
+	}
+	for name, call := range calls {
+		t.Run(name, func(t *testing.T) {
+			// arrange: PATCH handler returns 500
+			api := machinetest.NewAPIStub(t)
+			instance := makeInstance(31)
+			api.Mux.HandleFunc(
+				fmt.Sprintf("%s/%d", v0.PathGcpGkeKubernetesRuntimeInstances, 31),
+				func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusInternalServerError)
+					_, _ = w.Write([]byte(`{"Status":{"code":500,"error":"boom"}}`))
+				},
+			)
+
+			// act
+			lc := newTestLifecycle(t, api, instance)
+			err := call(lc)
+
+			// assert: caller returns the wrapped API error
+			require.Error(t, err)
+		})
+	}
+}
+
+// TestPublishCreateNotification covers the happy path: the payload is
+// generated from the instance and published on the create subject.
+func TestPublishCreateNotification(t *testing.T) {
+	// arrange: fake JetStream captures Publish invocations
+	fake := &fakeJetStream{}
+	instance := makeInstance(40)
+	log := logr.Discard()
+	lc := &gkeLifecycle{
+		r:          &controller.Reconciler{JetStreamContext: fake},
+		instanceID: *instance.ID,
+		instance:   instance,
+		log:        &log,
+	}
+
+	// act
+	err := lc.PublishCreateNotification()
+
+	// assert: single publish on the create subject with a non-empty payload
+	require.NoError(t, err)
+	require.Len(t, fake.calls, 1)
+	assert.Equal(t, notif.GcpGkeKubernetesRuntimeInstanceCreateSubject, fake.calls[0].subject)
+	assert.NotEmpty(t, fake.calls[0].data)
+}
+
+// TestPublishCreateNotification_PublishError covers that a JetStream Publish
+// failure surfaces the wrapped "failed to publish create notification"
+// error.
+func TestPublishCreateNotification_PublishError(t *testing.T) {
+	// arrange: fake returns an error on Publish
+	fake := &fakeJetStream{publishErr: fmt.Errorf("nats down")}
+	instance := makeInstance(41)
+	log := logr.Discard()
+	lc := &gkeLifecycle{
+		r:          &controller.Reconciler{JetStreamContext: fake},
+		instanceID: *instance.ID,
+		instance:   instance,
+		log:        &log,
+	}
+
+	// act
+	err := lc.PublishCreateNotification()
+
+	// assert
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to publish create notification")
+}
+
+// TestPublishDeleteNotification covers the happy path: the payload is
+// published on the delete subject.
+func TestPublishDeleteNotification(t *testing.T) {
+	// arrange
+	fake := &fakeJetStream{}
+	instance := makeInstance(42)
+	log := logr.Discard()
+	lc := &gkeLifecycle{
+		r:          &controller.Reconciler{JetStreamContext: fake},
+		instanceID: *instance.ID,
+		instance:   instance,
+		log:        &log,
+	}
+
+	// act
+	err := lc.PublishDeleteNotification()
+
+	// assert
+	require.NoError(t, err)
+	require.Len(t, fake.calls, 1)
+	assert.Equal(t, notif.GcpGkeKubernetesRuntimeInstanceDeleteSubject, fake.calls[0].subject)
+}
+
+// TestPublishDeleteNotification_PublishError covers that a JetStream Publish
+// failure surfaces the wrapped "failed to publish delete notification"
+// error.
+func TestPublishDeleteNotification_PublishError(t *testing.T) {
+	// arrange
+	fake := &fakeJetStream{publishErr: fmt.Errorf("nats down")}
+	instance := makeInstance(43)
+	log := logr.Discard()
+	lc := &gkeLifecycle{
+		r:          &controller.Reconciler{JetStreamContext: fake},
+		instanceID: *instance.ID,
+		instance:   instance,
+		log:        &log,
+	}
+
+	// act
+	err := lc.PublishDeleteNotification()
+
+	// assert
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to publish delete notification")
+}
+
+// -- helpers ---------------------------------------------------------------
+
+// infraGKEType aliases the concrete infra type so the assertion signature
+// stays short in TestBuildInfra_HappyPath.
+type infraGKEType = provider.KubernetesRuntimeInfraGKE
+
+// ptrJSON returns a pointer to a datatypes.JSON backed by the input string.
+func ptrJSON(s string) *datatypes.JSON {
+	j := datatypes.JSON([]byte(s))
+	return &j
+}
+
+// mustTime parses an RFC3339 timestamp for fixtures, failing the test if the
+// input string is malformed.
+func mustTime(t *testing.T, s string) time.Time {
+	t.Helper()
+	tm, err := time.Parse(time.RFC3339, s)
+	require.NoError(t, err)
+	return tm
+}
+
+// registerStubs registers GET handlers for the instance, definition, and
+// provider paths used by BuildInfra so the whole three-hop chain resolves.
+func registerStubs(
+	t *testing.T,
+	api *machinetest.APIStub,
+	instance *v0.GcpGkeKubernetesRuntimeInstance,
+	def *v0.GcpGkeKubernetesRuntimeDefinition,
+	prov *v0.GcpProvider,
+) {
+	t.Helper()
+	api.Mux.HandleFunc(
+		fmt.Sprintf("%s/%d", v0.PathGcpGkeKubernetesRuntimeInstances, *instance.ID),
+		func(w http.ResponseWriter, r *http.Request) {
+			machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{*instance})
+		},
+	)
+	api.Mux.HandleFunc(
+		fmt.Sprintf("%s/%d", v0.PathGcpGkeKubernetesRuntimeDefinitions, *def.ID),
+		func(w http.ResponseWriter, r *http.Request) {
+			machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{*def})
+		},
+	)
+	api.Mux.HandleFunc(
+		fmt.Sprintf("%s/%d", v0.PathGcpProviders, *prov.ID),
+		func(w http.ResponseWriter, r *http.Request) {
+			machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{*prov})
+		},
+	)
+}
+
+// captureBody is a mutex-protected byte slice for recording the last PATCH
+// body observed by the test stub, so assertions can inspect what the
+// lifecycle actually sent to the API.
+type captureBody struct {
+	mu   sync.Mutex
+	last []byte
+}
+
+func (c *captureBody) set(b []byte) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.last = append(c.last[:0], b...)
+}
+
+func (c *captureBody) get() []byte {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]byte(nil), c.last...)
+}
+
+// captureLastPatchBody registers a PATCH handler for the instance path and
+// returns a captureBody the test can inspect after the call to see what the
+// client actually sent.
+func captureLastPatchBody(
+	t *testing.T,
+	api *machinetest.APIStub,
+	id uint,
+	instance *v0.GcpGkeKubernetesRuntimeInstance,
+) *captureBody {
+	t.Helper()
+	body := &captureBody{}
+	api.Mux.HandleFunc(
+		fmt.Sprintf("%s/%d", v0.PathGcpGkeKubernetesRuntimeInstances, id),
+		func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodPatch, r.Method)
+			buf, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			body.set(buf)
+			var updated v0.GcpGkeKubernetesRuntimeInstance
+			require.NoError(t, json.Unmarshal(buf, &updated))
+			updated.ID = util.Ptr(id)
+			machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{updated})
+		},
+	)
+	return body
+}
+
+// publishCall records one Publish invocation on the fake JetStream.
+type publishCall struct {
 	subject string
 	data    []byte
 }
 
-// gkeFakeJetStream embeds nats.JetStreamContext and overrides Publish so tests
-// can drive both the publish-success and publish-error paths. All other
-// interface methods are inherited from the embedded nil and must not be called.
-type gkeFakeJetStream struct {
+// fakeJetStream implements just enough of nats.JetStreamContext for the
+// notification tests: Publish records calls; every other method the
+// interface embeds is inherited as a nil field that panics if invoked,
+// which is fine because the code under test only calls Publish.
+type fakeJetStream struct {
 	nats.JetStreamContext
-	mu         sync.Mutex
-	published  []gkePublishedMessage
 	publishErr error
+	calls      []publishCall
 }
 
-// Publish records the subject and body, or returns the configured error.
-func (f *gkeFakeJetStream) Publish(subject string, data []byte, _ ...nats.PubOpt) (*nats.PubAck, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
+func (f *fakeJetStream) Publish(subj string, data []byte, _ ...nats.PubOpt) (*nats.PubAck, error) {
+	f.calls = append(f.calls, publishCall{subject: subj, data: append([]byte(nil), data...)})
 	if f.publishErr != nil {
 		return nil, f.publishErr
 	}
-	f.published = append(f.published, gkePublishedMessage{subject: subject, data: data})
 	return &nats.PubAck{}, nil
-}
-
-// messages returns a copy of the recorded Publish calls.
-func (f *gkeFakeJetStream) messages() []gkePublishedMessage {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	out := make([]gkePublishedMessage, len(f.published))
-	copy(out, f.published)
-	return out
-}
-
-// gkeCapturedPatch is one recorded PATCH path and body.
-type gkeCapturedPatch struct {
-	path string
-	body []byte
-}
-
-// gkePatchRecorder collects PATCH requests across server goroutines.
-type gkePatchRecorder struct {
-	mu      sync.Mutex
-	patches []gkeCapturedPatch
-}
-
-// add stores a captured PATCH body for the given path.
-func (rec *gkePatchRecorder) add(path string, body []byte) {
-	rec.mu.Lock()
-	defer rec.mu.Unlock()
-	rec.patches = append(rec.patches, gkeCapturedPatch{path: path, body: body})
-}
-
-// snapshot returns a copy of the recorded PATCH requests.
-func (rec *gkePatchRecorder) snapshot() []gkeCapturedPatch {
-	rec.mu.Lock()
-	defer rec.mu.Unlock()
-	out := make([]gkeCapturedPatch, len(rec.patches))
-	copy(out, rec.patches)
-	return out
-}
-
-// gkeParsePathID extracts the trailing numeric ID from a request path.
-func gkeParsePathID(path string) (uint, bool) {
-	idx := strings.LastIndex(path, "/")
-	if idx < 0 || idx == len(path)-1 {
-		return 0, false
-	}
-	id, err := strconv.ParseUint(path[idx+1:], 10, 64)
-	if err != nil {
-		return 0, false
-	}
-	return uint(id), true
-}
-
-// gkeStubReconciler builds a controller.Reconciler pointed at the stub.
-func gkeStubReconciler(api *machinetest.APIStub) *controller.Reconciler {
-	return &controller.Reconciler{APIClient: api.Client, APIServer: api.Addr}
-}
-
-// gkeNewLifecycle constructs the adapter against the stub for a given instance.
-func gkeNewLifecycle(api *machinetest.APIStub, inst *v0.GcpGkeKubernetesRuntimeInstance) *gkeLifecycle {
-	log := logr.Discard()
-	return newGkeLifecycleProvider(gkeStubReconciler(api), inst, &log)
-}
-
-// gkeTestInstance returns a minimal GKE instance with ID and name set.
-func gkeTestInstance(id uint, name string) *v0.GcpGkeKubernetesRuntimeInstance {
-	return &v0.GcpGkeKubernetesRuntimeInstance{
-		Common:   v0.Common{ID: util.Ptr(id)},
-		Instance: v0.Instance{Name: util.Ptr(name)},
-	}
-}
-
-// gkeServeInstances registers a subtree handler for the GKE instance endpoint:
-// GET returns inst, PATCH records the body and echoes it back. Non-OK statuses
-// force the corresponding error paths.
-func gkeServeInstances(
-	t *testing.T,
-	api *machinetest.APIStub,
-	inst *v0.GcpGkeKubernetesRuntimeInstance,
-	rec *gkePatchRecorder,
-	getStatus int,
-	patchStatus int,
-) {
-	t.Helper()
-	api.Mux.HandleFunc(v0.PathGcpGkeKubernetesRuntimeInstances+"/", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			if getStatus != http.StatusOK {
-				machinetest.WriteResponse(t, w, getStatus, nil)
-				return
-			}
-			machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{*inst})
-		case http.MethodPatch:
-			body, err := io.ReadAll(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			if rec != nil {
-				rec.add(r.URL.Path, body)
-			}
-			if patchStatus != http.StatusOK {
-				machinetest.WriteResponse(t, w, patchStatus, nil)
-				return
-			}
-			var updated v0.GcpGkeKubernetesRuntimeInstance
-			if err := json.Unmarshal(body, &updated); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			if id, ok := gkeParsePathID(r.URL.Path); ok {
-				updated.ID = util.Ptr(id)
-			}
-			machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{updated})
-		default:
-			w.WriteHeader(http.StatusMethodNotAllowed)
-		}
-	})
-}
-
-// gkeServeKubeRuntimeInstances registers a subtree handler for the kubernetes
-// runtime instance endpoint, GET and PATCH, mirroring gkeServeInstances.
-func gkeServeKubeRuntimeInstances(
-	t *testing.T,
-	api *machinetest.APIStub,
-	kri *v0.KubernetesRuntimeInstance,
-	rec *gkePatchRecorder,
-	getStatus int,
-	patchStatus int,
-) {
-	t.Helper()
-	api.Mux.HandleFunc(v0.PathKubernetesRuntimeInstances+"/", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			if getStatus != http.StatusOK {
-				machinetest.WriteResponse(t, w, getStatus, nil)
-				return
-			}
-			machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{*kri})
-		case http.MethodPatch:
-			body, err := io.ReadAll(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			if rec != nil {
-				rec.add(r.URL.Path, body)
-			}
-			if patchStatus != http.StatusOK {
-				machinetest.WriteResponse(t, w, patchStatus, nil)
-				return
-			}
-			var updated v0.KubernetesRuntimeInstance
-			if err := json.Unmarshal(body, &updated); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			if id, ok := gkeParsePathID(r.URL.Path); ok {
-				updated.ID = util.Ptr(id)
-			}
-			machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{updated})
-		default:
-			w.WriteHeader(http.StatusMethodNotAllowed)
-		}
-	})
-}
-
-// gkeServeDefinition registers a GET-only subtree handler for the GKE
-// definition endpoint.
-func gkeServeDefinition(t *testing.T, api *machinetest.APIStub, def *v0.GcpGkeKubernetesRuntimeDefinition, status int) {
-	t.Helper()
-	api.Mux.HandleFunc(v0.PathGcpGkeKubernetesRuntimeDefinitions+"/", func(w http.ResponseWriter, r *http.Request) {
-		if status != http.StatusOK {
-			machinetest.WriteResponse(t, w, status, nil)
-			return
-		}
-		machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{*def})
-	})
-}
-
-// gkeServeProvider registers a GET-only subtree handler for the GCP provider
-// endpoint.
-func gkeServeProvider(t *testing.T, api *machinetest.APIStub, prov *v0.GcpProvider, status int) {
-	t.Helper()
-	api.Mux.HandleFunc(v0.PathGcpProviders+"/", func(w http.ResponseWriter, r *http.Request) {
-		if status != http.StatusOK {
-			machinetest.WriteResponse(t, w, status, nil)
-			return
-		}
-		machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{*prov})
-	})
-}
-
-// gkeRunUpdateMethod exercises one reconciliation-update method: a success run
-// asserting the PATCH path and body, and a 500 run asserting the error propagates.
-func gkeRunUpdateMethod(
-	t *testing.T,
-	call func(g *gkeLifecycle) error,
-	check func(t *testing.T, patched v0.GcpGkeKubernetesRuntimeInstance),
-) {
-	t.Helper()
-
-	t.Run("success", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		rec := &gkePatchRecorder{}
-		inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-		gkeServeInstances(t, api, inst, rec, http.StatusOK, http.StatusOK)
-
-		require.NoError(t, call(gkeNewLifecycle(api, inst)))
-
-		patches := rec.snapshot()
-		require.Len(t, patches, 1)
-		assert.Equal(t, fmt.Sprintf("%s/%d", v0.PathGcpGkeKubernetesRuntimeInstances, gkeTestInstanceID), patches[0].path)
-		var patched v0.GcpGkeKubernetesRuntimeInstance
-		require.NoError(t, json.Unmarshal(patches[0].body, &patched))
-		check(t, patched)
-	})
-
-	t.Run("patch error", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusInternalServerError)
-
-		require.Error(t, call(gkeNewLifecycle(api, inst)))
-	})
-}
-
-// TestGkeLifecycleGetReconciliation covers field mapping, the nil-CreationFailed
-// guard, and a GET error from the stub.
-func TestGkeLifecycleGetReconciliation(t *testing.T) {
-	t.Run("maps all fields", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-		ackTime := time.Now().UTC().Add(-1 * time.Minute)
-		confirmTime := time.Now().UTC().Add(-2 * time.Minute)
-		delSchedTime := time.Now().UTC().Add(-3 * time.Minute)
-		delAckTime := time.Now().UTC().Add(-4 * time.Minute)
-		delConfirmTime := time.Now().UTC().Add(-5 * time.Minute)
-		inventory := datatypes.JSON([]byte(`{"cluster":"x"}`))
-		inst.CreationAcknowledged = &ackTime
-		inst.CreationConfirmed = &confirmTime
-		inst.CreationFailed = util.Ptr(true)
-		inst.DeletionScheduled = &delSchedTime
-		inst.DeletionAcknowledged = &delAckTime
-		inst.DeletionConfirmed = &delConfirmTime
-		inst.ResourceInventory = &inventory
-		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-
-		snap, err := gkeNewLifecycle(api, inst).GetReconciliation()
-		require.NoError(t, err)
-
-		require.NotNil(t, snap.CreationAcknowledged)
-		assert.WithinDuration(t, ackTime, *snap.CreationAcknowledged, time.Second)
-		require.NotNil(t, snap.CreationConfirmed)
-		assert.WithinDuration(t, confirmTime, *snap.CreationConfirmed, time.Second)
-		assert.True(t, snap.CreationFailed)
-		require.NotNil(t, snap.DeletionScheduled)
-		assert.WithinDuration(t, delSchedTime, *snap.DeletionScheduled, time.Second)
-		require.NotNil(t, snap.DeletionAcknowledged)
-		assert.WithinDuration(t, delAckTime, *snap.DeletionAcknowledged, time.Second)
-		require.NotNil(t, snap.DeletionConfirmed)
-		assert.WithinDuration(t, delConfirmTime, *snap.DeletionConfirmed, time.Second)
-		require.NotNil(t, snap.ResourceInventory)
-		assert.JSONEq(t, `{"cluster":"x"}`, string(*snap.ResourceInventory))
-	})
-
-	t.Run("nil creation failed maps to false", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-
-		snap, err := gkeNewLifecycle(api, inst).GetReconciliation()
-		require.NoError(t, err)
-		assert.False(t, snap.CreationFailed)
-	})
-
-	t.Run("get error", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-		gkeServeInstances(t, api, inst, nil, http.StatusInternalServerError, http.StatusOK)
-
-		_, err := gkeNewLifecycle(api, inst).GetReconciliation()
-		assert.ErrorContains(t, err, "failed to get latest GKE instance")
-	})
-}
-
-// gkeBuildFixtures returns an instance, definition, and provider wired together
-// with valid required fields for infra-build tests.
-func gkeBuildFixtures() (*v0.GcpGkeKubernetesRuntimeInstance, *v0.GcpGkeKubernetesRuntimeDefinition, *v0.GcpProvider) {
-	inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-	inst.Region = util.Ptr("us-central1")
-	inst.GcpGkeKubernetesRuntimeDefinitionID = util.Ptr(gkeTestDefinitionID)
-	inst.GcpProviderID = util.Ptr(gkeTestProviderID)
-	def := &v0.GcpGkeKubernetesRuntimeDefinition{
-		Common:                       v0.Common{ID: util.Ptr(gkeTestDefinitionID)},
-		DefaultNodeGroupInitialSize:  util.Ptr(3),
-		DefaultNodeGroupInstanceType: util.Ptr("e2-medium"),
-		DefaultNodeGroupMinimumSize:  util.Ptr(1),
-		DefaultNodeGroupMaximumSize:  util.Ptr(5),
-	}
-	prov := &v0.GcpProvider{
-		Common:    v0.Common{ID: util.Ptr(gkeTestProviderID)},
-		ProjectID: util.Ptr("proj-x"),
-	}
-	return inst, def, prov
-}
-
-// TestGkeLifecycleBuildInfra covers field projection, credential gates, and
-// fetch errors for BuildInfra.
-func TestGkeLifecycleBuildInfra(t *testing.T) {
-	t.Run("happy path projects all fields", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		inst, def, prov := gkeBuildFixtures()
-		// seed the credential encrypted with a fresh key so BuildInfra decrypts it
-		key, err := encryption.GenerateKey()
-		require.NoError(t, err)
-		creds := `{"type":"service_account","client_email":"test-sa@proj-x.iam.gserviceaccount.com"}`
-		enc, err := encryption.Encrypt(key, creds)
-		require.NoError(t, err)
-		prov.ServiceAccountCredentials = util.Ptr(enc)
-		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-		gkeServeDefinition(t, api, def, http.StatusOK)
-		gkeServeProvider(t, api, prov, http.StatusOK)
-
-		// wire the matching key into the reconciler so the decrypt succeeds
-		lc := gkeNewLifecycle(api, inst)
-		lc.r.EncryptionKey = key
-		infra, err := lc.BuildInfra()
-		require.NoError(t, err)
-
-		infraGKE, ok := infra.(*provider.KubernetesRuntimeInfraGKE)
-		require.True(t, ok)
-		assert.Equal(t, gkeTestInstanceName, infraGKE.RuntimeInstanceName)
-		assert.Equal(t, "proj-x", infraGKE.ProjectID)
-		assert.Equal(t, "us-central1", infraGKE.Region)
-		assert.Equal(t, int32(3), infraGKE.WorkerNodeInitialCount)
-		assert.Equal(t, "e2-medium", infraGKE.MachineType)
-		assert.Equal(t, int32(1), infraGKE.MinNodeCount)
-		assert.Equal(t, int32(5), infraGKE.MaxNodeCount)
-		assert.Equal(t, creds, infraGKE.ServiceAccountCredentials)
-		assert.Equal(t, "test-sa@proj-x.iam.gserviceaccount.com", infraGKE.ServiceAccountEmail)
-	})
-
-	t.Run("nil credentials rejected", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		inst, def, prov := gkeBuildFixtures()
-		// reject before DeployInfra so an empty key never reaches the Pulumi provider
-		prov.ServiceAccountCredentials = nil
-		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-		gkeServeDefinition(t, api, def, http.StatusOK)
-		gkeServeProvider(t, api, prov, http.StatusOK)
-
-		_, err := gkeNewLifecycle(api, inst).BuildInfra()
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "no service account credentials")
-	})
-
-	t.Run("empty credentials rejected", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		inst, def, prov := gkeBuildFixtures()
-		// empty credentials must fail the same gate as nil
-		prov.ServiceAccountCredentials = util.Ptr("")
-		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-		gkeServeDefinition(t, api, def, http.StatusOK)
-		gkeServeProvider(t, api, prov, http.StatusOK)
-
-		_, err := gkeNewLifecycle(api, inst).BuildInfra()
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "no service account credentials")
-	})
-
-	t.Run("instance fetch error", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		inst, _, _ := gkeBuildFixtures()
-		gkeServeInstances(t, api, inst, nil, http.StatusInternalServerError, http.StatusOK)
-
-		_, err := gkeNewLifecycle(api, inst).BuildInfra()
-		assert.ErrorContains(t, err, "failed to get GKE instance for infra build")
-	})
-
-	t.Run("definition fetch error", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		inst, def, _ := gkeBuildFixtures()
-		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-		gkeServeDefinition(t, api, def, http.StatusInternalServerError)
-
-		_, err := gkeNewLifecycle(api, inst).BuildInfra()
-		assert.ErrorContains(t, err, "failed to get GKE definition")
-	})
-
-	t.Run("provider fetch error", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		inst, def, prov := gkeBuildFixtures()
-		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-		gkeServeDefinition(t, api, def, http.StatusOK)
-		gkeServeProvider(t, api, prov, http.StatusInternalServerError)
-
-		_, err := gkeNewLifecycle(api, inst).BuildInfra()
-		assert.ErrorContains(t, err, "failed to retrieve GCP provider by ID")
-	})
-
-	t.Run("missing definition id rejected", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		inst, _, _ := gkeBuildFixtures()
-		inst.GcpGkeKubernetesRuntimeDefinitionID = nil
-		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-
-		_, err := gkeNewLifecycle(api, inst).BuildInfra()
-		assert.ErrorContains(t, err, "GcpGkeKubernetesRuntimeDefinitionID")
-	})
-}
-
-// TestGkeBuildInfraFieldValidation asserts each required field is validated
-// before dereference so malformed API objects produce errors, not panics.
-func TestGkeBuildInfraFieldValidation(t *testing.T) {
-	tests := []struct {
-		name    string
-		mutate  func(inst *v0.GcpGkeKubernetesRuntimeInstance, def *v0.GcpGkeKubernetesRuntimeDefinition, prov *v0.GcpProvider)
-		errPart string
-		// The flag that registers the provider endpoint; ProjectID is checked only after fetch
-		servePrv bool
-	}{
-		{
-			name: "nil provider id",
-			mutate: func(inst *v0.GcpGkeKubernetesRuntimeInstance, _ *v0.GcpGkeKubernetesRuntimeDefinition, _ *v0.GcpProvider) {
-				inst.GcpProviderID = nil
-			},
-			errPart: "GcpProviderID",
-		},
-		{
-			name: "nil instance name",
-			mutate: func(inst *v0.GcpGkeKubernetesRuntimeInstance, _ *v0.GcpGkeKubernetesRuntimeDefinition, _ *v0.GcpProvider) {
-				inst.Name = nil
-			},
-			errPart: "Name",
-		},
-		{
-			name: "nil region",
-			mutate: func(inst *v0.GcpGkeKubernetesRuntimeInstance, _ *v0.GcpGkeKubernetesRuntimeDefinition, _ *v0.GcpProvider) {
-				inst.Region = nil
-			},
-			errPart: "Region",
-		},
-		{
-			name: "nil node group initial size",
-			mutate: func(_ *v0.GcpGkeKubernetesRuntimeInstance, def *v0.GcpGkeKubernetesRuntimeDefinition, _ *v0.GcpProvider) {
-				def.DefaultNodeGroupInitialSize = nil
-			},
-			errPart: "DefaultNodeGroupInitialSize",
-		},
-		{
-			name: "nil project id",
-			mutate: func(_ *v0.GcpGkeKubernetesRuntimeInstance, _ *v0.GcpGkeKubernetesRuntimeDefinition, prov *v0.GcpProvider) {
-				prov.ProjectID = nil
-			},
-			errPart:  "ProjectID",
-			servePrv: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			api := machinetest.NewAPIStub(t)
-			inst, def, prov := gkeBuildFixtures()
-			tt.mutate(inst, def, prov)
-			if tt.servePrv {
-				gkeServeProvider(t, api, prov, http.StatusOK)
-			}
-
-			log := logr.Discard()
-			infra, err := buildGkeInfra(gkeStubReconciler(api), inst, def, &log)
-			require.Error(t, err)
-			assert.Nil(t, infra)
-			assert.ErrorContains(t, err, tt.errPart)
-		})
-	}
-}
-
-// TestGkeLifecycleIsCreateComplete covers inventory edge cases and a GET error.
-func TestGkeLifecycleIsCreateComplete(t *testing.T) {
-	// empty- and whitespace-only inventory bytes are not representable in the
-	// JSON response envelope, so those forms cannot reach the adapter over
-	// the wire; the nil and padded cases cover their semantics
-	tests := []struct {
-		name      string
-		inventory *string
-		want      bool
-	}{
-		{name: "nil inventory", inventory: nil, want: false},
-		{name: "empty object", inventory: util.Ptr("{}"), want: false},
-		{name: "null literal", inventory: util.Ptr("null"), want: false},
-		{name: "populated inventory", inventory: util.Ptr(`{"a":1}`), want: true},
-		{name: "whitespace padded empty object", inventory: util.Ptr(" {} "), want: false},
-		{name: "newline padded empty object", inventory: util.Ptr("\t{}\n"), want: false},
-		{name: "empty array", inventory: util.Ptr("[]"), want: false},
-		{name: "quoted null string", inventory: util.Ptr(`"null"`), want: false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			api := machinetest.NewAPIStub(t)
-			inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-			if tt.inventory != nil {
-				inv := datatypes.JSON([]byte(*tt.inventory))
-				inst.ResourceInventory = &inv
-			}
-			gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-
-			complete, err := gkeNewLifecycle(api, inst).IsCreateComplete()
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, complete)
-		})
-	}
-
-	t.Run("get error", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-		gkeServeInstances(t, api, inst, nil, http.StatusInternalServerError, http.StatusOK)
-
-		_, err := gkeNewLifecycle(api, inst).IsCreateComplete()
-		assert.ErrorContains(t, err, "failed to check GKE creation status")
-	})
-}
-
-// TestGkeLifecycleOnCreateConfirmedWrongInfraType rejects a non-GKE infra
-// provider with a descriptive error instead of panicking on the type assert.
-func TestGkeLifecycleOnCreateConfirmedWrongInfraType(t *testing.T) {
-	api := machinetest.NewAPIStub(t)
-	inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-
-	err := gkeNewLifecycle(api, inst).OnCreateConfirmed(gkeFakeInfra{})
-	require.Error(t, err)
-	assert.ErrorContains(t, err, "expected a GKE infra provider")
-}
-
-// gkeValidConnection returns complete kube connection info for connection tests.
-func gkeValidConnection() *kube.KubeConnectionInfo {
-	return &kube.KubeConnectionInfo{
-		APIEndpoint:     "https://10.0.0.1",
-		CACertificate:   "ca-pem",
-		Token:           "tok",
-		TokenExpiration: time.Now().UTC().Add(time.Hour),
-	}
-}
-
-// TestGkeLifecycleUpdateKubeConnection drives updateKubeRuntimeConnection
-// directly, bypassing GetConnection, covering the PATCH body and every error path.
-func TestGkeLifecycleUpdateKubeConnection(t *testing.T) {
-	t.Run("success patches linked kubernetes runtime instance", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		rec := &gkePatchRecorder{}
-		inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-		inst.KubernetesRuntimeInstanceID = util.Ptr(gkeTestKriID)
-		kri := &v0.KubernetesRuntimeInstance{
-			Common:   v0.Common{ID: util.Ptr(gkeTestKriID)},
-			Instance: v0.Instance{Name: util.Ptr("kri")},
-		}
-		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-		gkeServeKubeRuntimeInstances(t, api, kri, rec, http.StatusOK, http.StatusOK)
-
-		conn := gkeValidConnection()
-		require.NoError(t, gkeNewLifecycle(api, inst).updateKubeRuntimeConnection(conn))
-
-		patches := rec.snapshot()
-		require.Len(t, patches, 1)
-		assert.Equal(t, fmt.Sprintf("%s/%d", v0.PathKubernetesRuntimeInstances, gkeTestKriID), patches[0].path)
-		var patched v0.KubernetesRuntimeInstance
-		require.NoError(t, json.Unmarshal(patches[0].body, &patched))
-		require.NotNil(t, patched.APIEndpoint)
-		assert.Equal(t, conn.APIEndpoint, *patched.APIEndpoint)
-		require.NotNil(t, patched.CACertificate)
-		assert.Equal(t, conn.CACertificate, *patched.CACertificate)
-		require.NotNil(t, patched.ConnectionToken)
-		assert.Equal(t, conn.Token, *patched.ConnectionToken)
-		require.NotNil(t, patched.ConnectionTokenExpiration)
-		assert.WithinDuration(t, conn.TokenExpiration, *patched.ConnectionTokenExpiration, time.Second)
-		// confirm reconciled is cleared so the linked runtime reconciler runs next
-		require.NotNil(t, patched.Reconciled)
-		assert.False(t, *patched.Reconciled)
-	})
-
-	t.Run("gke instance fetch error", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-		gkeServeInstances(t, api, inst, nil, http.StatusInternalServerError, http.StatusOK)
-
-		err := gkeNewLifecycle(api, inst).updateKubeRuntimeConnection(gkeValidConnection())
-		assert.ErrorContains(t, err, "failed to get GKE instance for connection update")
-	})
-
-	t.Run("nil kubernetes runtime instance id rejected", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-		inst.KubernetesRuntimeInstanceID = nil
-		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-
-		err := gkeNewLifecycle(api, inst).updateKubeRuntimeConnection(gkeValidConnection())
-		assert.ErrorContains(t, err, "KubernetesRuntimeInstanceID")
-	})
-
-	t.Run("linked instance fetch error", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-		inst.KubernetesRuntimeInstanceID = util.Ptr(gkeTestKriID)
-		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-		gkeServeKubeRuntimeInstances(t, api, nil, nil, http.StatusInternalServerError, http.StatusOK)
-
-		err := gkeNewLifecycle(api, inst).updateKubeRuntimeConnection(gkeValidConnection())
-		assert.ErrorContains(t, err, "failed to get kubernetes runtime instance")
-	})
-
-	t.Run("patch error", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-		inst.KubernetesRuntimeInstanceID = util.Ptr(gkeTestKriID)
-		kri := &v0.KubernetesRuntimeInstance{
-			Common:   v0.Common{ID: util.Ptr(gkeTestKriID)},
-			Instance: v0.Instance{Name: util.Ptr("kri")},
-		}
-		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-		gkeServeKubeRuntimeInstances(t, api, kri, nil, http.StatusOK, http.StatusInternalServerError)
-
-		err := gkeNewLifecycle(api, inst).updateKubeRuntimeConnection(gkeValidConnection())
-		assert.ErrorContains(t, err, "failed to update kubernetes runtime instance with kube connection info")
-	})
-
-	t.Run("incomplete connection info rejected", func(t *testing.T) {
-		api := machinetest.NewAPIStub(t)
-		rec := &gkePatchRecorder{}
-		inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-		inst.KubernetesRuntimeInstanceID = util.Ptr(gkeTestKriID)
-		kri := &v0.KubernetesRuntimeInstance{
-			Common:   v0.Common{ID: util.Ptr(gkeTestKriID)},
-			Instance: v0.Instance{Name: util.Ptr("kri")},
-		}
-		gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-		gkeServeKubeRuntimeInstances(t, api, kri, rec, http.StatusOK, http.StatusOK)
-
-		conn := gkeValidConnection()
-		conn.APIEndpoint = ""
-		err := gkeNewLifecycle(api, inst).updateKubeRuntimeConnection(conn)
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "incomplete kube connection info")
-		assert.Empty(t, rec.snapshot(), "incomplete connection info must not be written to the runtime instance")
-	})
-}
-
-// TestGkeLifecycleSaveCreateOutputs asserts ResourceInventory is PATCHed from the create state.
-func TestGkeLifecycleSaveCreateOutputs(t *testing.T) {
-	state := datatypes.JSON([]byte(`{"deployment":{"resources":[{"urn":"a"}]}}`))
-	gkeRunUpdateMethod(t,
-		func(g *gkeLifecycle) error { return g.SaveCreateOutputs(gkeFakeInfra{}, &state) },
-		func(t *testing.T, patched v0.GcpGkeKubernetesRuntimeInstance) {
-			require.NotNil(t, patched.ResourceInventory)
-			assert.JSONEq(t, string(state), string(*patched.ResourceInventory))
-		},
-	)
-}
-
-// TestGkeLifecycleOnDeleteConfirmed covers parent KRI cleanup when deletion
-// is already scheduled on the KRI.
-func TestGkeLifecycleOnDeleteConfirmed(t *testing.T) {
-	api := machinetest.NewAPIStub(t)
-	inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-	inst.KubernetesRuntimeInstanceID = util.Ptr(gkeTestKriID)
-	gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-	now := time.Now().UTC()
-	kri := &v0.KubernetesRuntimeInstance{
-		Common:            v0.Common{ID: util.Ptr(gkeTestKriID)},
-		DeletionScheduled: &now,
-	}
-	gkeServeKubeRuntimeInstances(t, api, kri, nil, http.StatusOK, http.StatusOK)
-	assert.NoError(t, gkeNewLifecycle(api, inst).OnDeleteConfirmed(nil))
-}
-
-// TestGkeLifecycleAckCreation asserts CreationAcknowledged is set and CreationFailed cleared.
-func TestGkeLifecycleAckCreation(t *testing.T) {
-	gkeRunUpdateMethod(t,
-		func(g *gkeLifecycle) error { return g.AckCreation() },
-		func(t *testing.T, patched v0.GcpGkeKubernetesRuntimeInstance) {
-			require.NotNil(t, patched.CreationAcknowledged)
-			assert.WithinDuration(t, time.Now().UTC(), *patched.CreationAcknowledged, 10*time.Second)
-			require.NotNil(t, patched.CreationFailed)
-			assert.False(t, *patched.CreationFailed)
-			assert.Nil(t, patched.CreationConfirmed)
-		},
-	)
-}
-
-// TestGkeLifecycleRefreshCreationAck asserts only CreationAcknowledged is refreshed.
-func TestGkeLifecycleRefreshCreationAck(t *testing.T) {
-	gkeRunUpdateMethod(t,
-		func(g *gkeLifecycle) error { return g.RefreshCreationAck() },
-		func(t *testing.T, patched v0.GcpGkeKubernetesRuntimeInstance) {
-			require.NotNil(t, patched.CreationAcknowledged)
-			assert.WithinDuration(t, time.Now().UTC(), *patched.CreationAcknowledged, 10*time.Second)
-			assert.Nil(t, patched.CreationFailed)
-			assert.Nil(t, patched.CreationConfirmed)
-		},
-	)
-}
-
-// TestGkeLifecycleSetCreationFailed asserts CreationFailed is set true alone.
-func TestGkeLifecycleSetCreationFailed(t *testing.T) {
-	gkeRunUpdateMethod(t,
-		func(g *gkeLifecycle) error { return g.SetCreationFailed() },
-		func(t *testing.T, patched v0.GcpGkeKubernetesRuntimeInstance) {
-			require.NotNil(t, patched.CreationFailed)
-			assert.True(t, *patched.CreationFailed)
-			assert.Nil(t, patched.CreationAcknowledged)
-			assert.Nil(t, patched.CreationConfirmed)
-		},
-	)
-}
-
-// TestGkeLifecycleConfirmCreation asserts CreationConfirmed and Reconciled are set.
-func TestGkeLifecycleConfirmCreation(t *testing.T) {
-	gkeRunUpdateMethod(t,
-		func(g *gkeLifecycle) error { return g.ConfirmCreation() },
-		func(t *testing.T, patched v0.GcpGkeKubernetesRuntimeInstance) {
-			require.NotNil(t, patched.Reconciled)
-			assert.True(t, *patched.Reconciled)
-			require.NotNil(t, patched.CreationConfirmed)
-			assert.WithinDuration(t, time.Now().UTC(), *patched.CreationConfirmed, 10*time.Second)
-			assert.Nil(t, patched.CreationAcknowledged)
-		},
-	)
-}
-
-// TestGkeLifecycleAckDeletion asserts DeletionAcknowledged is set.
-func TestGkeLifecycleAckDeletion(t *testing.T) {
-	gkeRunUpdateMethod(t,
-		func(g *gkeLifecycle) error { return g.AckDeletion() },
-		func(t *testing.T, patched v0.GcpGkeKubernetesRuntimeInstance) {
-			require.NotNil(t, patched.DeletionAcknowledged)
-			assert.WithinDuration(t, time.Now().UTC(), *patched.DeletionAcknowledged, 10*time.Second)
-			assert.Nil(t, patched.DeletionConfirmed)
-		},
-	)
-}
-
-// TestGkeLifecycleRefreshDeletionAck asserts only DeletionAcknowledged is refreshed.
-func TestGkeLifecycleRefreshDeletionAck(t *testing.T) {
-	gkeRunUpdateMethod(t,
-		func(g *gkeLifecycle) error { return g.RefreshDeletionAck() },
-		func(t *testing.T, patched v0.GcpGkeKubernetesRuntimeInstance) {
-			require.NotNil(t, patched.DeletionAcknowledged)
-			assert.WithinDuration(t, time.Now().UTC(), *patched.DeletionAcknowledged, 10*time.Second)
-			assert.Nil(t, patched.DeletionConfirmed)
-		},
-	)
-}
-
-// TestGkeLifecycleConfirmDeletion asserts DeletionConfirmed is set.
-func TestGkeLifecycleConfirmDeletion(t *testing.T) {
-	gkeRunUpdateMethod(t,
-		func(g *gkeLifecycle) error { return g.ConfirmDeletion() },
-		func(t *testing.T, patched v0.GcpGkeKubernetesRuntimeInstance) {
-			require.NotNil(t, patched.DeletionConfirmed)
-			assert.WithinDuration(t, time.Now().UTC(), *patched.DeletionConfirmed, 10*time.Second)
-			assert.Nil(t, patched.DeletionAcknowledged)
-		},
-	)
-}
-
-// TestGkeLifecycleSaveState asserts ResourceInventory is PATCHed from intermediate state.
-func TestGkeLifecycleSaveState(t *testing.T) {
-	state := datatypes.JSON([]byte(`{"checkpoint":{"latest":{"resources":[{"urn":"b"}]}}}`))
-	gkeRunUpdateMethod(t,
-		func(g *gkeLifecycle) error { return g.SaveState(&state) },
-		func(t *testing.T, patched v0.GcpGkeKubernetesRuntimeInstance) {
-			require.NotNil(t, patched.ResourceInventory)
-			assert.JSONEq(t, string(state), string(*patched.ResourceInventory))
-		},
-	)
-}
-
-// TestGkeLifecycleClearInventory asserts ResourceInventory is cleared to {}.
-func TestGkeLifecycleClearInventory(t *testing.T) {
-	gkeRunUpdateMethod(t,
-		func(g *gkeLifecycle) error { return g.ClearInventory() },
-		func(t *testing.T, patched v0.GcpGkeKubernetesRuntimeInstance) {
-			require.NotNil(t, patched.ResourceInventory)
-			assert.JSONEq(t, `{}`, string(*patched.ResourceInventory))
-		},
-	)
-}
-
-// TestGkeLifecyclePublishCreateNotification covers the create subject and a publish error.
-func TestGkeLifecyclePublishCreateNotification(t *testing.T) {
-	t.Run("success publishes to create subject", func(t *testing.T) {
-		js := &gkeFakeJetStream{}
-		inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-		log := logr.Discard()
-		g := newGkeLifecycleProvider(&controller.Reconciler{JetStreamContext: js}, inst, &log)
-
-		require.NoError(t, g.PublishCreateNotification())
-
-		msgs := js.messages()
-		require.Len(t, msgs, 1)
-		assert.Equal(t, notif.GcpGkeKubernetesRuntimeInstanceCreateSubject, msgs[0].subject)
-		var n notifications.Notification
-		require.NoError(t, json.Unmarshal(msgs[0].data, &n))
-		assert.EqualValues(t, notifications.NotificationOperationCreated, n.Operation)
-	})
-
-	t.Run("publish error", func(t *testing.T) {
-		js := &gkeFakeJetStream{publishErr: fmt.Errorf("nats down")}
-		inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-		log := logr.Discard()
-		g := newGkeLifecycleProvider(&controller.Reconciler{JetStreamContext: js}, inst, &log)
-
-		assert.ErrorContains(t, g.PublishCreateNotification(), "failed to publish create notification")
-	})
-}
-
-// TestGkeLifecyclePublishDeleteNotification covers the delete subject and a publish error.
-func TestGkeLifecyclePublishDeleteNotification(t *testing.T) {
-	t.Run("success publishes to delete subject", func(t *testing.T) {
-		js := &gkeFakeJetStream{}
-		inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-		log := logr.Discard()
-		g := newGkeLifecycleProvider(&controller.Reconciler{JetStreamContext: js}, inst, &log)
-
-		require.NoError(t, g.PublishDeleteNotification())
-
-		msgs := js.messages()
-		require.Len(t, msgs, 1)
-		assert.Equal(t, notif.GcpGkeKubernetesRuntimeInstanceDeleteSubject, msgs[0].subject)
-		var n notifications.Notification
-		require.NoError(t, json.Unmarshal(msgs[0].data, &n))
-		assert.EqualValues(t, notifications.NotificationOperationDeleted, n.Operation)
-	})
-
-	t.Run("publish error", func(t *testing.T) {
-		js := &gkeFakeJetStream{publishErr: fmt.Errorf("nats down")}
-		inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-		log := logr.Discard()
-		g := newGkeLifecycleProvider(&controller.Reconciler{JetStreamContext: js}, inst, &log)
-
-		assert.ErrorContains(t, g.PublishDeleteNotification(), "failed to publish delete notification")
-	})
-}
-
-// TestGkeInstanceUpdatedNoop asserts the Updated reconciler returns delay 0.
-func TestGkeInstanceUpdatedNoop(t *testing.T) {
-	inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-	log := logr.Discard()
-	delay, err := v0GcpGkeKubernetesRuntimeInstanceUpdated(&controller.Reconciler{}, inst, &log)
-	require.NoError(t, err)
-	assert.Equal(t, int64(0), delay)
-}
-
-// TestGkeInstanceCreatedConfirmedNoop asserts Created short-circuits once CreationConfirmed is set.
-func TestGkeInstanceCreatedConfirmedNoop(t *testing.T) {
-	api := machinetest.NewAPIStub(t)
-	inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-	inst.CreationConfirmed = util.Ptr(time.Now().UTC())
-	gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-
-	log := logr.Discard()
-	delay, err := v0GcpGkeKubernetesRuntimeInstanceCreated(gkeStubReconciler(api), inst, &log)
-	require.NoError(t, err)
-	assert.Equal(t, int64(0), delay)
-}
-
-// TestGkeInstanceDeletedConfirmedNoop asserts Deleted short-circuits once DeletionConfirmed is set.
-func TestGkeInstanceDeletedConfirmedNoop(t *testing.T) {
-	api := machinetest.NewAPIStub(t)
-	inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-	inst.DeletionScheduled = util.Ptr(time.Now().UTC())
-	inst.DeletionConfirmed = util.Ptr(time.Now().UTC())
-	gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-
-	log := logr.Discard()
-	delay, err := v0GcpGkeKubernetesRuntimeInstanceDeleted(gkeStubReconciler(api), inst, &log)
-	require.NoError(t, err)
-	assert.Equal(t, int64(0), delay)
-}
-
-// TestGkeInstanceDeletedNotScheduled rejects a delete notification without DeletionScheduled.
-func TestGkeInstanceDeletedNotScheduled(t *testing.T) {
-	api := machinetest.NewAPIStub(t)
-	inst := gkeTestInstance(gkeTestInstanceID, gkeTestInstanceName)
-	gkeServeInstances(t, api, inst, nil, http.StatusOK, http.StatusOK)
-
-	log := logr.Discard()
-	delay, err := v0GcpGkeKubernetesRuntimeInstanceDeleted(gkeStubReconciler(api), inst, &log)
-	assert.Equal(t, int64(0), delay)
-	assert.ErrorContains(t, err, "deletion notification received but not scheduled")
-}
-
-// TestGkeLifecycleConcurrentInstancesNoRace constructs N adapters for distinct
-// instance IDs and drives their stateless methods concurrently. The adapter
-// holds no shared mutable state: there is no data race under -race and no
-// cross-instance bleed (each goroutine's PATCH carries its own ID). Semaphore-
-// cap, goroutine-leak, and stale-ack behavior live in the shared handler and
-// are not asserted here.
-func TestGkeLifecycleConcurrentInstancesNoRace(t *testing.T) {
-	const instanceCount = 200
-
-	api := machinetest.NewAPIStub(t)
-	rec := &gkePatchRecorder{}
-	// register one handler for all instance IDs, returning each ID on GET and
-	// recording PATCH bodies under its own path
-	api.Mux.HandleFunc(v0.PathGcpGkeKubernetesRuntimeInstances+"/", func(w http.ResponseWriter, r *http.Request) {
-		id, ok := gkeParsePathID(r.URL.Path)
-		if !ok {
-			http.Error(w, "bad instance id", http.StatusBadRequest)
-			return
-		}
-		switch r.Method {
-		case http.MethodGet:
-			machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{
-				*gkeTestInstance(id, fmt.Sprintf("gke-%d", id)),
-			})
-		case http.MethodPatch:
-			body, err := io.ReadAll(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			rec.add(r.URL.Path, body)
-			var updated v0.GcpGkeKubernetesRuntimeInstance
-			if err := json.Unmarshal(body, &updated); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			updated.ID = util.Ptr(id)
-			machinetest.WriteResponse(t, w, http.StatusOK, []apiserver_lib.Object{updated})
-		default:
-			w.WriteHeader(http.StatusMethodNotAllowed)
-		}
-	})
-
-	var wg sync.WaitGroup
-	errCh := make(chan error, instanceCount*4)
-	for i := 0; i < instanceCount; i++ {
-		id := uint(i + 1)
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			inst := gkeTestInstance(id, fmt.Sprintf("gke-%d", id))
-			g := gkeNewLifecycle(api, inst)
-			if _, err := g.GetReconciliation(); err != nil {
-				errCh <- err
-				return
-			}
-			if err := g.AckCreation(); err != nil {
-				errCh <- err
-				return
-			}
-			state := datatypes.JSON([]byte(fmt.Sprintf(`{"id":%d}`, id)))
-			if err := g.SaveState(&state); err != nil {
-				errCh <- err
-				return
-			}
-			if err := g.ConfirmCreation(); err != nil {
-				errCh <- err
-			}
-		}()
-	}
-	wg.Wait()
-	close(errCh)
-	for err := range errCh {
-		require.NoError(t, err)
-	}
-
-	// every goroutine PATCHed three times, and each saved state carries the ID
-	// from its own URL path; a mismatch would indicate cross-instance bleed
-	patches := rec.snapshot()
-	assert.Len(t, patches, instanceCount*3)
-	for _, p := range patches {
-		id, ok := gkeParsePathID(p.path)
-		require.True(t, ok)
-		var patched v0.GcpGkeKubernetesRuntimeInstance
-		require.NoError(t, json.Unmarshal(p.body, &patched))
-		if patched.ResourceInventory != nil {
-			assert.JSONEq(t, fmt.Sprintf(`{"id":%d}`, id), string(*patched.ResourceInventory))
-		}
-	}
-}
-
-func TestServiceAccountEmailFromCredentials(t *testing.T) {
-	cases := []struct {
-		name          string
-		credentials   string
-		expectedEmail string
-		expectError   bool
-	}{
-		{
-			name:          "valid credentials",
-			credentials:   `{"type":"service_account","client_email":"test-sa@some-project.iam.gserviceaccount.com","private_key":"redacted"}`,
-			expectedEmail: "test-sa@some-project.iam.gserviceaccount.com",
-			expectError:   false,
-		},
-		{
-			name:        "malformed JSON",
-			credentials: `{"type":"service_account", not valid json`,
-			expectError: true,
-		},
-		{
-			name:        "missing client_email field",
-			credentials: `{"type":"service_account","private_key":"redacted"}`,
-			expectError: true,
-		},
-		{
-			name:        "empty client_email field",
-			credentials: `{"type":"service_account","client_email":"","private_key":"redacted"}`,
-			expectError: true,
-		},
-		{
-			name:        "empty string",
-			credentials: "",
-			expectError: true,
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			email, err := serviceAccountEmailFromCredentials(tc.credentials)
-			if tc.expectError {
-				assert.Error(t, err)
-				assert.Empty(t, email)
-				return
-			}
-			assert.NoError(t, err)
-			assert.Equal(t, tc.expectedEmail, email)
-		})
-	}
-}
-
-// TestBuildGkeInfra_MapsDefinitionNodePoolFields is a regression test for the
-// GcpGkeKubernetesRuntimeDefinition -> KubernetesRuntimeInfraGKE mapping in
-// buildGkeInfra. It asserts MachineType, MinNodeCount, and MaxNodeCount are
-// correctly read from the definition, since a prior version of this function
-// silently dropped these fields, leaving the Pulumi node pool with hardcoded
-// values regardless of what the definition requested.
-func TestBuildGkeInfra_MapsDefinitionNodePoolFields(t *testing.T) {
-	projectID := "some-project"
-	gcpProviderID := uint(1)
-
-	gcpProvider := v0.GcpProvider{
-		Common:    v0.Common{ID: &gcpProviderID},
-		ProjectID: &projectID,
-	}
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, err := json.Marshal(apiserver_lib.Response{
-			Status: apiserver_lib.Status{Code: http.StatusOK, Message: "OK"},
-			Data:   []apiserver_lib.Object{gcpProvider},
-		})
-		require.NoError(t, err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
-	}))
-	defer srv.Close()
-
-	r := &controller.Reconciler{
-		APIClient: &http.Client{},
-		APIServer: strings.TrimPrefix(srv.URL, "http://"),
-	}
-
-	instanceName := "test-instance"
-	region := "us-east1"
-	instance := &v0.GcpGkeKubernetesRuntimeInstance{
-		Instance:      v0.Instance{Name: &instanceName},
-		Region:        &region,
-		GcpProviderID: &gcpProviderID,
-	}
-
-	machineType := "e2-standard-4"
-	initialSize := 2
-	minSize := 3
-	maxSize := 7
-	definition := &v0.GcpGkeKubernetesRuntimeDefinition{
-		DefaultNodeGroupInstanceType: &machineType,
-		DefaultNodeGroupInitialSize:  &initialSize,
-		DefaultNodeGroupMinimumSize:  &minSize,
-		DefaultNodeGroupMaximumSize:  &maxSize,
-	}
-
-	infra, err := buildGkeInfra(r, instance, definition, nil)
-	require.NoError(t, err)
-
-	assert.Equal(t, "e2-standard-4", infra.MachineType)
-	assert.Equal(t, int32(2), infra.WorkerNodeInitialCount)
-	assert.Equal(t, int32(3), infra.MinNodeCount)
-	assert.Equal(t, int32(7), infra.MaxNodeCount)
 }

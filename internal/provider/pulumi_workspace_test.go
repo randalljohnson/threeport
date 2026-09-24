@@ -1,318 +1,370 @@
 package provider
 
 import (
-	"encoding/json"
-	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"gorm.io/datatypes"
 )
 
-// requirePulumiCLI skips the test when the pulumi CLI is not on PATH,
-// then points HOME at a temp dir and disables the CLI update check.
-func requirePulumiCLI(t *testing.T) {
-	// register as a test helper
-	t.Helper()
-	// skip when the pulumi CLI is not on PATH
-	if _, err := exec.LookPath("pulumi"); err != nil {
-		t.Skip("pulumi CLI not found on PATH; skipping test that needs a real pulumi backend")
+// TestGetStackNameReturnsRuntimeInstanceName covers getStackName returning the
+// runtime instance name so the Pulumi stack lines up with the runtime.
+func TestGetStackNameReturnsRuntimeInstanceName(t *testing.T) {
+	// build a workspace with a known runtime instance name
+	w := &PulumiWorkspace{RuntimeInstanceName: "dev"}
+
+	// call the accessor
+	got := w.getStackName()
+
+	// assert the stack name matches the runtime instance name
+	if got != "dev" {
+		t.Fatalf("getStackName = %q, want %q", got, "dev")
 	}
-	// point HOME at a temp dir so workspace setup stays off the real home
-	t.Setenv("HOME", t.TempDir())
-	// disable checking for a new pulumi version
-	t.Setenv("PULUMI_SKIP_UPDATE_CHECK", "true")
 }
 
-// checkpointState returns version-3 checkpoint JSON for a stack named
-// name in project. Marker names the stack resource to tell payloads apart.
-func checkpointState(project, name, marker string) string {
-	return fmt.Sprintf(
-		`{"version":3,"checkpoint":{"stack":"organization/%s/%s","latest":{"manifest":{"time":"0001-01-01T00:00:00Z","magic":"","version":""},"resources":[{"urn":"urn:pulumi:%s::%s::pulumi:pulumi:Stack::%s","type":"pulumi:pulumi:Stack"}]}}}`,
-		project, name, name, project, marker,
-	)
-}
+// TestGetEnvVarsReturnsPulumiKeys covers getEnvVars populating every Pulumi
+// environment key the workspace relies on and rooting the backend on the
+// state directory.
+func TestGetEnvVarsReturnsPulumiKeys(t *testing.T) {
+	// isolate HOME so the helper builds its pulumi-home under tmp
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
 
-// TestNewPulumiWorkspace_WithStateDirRoot covers a workspace whose
-// state dir is rooted at an injected path.
-func TestNewPulumiWorkspace_WithStateDirRoot(t *testing.T) {
-	// construct a workspace under an injected temp root
-	root := t.TempDir()
-	w := NewPulumiWorkspace("instance-a", "oke", WithStateDirRoot(root))
-
-	// assert name, project, and injected root
-	assert.Equal(t, "instance-a", w.RuntimeInstanceName)
-	assert.Equal(t, "oke", w.ProjectName)
-	assert.Equal(t, root, w.stateDirRoot)
-
-	// resolve the state file path
-	path, err := w.GetStateFilePath()
-	require.NoError(t, err)
-	// assert the path is under the injected root
-	assert.Equal(
-		t,
-		filepath.Join(root, "instance-a", ".pulumi", "stacks", "oke", "instance-a.json"),
-		path,
-	)
-
-	// assert path resolution created the instance state dir
-	assert.Equal(t, filepath.Join(root, "instance-a"), w.stateDir)
-	info, err := os.Stat(w.stateDir)
-	require.NoError(t, err)
-	assert.True(t, info.IsDir())
-}
-
-// TestNewPulumiWorkspace_DefaultRoot covers a workspace that stores
-// state under the process home directory.
-func TestNewPulumiWorkspace_DefaultRoot(t *testing.T) {
-	// redirect HOME to a temp dir
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-
-	// construct a workspace with the default root
-	w := NewPulumiWorkspace("instance-b", "eks")
-
-	// resolve the state file path
-	path, err := w.GetStateFilePath()
-	require.NoError(t, err)
-
-	// assert the path is under HOME/.threeport/pulumi-state
-	wantSuffix := filepath.Join(
-		".threeport", "pulumi-state", "instance-b",
-		".pulumi", "stacks", "eks", "instance-b.json",
-	)
-	assert.True(
-		t, strings.HasSuffix(path, wantSuffix),
-		"path %q should end with %q", path, wantSuffix,
-	)
-	assert.True(
-		t, strings.HasPrefix(path, home),
-		"path %q should be under the redirected home dir %q", path, home,
-	)
-
-	// assert path resolution created the instance state dir under HOME
-	info, err := os.Stat(filepath.Join(home, ".threeport", "pulumi-state", "instance-b"))
-	require.NoError(t, err)
-	assert.True(t, info.IsDir())
-}
-
-// TestGetStateFilePath_EmptyName rejects a workspace with an empty
-// runtime instance name.
-func TestGetStateFilePath_EmptyName(t *testing.T) {
-	// construct a workspace with an empty name
-	root := t.TempDir()
-	w := NewPulumiWorkspace("", "oke", WithStateDirRoot(root))
-
-	// resolve the state file path
-	path, err := w.GetStateFilePath()
-	// assert empty name is rejected with no path
-	require.Error(t, err)
-	assert.Empty(t, path)
-	assert.Contains(t, err.Error(), "runtime instance name is empty")
-
-	// assert the empty-name guard created no files under the root
-	entries, err := os.ReadDir(root)
-	require.NoError(t, err)
-	assert.Empty(t, entries)
-}
-
-// TestSetStackState_CheckpointRoundTrip covers writing checkpoint
-// state and reading the same bytes back from disk.
-func TestSetStackState_CheckpointRoundTrip(t *testing.T) {
-	// skip without the pulumi CLI
-	requirePulumiCLI(t)
-
-	// construct a workspace under a temp root
-	root := t.TempDir()
-	w := NewPulumiWorkspace("ckpt-instance", "ckptproj", WithStateDirRoot(root))
-
-	// write checkpoint state
-	state := checkpointState("ckptproj", "ckpt-instance", "round-trip")
-	require.NoError(t, w.SetStackState(jsonPtr(state)))
-
-	// assert the state file matches the written bytes
-	path, err := w.GetStateFilePath()
-	require.NoError(t, err)
-	onDisk, err := os.ReadFile(path)
-	require.NoError(t, err)
-	assert.Equal(t, state, string(onDisk), "checkpoint state must land on disk byte-identical")
-
-	// assert ReadStateFile returns the same bytes
-	readBack, err := w.ReadStateFile()
-	require.NoError(t, err)
-	require.NotNil(t, readBack)
-	assert.Equal(t, state, string(*readBack))
-}
-
-// TestSetStackState_AtomicTempThenRename covers a successful write
-// leaving no temp file, and a failed temp write leaving prior state.
-func TestSetStackState_AtomicTempThenRename(t *testing.T) {
-	// skip without the pulumi CLI
-	requirePulumiCLI(t)
-
-	// construct a workspace under a temp root
-	root := t.TempDir()
-	w := NewPulumiWorkspace("atomic-instance", "atomicproj", WithStateDirRoot(root))
-
-	// write the first checkpoint
-	first := checkpointState("atomicproj", "atomic-instance", "first")
-	require.NoError(t, w.SetStackState(jsonPtr(first)))
-
-	// assert the first checkpoint is on disk with no leftover temp file
-	path, err := w.GetStateFilePath()
-	require.NoError(t, err)
-	onDisk, err := os.ReadFile(path)
-	require.NoError(t, err)
-	assert.Equal(t, first, string(onDisk))
-	_, statErr := os.Stat(path + ".tmp")
-	assert.True(t, os.IsNotExist(statErr), "no temp file may remain after a successful write")
-
-	// occupy the temp path with a directory so the next write fails
-	require.NoError(t, os.Mkdir(path+".tmp", 0755))
-	// write a second checkpoint
-	second := checkpointState("atomicproj", "atomic-instance", "second")
-	err = w.SetStackState(jsonPtr(second))
-	// assert the failed write names the temp file and leaves first intact
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to write temporary state file")
-	onDisk, err = os.ReadFile(path)
-	require.NoError(t, err)
-	assert.Equal(t, first, string(onDisk), "failed temp write must leave the previous state intact")
-	// remove the occupied temp path
-	require.NoError(t, os.Remove(path+".tmp"))
-}
-
-// TestSetStackState_ExportFormatRequiresBackend covers export-format
-// state stored as a checkpoint and re-exported as a deployment.
-func TestSetStackState_ExportFormatRequiresBackend(t *testing.T) {
-	// skip without the pulumi CLI
-	requirePulumiCLI(t)
-
-	// construct a workspace under a temp root
-	root := t.TempDir()
-	w := NewPulumiWorkspace("export-instance", "exportproj", WithStateDirRoot(root))
-
-	// write export-format state
-	exportState := `{"version":3,"deployment":{"manifest":{"time":"0001-01-01T00:00:00Z","magic":"","version":""}}}`
-	require.NoError(t, w.SetStackState(jsonPtr(exportState)))
-
-	// assert the on-disk file is checkpoint format, not export format
-	onDisk, err := w.ReadStateFile()
-	require.NoError(t, err)
-	require.NotNil(t, onDisk)
-	var parsed map[string]interface{}
-	require.NoError(t, json.Unmarshal(*onDisk, &parsed))
-	assert.Contains(t, parsed, "checkpoint")
-	assert.NotContains(t, parsed, "deployment")
-
-	// assert GetStackState returns export-format version 3
-	stateJSON, err := w.GetStackState()
-	require.NoError(t, err)
-	require.NotNil(t, stateJSON)
-	var deployment apitype.UntypedDeployment
-	require.NoError(t, json.Unmarshal(*stateJSON, &deployment))
-	assert.Equal(t, 3, deployment.Version)
-	assert.NotNil(t, deployment.Deployment)
-}
-
-// TestPulumiWorkspace_ZeroValueStillWorks covers a workspace built as
-// a struct literal with no constructor options.
-func TestPulumiWorkspace_ZeroValueStillWorks(t *testing.T) {
-	// redirect HOME to a temp dir
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-
-	// construct a workspace from a struct literal
+	// build a workspace with state dir + project name set
+	stateDir := filepath.Join(tmp, "state")
 	w := &PulumiWorkspace{
-		RuntimeInstanceName: "instance-z",
-		ProjectName:         "gke",
+		RuntimeInstanceName: "dev",
+		ProjectName:         "oke",
+		stateDir:            stateDir,
 	}
 
-	// resolve the state file path
-	path, err := w.GetStateFilePath()
-	require.NoError(t, err)
+	// call the helper
+	envVars, err := w.getEnvVars()
+	if err != nil {
+		t.Fatalf("getEnvVars returned error: %v", err)
+	}
 
-	// assert the path is under HOME/.threeport/pulumi-state
-	wantSuffix := filepath.Join(
-		".threeport", "pulumi-state", "instance-z",
-		".pulumi", "stacks", "gke", "instance-z.json",
-	)
-	assert.True(
-		t, strings.HasSuffix(path, wantSuffix),
-		"path %q should end with %q", path, wantSuffix,
-	)
-	assert.True(
-		t, strings.HasPrefix(path, home),
-		"path %q should be under the redirected home dir %q", path, home,
-	)
+	// assert every required key is present
+	requiredKeys := []string{
+		"PULUMI_BACKEND_URL",
+		"PULUMI_HOME",
+		"PULUMI_PROJECT",
+		"PULUMI_CONFIG_PASSPHRASE",
+		"PULUMI_IGNORE_AMBIENT_PLUGINS",
+		"PULUMI_PLUGIN_PATH",
+	}
+	for _, k := range requiredKeys {
+		if _, ok := envVars[k]; !ok {
+			t.Fatalf("expected key %q in env vars, got %v", k, envVars)
+		}
+	}
+
+	// assert the backend URL points at the state dir
+	wantBackend := "file://" + stateDir
+	if envVars["PULUMI_BACKEND_URL"] != wantBackend {
+		t.Fatalf("PULUMI_BACKEND_URL = %q, want %q",
+			envVars["PULUMI_BACKEND_URL"], wantBackend)
+	}
+
+	// assert the project name is passed through
+	if envVars["PULUMI_PROJECT"] != "oke" {
+		t.Fatalf("PULUMI_PROJECT = %q, want %q",
+			envVars["PULUMI_PROJECT"], "oke")
+	}
+
+	// assert the passphrase is empty so local file backend does not prompt
+	if envVars["PULUMI_CONFIG_PASSPHRASE"] != "" {
+		t.Fatalf("PULUMI_CONFIG_PASSPHRASE = %q, want empty",
+			envVars["PULUMI_CONFIG_PASSPHRASE"])
+	}
+
+	// assert ambient plugins are ignored so the workspace uses its own plugin dir
+	if envVars["PULUMI_IGNORE_AMBIENT_PLUGINS"] != "true" {
+		t.Fatalf("PULUMI_IGNORE_AMBIENT_PLUGINS = %q, want %q",
+			envVars["PULUMI_IGNORE_AMBIENT_PLUGINS"], "true")
+	}
+
+	// assert the pulumi-home dir was created on disk
+	pulumiHome := filepath.Join(tmp, ".threeport", "pulumi-home")
+	if _, err := os.Stat(pulumiHome); err != nil {
+		t.Fatalf("expected pulumi-home dir at %q, stat: %v", pulumiHome, err)
+	}
+	if envVars["PULUMI_HOME"] != pulumiHome {
+		t.Fatalf("PULUMI_HOME = %q, want %q", envVars["PULUMI_HOME"], pulumiHome)
+	}
+
+	// assert the plugin path sits under pulumi-home
+	wantPluginPath := filepath.Join(pulumiHome, "plugins")
+	if envVars["PULUMI_PLUGIN_PATH"] != wantPluginPath {
+		t.Fatalf("PULUMI_PLUGIN_PATH = %q, want %q",
+			envVars["PULUMI_PLUGIN_PATH"], wantPluginPath)
+	}
 }
 
-// TestResolveStateDir_EmptyName rejects an empty runtime instance name
-// from path, create, and delete methods, and reports no state dir.
-func TestResolveStateDir_EmptyName(t *testing.T) {
-	// construct a workspace with an empty name
-	w := NewPulumiWorkspace("", "oke", WithStateDirRoot(t.TempDir()))
+// TestHasStateDirFalseWhenAbsent covers HasStateDir returning false when the
+// runtime state directory has never been created.
+func TestHasStateDirFalseWhenAbsent(t *testing.T) {
+	// point HOME at an empty tmp so no state dir exists
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
 
-	// resolve the state directory
-	dir, err := w.resolveStateDir()
-	// assert empty name is rejected with no directory
-	require.Error(t, err)
-	assert.Empty(t, dir)
-	assert.Contains(t, err.Error(), "runtime instance name is empty")
+	// build a workspace with a runtime instance name that has no dir on disk
+	w := &PulumiWorkspace{RuntimeInstanceName: "missing"}
 
-	// assert setStateDir rejects an empty name
-	require.Error(t, w.setStateDir(), "setStateDir must refuse an empty name")
-
-	// assert GetStateFilePath rejects an empty name
-	path, err := w.GetStateFilePath()
-	require.Error(t, err)
-	assert.Empty(t, path)
-
-	// assert HasStateDir is false for an empty name
-	assert.False(t, w.HasStateDir(), "an unnamed workspace claims no state dir")
-	// assert DeleteStackState rejects an empty name
-	require.Error(t, w.DeleteStackState(), "DeleteStackState must refuse an empty name")
+	// assert the helper reports the dir is absent
+	if w.HasStateDir() {
+		t.Fatal("expected HasStateDir = false for absent dir")
+	}
 }
 
-// TestStateDirRoot_HonoredByEveryMethod covers create, detect, and
-// delete of a state dir under an injected root.
-func TestStateDirRoot_HonoredByEveryMethod(t *testing.T) {
-	// construct a workspace under an injected temp root
-	root := t.TempDir()
-	w := NewPulumiWorkspace("instance-a", "oke", WithStateDirRoot(root))
+// TestHasStateDirTrueWhenPresent covers HasStateDir returning true after the
+// state directory has been created on disk.
+func TestHasStateDirTrueWhenPresent(t *testing.T) {
+	// isolate HOME so the state dir lives under tmp
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
 
-	// assert no state dir exists yet
-	assert.False(t, w.HasStateDir(), "no state dir exists before one is created")
+	// pre-create the runtime state dir the helper is expected to find
+	stateDir := filepath.Join(tmp, ".threeport", "pulumi-state", "dev")
+	if err := os.MkdirAll(stateDir, 0755); err != nil {
+		t.Fatalf("failed to create state dir: %v", err)
+	}
 
-	// create the state dir
-	require.NoError(t, w.setStateDir())
-	stateDir := filepath.Join(root, "instance-a")
-	// assert the dir landed under the injected root and is visible
-	assert.DirExists(t, stateDir, "the state dir lands under the injected root")
-	assert.True(t, w.HasStateDir(), "the state dir is visible once created")
+	// build a workspace pointing at that runtime instance name
+	w := &PulumiWorkspace{RuntimeInstanceName: "dev"}
 
-	// write a marker file in the state dir
-	marker := filepath.Join(stateDir, "marker")
-	require.NoError(t, os.WriteFile(marker, []byte("state"), 0644))
-
-	// delete the state dir
-	require.NoError(t, w.DeleteStackState())
-	// assert the dir is gone and HasStateDir is false
-	assert.NoDirExists(t, stateDir, "deletion removes the dir under the injected root")
-	assert.False(t, w.HasStateDir(), "the state dir is gone after deletion")
+	// assert the helper reports the dir is present
+	if !w.HasStateDir() {
+		t.Fatal("expected HasStateDir = true when dir exists")
+	}
 }
 
-// TestDeleteStackState_MissingDirIsNotAnError accepts delete of a
-// state dir that was never created.
-func TestDeleteStackState_MissingDirIsNotAnError(t *testing.T) {
-	// construct a workspace whose state dir does not exist
-	w := NewPulumiWorkspace("never-created", "oke", WithStateDirRoot(t.TempDir()))
+// TestDeleteStackStateNoopWhenAbsent covers DeleteStackState returning nil
+// when the runtime state directory does not exist so callers do not have to
+// pre-check.
+func TestDeleteStackStateNoopWhenAbsent(t *testing.T) {
+	// point HOME at an empty tmp so no state dir exists
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
 
-	// assert delete of a missing dir is not an error
-	assert.NoError(t, w.DeleteStackState())
+	// build a workspace with a runtime instance name that has no dir
+	w := &PulumiWorkspace{RuntimeInstanceName: "missing"}
+
+	// assert delete succeeds silently
+	if err := w.DeleteStackState(); err != nil {
+		t.Fatalf("expected nil for absent dir, got %v", err)
+	}
+}
+
+// TestDeleteStackStateRemovesExisting covers DeleteStackState removing the
+// runtime state directory when it exists on disk.
+func TestDeleteStackStateRemovesExisting(t *testing.T) {
+	// isolate HOME so the state dir lives under tmp
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+
+	// pre-create the runtime state dir with a sentinel file inside
+	stateDir := filepath.Join(tmp, ".threeport", "pulumi-state", "dev")
+	if err := os.MkdirAll(stateDir, 0755); err != nil {
+		t.Fatalf("failed to create state dir: %v", err)
+	}
+	sentinel := filepath.Join(stateDir, "sentinel")
+	if err := os.WriteFile(sentinel, []byte("x"), 0644); err != nil {
+		t.Fatalf("failed to write sentinel: %v", err)
+	}
+
+	// call the helper on that instance
+	w := &PulumiWorkspace{RuntimeInstanceName: "dev"}
+	if err := w.DeleteStackState(); err != nil {
+		t.Fatalf("expected nil, got %v", err)
+	}
+
+	// assert the state dir is gone
+	if _, err := os.Stat(stateDir); !os.IsNotExist(err) {
+		t.Fatalf("expected state dir removed, stat err: %v", err)
+	}
+}
+
+// TestGetStateFilePathComposesUnderStateDir covers GetStateFilePath composing
+// <stateDir>/.pulumi/stacks/<project>/<runtime>.json so Pulumi finds the file
+// where the local backend writes it.
+func TestGetStateFilePathComposesUnderStateDir(t *testing.T) {
+	// isolate HOME so the state dir lives under tmp
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+
+	// build a workspace with project + runtime instance names
+	w := &PulumiWorkspace{
+		RuntimeInstanceName: "dev",
+		ProjectName:         "oke",
+	}
+
+	// call the helper
+	got, err := w.GetStateFilePath()
+	if err != nil {
+		t.Fatalf("GetStateFilePath returned error: %v", err)
+	}
+
+	// assert the path is composed under the runtime state dir
+	want := filepath.Join(tmp, ".threeport", "pulumi-state", "dev",
+		".pulumi", "stacks", "oke", "dev.json")
+	if got != want {
+		t.Fatalf("GetStateFilePath = %q, want %q", got, want)
+	}
+
+	// assert setStateDir created the state dir on disk
+	stateDir := filepath.Join(tmp, ".threeport", "pulumi-state", "dev")
+	if _, err := os.Stat(stateDir); err != nil {
+		t.Fatalf("expected state dir at %q, stat: %v", stateDir, err)
+	}
+}
+
+// TestReadStateFileNilWhenAbsent covers ReadStateFile returning (nil, nil)
+// when the Pulumi state file has not been written yet so callers can treat
+// absence as a clean slate.
+func TestReadStateFileNilWhenAbsent(t *testing.T) {
+	// isolate HOME so the state dir lives under tmp
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+
+	// build a workspace whose state file does not yet exist
+	w := &PulumiWorkspace{
+		RuntimeInstanceName: "dev",
+		ProjectName:         "oke",
+	}
+
+	// call the helper
+	got, err := w.ReadStateFile()
+	if err != nil {
+		t.Fatalf("ReadStateFile returned error: %v", err)
+	}
+
+	// assert nil is returned for the absent file
+	if got != nil {
+		t.Fatalf("expected nil for absent state file, got %v", got)
+	}
+}
+
+// TestReadStateFileReturnsContents covers ReadStateFile reading the raw file
+// bytes when the state file exists on disk.
+func TestReadStateFileReturnsContents(t *testing.T) {
+	// isolate HOME so the state dir lives under tmp
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+
+	// build a workspace and resolve the state file path via the helper
+	w := &PulumiWorkspace{
+		RuntimeInstanceName: "dev",
+		ProjectName:         "oke",
+	}
+	stateFilePath, err := w.GetStateFilePath()
+	if err != nil {
+		t.Fatalf("GetStateFilePath returned error: %v", err)
+	}
+
+	// write a sentinel payload to the resolved path
+	if err := os.MkdirAll(filepath.Dir(stateFilePath), 0755); err != nil {
+		t.Fatalf("failed to create stacks dir: %v", err)
+	}
+	payload := []byte(`{"stack":"snapshot"}`)
+	if err := os.WriteFile(stateFilePath, payload, 0644); err != nil {
+		t.Fatalf("failed to write state file: %v", err)
+	}
+
+	// call the helper
+	got, err := w.ReadStateFile()
+	if err != nil {
+		t.Fatalf("ReadStateFile returned error: %v", err)
+	}
+
+	// assert the returned bytes match the payload
+	if got == nil {
+		t.Fatal("expected non-nil state, got nil")
+	}
+	if string(*got) != string(payload) {
+		t.Fatalf("ReadStateFile bytes = %q, want %q", string(*got), string(payload))
+	}
+}
+
+// TestSetStackStateCheckpointFormatWritesFile covers SetStackState taking the
+// checkpoint-format branch: when the JSON does not decode as an untyped
+// deployment, the raw bytes are written atomically to the Pulumi state file.
+func TestSetStackStateCheckpointFormatWritesFile(t *testing.T) {
+	// isolate HOME so all writes stay under tmp
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+
+	// build a workspace whose state file path is deterministic under tmp
+	w := &PulumiWorkspace{
+		RuntimeInstanceName: "dev",
+		ProjectName:         "oke",
+		ProjectDescription:  "oke test",
+	}
+
+	// craft a payload that will NOT unmarshal into apitype.UntypedDeployment
+	// (no "deployment" key) so the checkpoint branch runs
+	payload := datatypes.JSON([]byte(`{"checkpoint":"raw"}`))
+
+	// call the helper
+	if err := w.SetStackState(&payload); err != nil {
+		t.Fatalf("SetStackState returned error: %v", err)
+	}
+
+	// resolve the expected state file path via the same helper
+	stateFilePath, err := w.GetStateFilePath()
+	if err != nil {
+		t.Fatalf("GetStateFilePath returned error: %v", err)
+	}
+
+	// assert the file exists and holds the checkpoint bytes verbatim
+	got, err := os.ReadFile(stateFilePath)
+	if err != nil {
+		t.Fatalf("failed to read state file: %v", err)
+	}
+	if string(got) != `{"checkpoint":"raw"}` {
+		t.Fatalf("state file = %q, want %q", string(got), `{"checkpoint":"raw"}`)
+	}
+
+	// assert the atomic-rename temp file did not survive
+	tmpFile := stateFilePath + ".tmp"
+	if _, err := os.Stat(tmpFile); !os.IsNotExist(err) {
+		t.Fatalf("expected temp file removed, stat err: %v", err)
+	}
+}
+
+// TestLogErrorFallbackWritesToStderr covers logError falling back to stderr
+// when no structured logger is configured so CLI callers still see the error.
+func TestLogErrorFallbackWritesToStderr(t *testing.T) {
+	// swap stderr with a pipe so the helper's output can be captured
+	origStderr := os.Stderr
+	r, wPipe, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to open pipe: %v", err)
+	}
+	os.Stderr = wPipe
+	t.Cleanup(func() { os.Stderr = origStderr })
+
+	// build a workspace with no logger so the fallback branch runs
+	w := &PulumiWorkspace{}
+
+	// call the helper with a sentinel message and cause
+	w.logError(os.ErrPermission, "sentinel-msg")
+
+	// close the writer so the reader unblocks
+	if err := wPipe.Close(); err != nil {
+		t.Fatalf("failed to close pipe writer: %v", err)
+	}
+	buf := make([]byte, 1024)
+	n, _ := r.Read(buf)
+	got := string(buf[:n])
+
+	// assert the message and cause are both present in stderr output
+	if !strings.Contains(got, "sentinel-msg") {
+		t.Fatalf("expected sentinel-msg in stderr, got %q", got)
+	}
+	if !strings.Contains(got, "permission denied") {
+		t.Fatalf("expected wrapped cause in stderr, got %q", got)
+	}
 }

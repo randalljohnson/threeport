@@ -518,6 +518,7 @@ func serviceAccountEmailFromCredentials(credentialsJSON string) (string, error) 
 }
 
 // RecordSuccessfulCreate records a CreateSuccessful event for the GKE instance.
+// The event is recorded once.
 // ConfirmCreation sets Reconciled=true first, so a later reconcile pass sees
 // wasReconciled and skips the generated wrapper's success emit.
 func (g *gkeLifecycle) RecordSuccessfulCreate() error {

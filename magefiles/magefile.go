@@ -8,11 +8,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-<<<<<<< HEAD
-=======
 
 	"gopkg.in/yaml.v3"
->>>>>>> 9686fad7
 
 	version "github.com/threeport/threeport/internal/version"
 	cli "github.com/threeport/threeport/pkg/cli/v0"

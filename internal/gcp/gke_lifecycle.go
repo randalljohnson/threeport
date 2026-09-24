@@ -16,7 +16,9 @@ import (
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	encryption "github.com/threeport/threeport/pkg/encryption/v0"
+	event "github.com/threeport/threeport/pkg/event/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
+	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // gkeLifecycle implements provider.InfraLifecycleProvider for GCP GKE
@@ -26,6 +28,17 @@ type gkeLifecycle struct {
 	instanceID uint
 	instance   *v0.GcpGkeKubernetesRuntimeInstance
 	log        *logr.Logger
+}
+
+var _ provider.InfraLifecycleProvider = (*gkeLifecycle)(nil)
+
+// StackKey returns the runtime-instance name so the shared state machine
+// serializes pulumi operations against one local state directory.
+func (g *gkeLifecycle) StackKey() string {
+	if g.instance == nil || g.instance.Name == nil {
+		return ""
+	}
+	return *g.instance.Name
 }
 
 // newGkeLifecycleProvider constructs an InfraLifecycleProvider for GKE.
@@ -247,6 +260,34 @@ func (g *gkeLifecycle) SetCreationFailed() error {
 	}
 	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &failedUpdate)
 	return err
+}
+
+// SetDeletionFailed marks DeletionFailed=true in the API.
+func (g *gkeLifecycle) SetDeletionFailed() error {
+	deletionFailed := true
+	failedUpdate := v0.GcpGkeKubernetesRuntimeInstance{
+		Common: v0.Common{ID: &g.instanceID},
+		Reconciliation: v0.Reconciliation{
+			DeletionFailed: &deletionFailed,
+		},
+	}
+	_, err := client.UpdateGcpGkeKubernetesRuntimeInstance(g.r.APIClient, g.r.APIServer, &failedUpdate)
+	return err
+}
+
+// RecordSuccessfulCreate records a CreateSuccessful event for provisioning
+// completion. ConfirmCreation sets Reconciled=true first, so the generated
+// reconciler's wasReconciled gate skips its own emit on redelivery.
+func (g *gkeLifecycle) RecordSuccessfulCreate() error {
+	return g.r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonCreateSuccessful),
+			Note:   util.Ptr("provisioning complete"),
+		},
+		g.instance.GetId(),
+		g.instance.GetFullyQualifiedType(),
+	)
 }
 
 // ConfirmCreation sets CreationConfirmed and Reconciled=true.

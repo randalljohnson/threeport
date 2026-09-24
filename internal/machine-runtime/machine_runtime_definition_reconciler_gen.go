@@ -154,8 +154,14 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 			}
 			machineRuntimeDefinition = latestMachineRuntimeDefinition
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if machineRuntimeDefinition.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("machine runtime definition scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if machineRuntimeDefinition.ScheduledForDeletion() != nil {
 					log.Info("machine runtime definition scheduled for deletion - skipping create")
@@ -215,7 +221,7 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.V(1).Info("create requeued for future reconciliation")
+					log.Info("create requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						machineRuntimeDefinition,
 						customRequeueDelay,
@@ -279,7 +285,7 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.V(1).Info("update requeued for future reconciliation")
+					log.Info("update requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						machineRuntimeDefinition,
 						customRequeueDelay,
@@ -357,7 +363,7 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.V(1).Info("delete requeued for future reconciliation")
+					log.Info("delete requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						machineRuntimeDefinition,
 						customRequeueDelay,
@@ -424,7 +430,7 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledMachineRuntimeDefinition := api_v0.MachineRuntimeDefinition{
 					Common:         api_v0.Common{ID: util.Ptr(machineRuntimeDefinition.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},

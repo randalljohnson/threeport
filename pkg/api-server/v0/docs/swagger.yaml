@@ -706,20 +706,18 @@ definitions:
   v0.GcpGceMachineRuntimeDefinition:
     properties:
       GcpGceMachineRuntimeInstances:
-        description: The GCP GCE machine runtime instances derived from this definition.
+        description: The GCP GCE machine runtime instances derived from this definition
         items:
           $ref: '#/definitions/v0.GcpGceMachineRuntimeInstance'
         type: array
       ImageID:
-        description: The boot image identifier.
+        description: The boot image identifier
         type: string
       MachineRuntimeDefinitionID:
-        description: |-
-          The machine runtime definition for a GCE machine in GCP. Optional because
-          imported machines may not have an associated definition.
+        description: The machine runtime definition for a GCE machine in GCP
         type: integer
       MachineType:
-        description: The GCE machine type (e.g. e2-medium).
+        description: The GCE machine type, e.g. e2-medium
         type: string
       Name:
         description: An arbitrary name for the definition.
@@ -765,16 +763,16 @@ definitions:
           complete delete reconciliation before actually deleting the object from the database.
         type: string
       ExternalIP:
-        description: The external IP surfaced after provisioning.
+        description: The external IP populated after provisioning
         type: string
       GcpGceMachineRuntimeDefinitionID:
-        description: The definition that configures this instance.
+        description: The definition that configures this instance
         type: integer
       GcpProviderID:
-        description: The GCP provider in which the VM is provisioned.
+        description: The GCP provider in which the VM is provisioned
         type: integer
       Hostname:
-        description: The hostname surfaced after provisioning.
+        description: The hostname populated after provisioning
         type: string
       InterruptReconciliation:
         description: |-
@@ -784,27 +782,36 @@ definitions:
           spinning up more infrastructure when there is a unresolved problem.
         type: boolean
       MachineRuntimeInstanceID:
-        description: The machine runtime instance associated with the GCE machine.
+        description: The machine runtime instance associated with the GCE machine
         type: integer
       Name:
         description: An arbitrary name the instance
+        type: string
+      NetworkID:
+        description: The network the VM attaches to
         type: string
       Reconciled:
         description: Indicates if object is considered to be reconciled by the object's
           controller.
         type: boolean
       Region:
-        description: The GCP region in which the VM is provisioned.
+        description: The GCP region in which the VM is provisioned
         type: string
       ResourceInventory:
         allOf:
         - $ref: '#/definitions/datatypes.JSON'
-        description: An inventory of all GCP resources backing this VM.
+        description: An inventory of all GCP resources backing this VM
       SSHKey:
-        description: The generated SSH private key, surfaced once after provisioning.
+        description: The SSH private key for the VM
         type: string
+      SSHSourceRanges:
+        description: The CIDR ranges allowed to reach the VM over SSH, empty for the
+          world-open default 0.0.0.0/0
+        items:
+          type: string
+        type: array
       SSHUser:
-        description: The SSH username provisioned on the VM.
+        description: The SSH username provisioned on the VM
         type: string
       Status:
         description: |-
@@ -812,7 +819,7 @@ definitions:
           TODO: use a custom type
         type: string
       Zone:
-        description: The GCP zone in which the VM is provisioned.
+        description: The GCP zone in which the VM is provisioned
         type: string
     required:
     - GcpGceMachineRuntimeDefinitionID

@@ -18179,22 +18179,22 @@ const docTemplate = `{
             ],
             "properties": {
                 "GcpGceMachineRuntimeInstances": {
-                    "description": "The GCP GCE machine runtime instances derived from this definition.",
+                    "description": "The GCP GCE machine runtime instances derived from this definition",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v0.GcpGceMachineRuntimeInstance"
                     }
                 },
                 "ImageID": {
-                    "description": "The boot image identifier.",
+                    "description": "The boot image identifier",
                     "type": "string"
                 },
                 "MachineRuntimeDefinitionID": {
-                    "description": "The machine runtime definition for a GCE machine in GCP. Optional because\nimported machines may not have an associated definition.",
+                    "description": "The machine runtime definition for a GCE machine in GCP",
                     "type": "integer"
                 },
                 "MachineType": {
-                    "description": "The GCE machine type (e.g. e2-medium).",
+                    "description": "The GCE machine type, e.g. e2-medium",
                     "type": "string"
                 },
                 "Name": {
@@ -18249,19 +18249,19 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "ExternalIP": {
-                    "description": "The external IP surfaced after provisioning.",
+                    "description": "The external IP populated after provisioning",
                     "type": "string"
                 },
                 "GcpGceMachineRuntimeDefinitionID": {
-                    "description": "The definition that configures this instance.",
+                    "description": "The definition that configures this instance",
                     "type": "integer"
                 },
                 "GcpProviderID": {
-                    "description": "The GCP provider in which the VM is provisioned.",
+                    "description": "The GCP provider in which the VM is provisioned",
                     "type": "integer"
                 },
                 "Hostname": {
-                    "description": "The hostname surfaced after provisioning.",
+                    "description": "The hostname populated after provisioning",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
@@ -18269,11 +18269,15 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "MachineRuntimeInstanceID": {
-                    "description": "The machine runtime instance associated with the GCE machine.",
+                    "description": "The machine runtime instance associated with the GCE machine",
                     "type": "integer"
                 },
                 "Name": {
                     "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "NetworkID": {
+                    "description": "The network the VM attaches to",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -18281,11 +18285,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "Region": {
-                    "description": "The GCP region in which the VM is provisioned.",
+                    "description": "The GCP region in which the VM is provisioned",
                     "type": "string"
                 },
                 "ResourceInventory": {
-                    "description": "An inventory of all GCP resources backing this VM.",
+                    "description": "An inventory of all GCP resources backing this VM",
                     "allOf": [
                         {
                             "$ref": "#/definitions/datatypes.JSON"
@@ -18293,11 +18297,18 @@ const docTemplate = `{
                     ]
                 },
                 "SSHKey": {
-                    "description": "The generated SSH private key, surfaced once after provisioning.",
+                    "description": "The SSH private key for the VM",
                     "type": "string"
                 },
+                "SSHSourceRanges": {
+                    "description": "The CIDR ranges allowed to reach the VM over SSH, empty for the world-open default 0.0.0.0/0",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "SSHUser": {
-                    "description": "The SSH username provisioned on the VM.",
+                    "description": "The SSH username provisioned on the VM",
                     "type": "string"
                 },
                 "Status": {
@@ -18305,7 +18316,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Zone": {
-                    "description": "The GCP zone in which the VM is provisioned.",
+                    "description": "The GCP zone in which the VM is provisioned",
                     "type": "string"
                 }
             }

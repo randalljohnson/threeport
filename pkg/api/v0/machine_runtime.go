@@ -1,32 +1,10 @@
 package v0
 
-import "gorm.io/datatypes"
-
 // MachineRuntimeDefinition is the configuration for a machine runtime.  It
 // serves as a template for provisioning machine runtime instances.
 type MachineRuntimeDefinition struct {
-	Common         `swaggerignore:"true" mapstructure:",squash"`
-	Definition     `mapstructure:",squash"`
-	Reconciliation `mapstructure:",squash"`
-
-	// The infrastructure provider that provisions machines from this definition
-	InfraProvider *string `json:",omitempty" validate:"optional"`
-
-	// The provider account name that selects which account the machine is
-	// provisioned on, empty falling back to the default provider account
-	InfraProviderAccountName *string `json:",omitempty" validate:"optional"`
-
-	// The compute capacity of the machine
-	MachineSize *string `json:",omitempty" validate:"optional" gorm:"default:Medium"`
-
-	// The CPU-to-memory ratio of the machine
-	MachineProfile *string `json:",omitempty" validate:"optional" gorm:"default:Balanced"`
-
-	// The provider-specific machine type
-	MachineType *string `json:",omitempty" validate:"optional"`
-
-	// The provider image identifier used to boot the machine
-	ImageID *string `json:",omitempty" validate:"optional"`
+	Common     `swaggerignore:"true" mapstructure:",squash"`
+	Definition `mapstructure:",squash"`
 
 	// The associated machine runtime instances that are deployed from this
 	// definition.
@@ -39,26 +17,11 @@ type MachineRuntimeInstance struct {
 	Instance       `mapstructure:",squash"`
 	Reconciliation `mapstructure:",squash"`
 
-	// The hostname or IP address used to reach the machine. Optional at
-	// create so the abstract instance can exist before the machine is
-	// provisioned; populated once the machine is reachable.
-	//
-	// idx_machine_runtime_instance_hostname is a partial unique index that
-	// allows at most one live instance per hostname, so a single machine
-	// cannot be represented by two records that each drive their own
-	// reconciliation against it. The deleted_at predicate keeps
-	// soft-deleted rows out of the unique slot, so the hostname of a
-	// deleted instance is available to a new one right away. CockroachDB
-	// treats every NULL as distinct in a unique index, so any number of
-	// instances may hold no hostname while they wait on provisioning.
-	// An empty string is excluded the same way, because it is not a
-	// hostname either.
-	Hostname *string `json:",omitempty" validate:"optional" gorm:"uniqueIndex:idx_machine_runtime_instance_hostname,where:deleted_at IS NULL AND hostname IS NOT NULL AND hostname <> ''"`
+	// The hostname or IP address used to reach the machine.
+	Hostname *string `validate:"required" gorm:"not null"`
 
-	// The SSH username for authenticating to the machine. Optional at create
-	// for the same reason as the hostname; populated once the machine is
-	// provisioned.
-	SSHUser *string `json:",omitempty" validate:"optional"`
+	// The SSH username for authenticating to the machine.
+	SSHUser *string `validate:"required" gorm:"not null"`
 
 	// The SSH private key for authenticating to the machine.
 	SSHKey *string `validate:"optional" encrypt:"true"`
@@ -72,21 +35,6 @@ type MachineRuntimeInstance struct {
 	// The remote machine's SSH public host key, used to verify identity on
 	// connection. If not provided, captured on first connection.
 	HostKey *string `validate:"optional"`
-
-	// The provider region in which the machine is provisioned
-	Region *string `json:",omitempty" validate:"optional"`
-
-	// The abstract threeport location for the machine
-	Location *string `json:",omitempty" validate:"optional"`
-
-	// The provider network identifier the machine attaches to.
-	NetworkID *string `json:",omitempty" validate:"optional"`
-
-	// The provider subnet identifier the machine attaches to
-	SubnetID *string `json:",omitempty" gorm:"type:text" validate:"optional"`
-
-	// An inventory of all provider resources backing this machine
-	ResourceInventory *datatypes.JSON `json:",omitempty" validate:"optional"`
 
 	// The machine runtime definition for this instance.  Optional because
 	// imported machines may not have an associated definition.

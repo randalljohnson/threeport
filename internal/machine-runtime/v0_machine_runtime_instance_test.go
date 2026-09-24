@@ -588,9 +588,13 @@ func TestMachineRuntimeInstanceCreated_SSHConnectTimeout_ReturnsErrorWithDelay(t
 	// assert deadline exceeded with retry delay before the hold ends
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	var errWithEvent *tp_errors.ErrWithEvent
+	require.ErrorAs(t, err, &errWithEvent)
+	require.NotNil(t, errWithEvent.Event.Reason)
+	assert.Equal(t, "SSHConnectFailed", *errWithEvent.Event.Reason)
 	assert.Equal(t, int64(11), delay)
 	assert.Less(t, elapsed, 5*time.Second, "timeout must fire well before the held handshake would release")
-	assert.Equal(t, []string{"SSHConnectFailed"}, recorder.GetReasons())
+	assert.Empty(t, recorder.GetReasons())
 }
 
 // TestMachineRuntimeInstanceCreated_ConcurrentReconciles_NoRace covers concurrent

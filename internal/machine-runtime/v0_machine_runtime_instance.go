@@ -22,6 +22,32 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
+// sshFailureDelay is the requeue delay for a connect error. A canceled
+// context and a deadline carry their own delays. Any other connect error
+// returns 0 so the reconciler wrapper owns the retry.
+func sshFailureDelay(err error) int64 {
+	if errors.Is(err, context.Canceled) {
+		return 5
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return 9
+	}
+	return 0
+}
+
+// sshPingDelay is the requeue delay for a ping error. A canceled context and
+// a deadline match the connect delays. A ping that fails for another reason
+// uses the configurable ping delay.
+func sshPingDelay(err error) int64 {
+	if errors.Is(err, context.Canceled) {
+		return 5
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return 9
+	}
+	return 7
+}
+
 // unpopulatedRequeueDelaySeconds is the requeue delay (in seconds) returned
 // when the instance has no hostname yet, so the reconciler checks back
 // without erroring while the machine is still being provisioned.
@@ -118,26 +144,6 @@ func v0MachineRuntimeInstanceCreated(
 		parentDef = def
 	}
 
-	// emit a lifecycle marker so operators can see reconcile has begun;
-	// dedup collapses repeated emits across requeues into a single row
-	var createExtras []string
-	if parentDef != nil && parentDef.InfraProvider != nil && *parentDef.InfraProvider != "" {
-		if marriedKind := v0.MachineRuntimeMarriedKind(*parentDef.InfraProvider, "instance"); marriedKind != "" {
-			createExtras = append(createExtras, marriedKind)
-		}
-	}
-	if recordErr := r.EventsRecorder.RecordEvent(
-		&v0.Event{
-			Type:   util.Ptr(event.TypeNormal),
-			Reason: util.Ptr(event.ReasonCreateInProgress),
-			Note:   util.Ptr(event.CreateNote(machineRuntimeInstance, createExtras...)),
-		},
-		*machineRuntimeInstance.ID,
-		machineRuntimeInstance.GetFullyQualifiedType(),
-	); recordErr != nil {
-		log.Error(recordErr, "failed to record CreateInProgress event")
-	}
-
 	// when the instance is provider-provisioned and has no hostname yet, create
 	// the married provider instance and requeue so the ssh path below waits for
 	// the provider reconciler to write back the hostname
@@ -166,7 +172,7 @@ func v0MachineRuntimeInstanceCreated(
 	if err != nil {
 		// retry: a credential or host may be fixed without changing this object.
 		note := fmt.Sprintf("failed to connect to machine runtime instance via ssh: %s", err)
-		return sshRetryDelaySeconds, &tp_errors.ErrWithEvent{
+		return sshFailureDelay(err), &tp_errors.ErrWithEvent{
 			Message: note,
 			Event: v0.Event{
 				Type:   util.Ptr(event.TypeWarning),
@@ -182,7 +188,7 @@ func v0MachineRuntimeInstanceCreated(
 	if err := pingWithContext(ctx, sshClient); err != nil {
 		// retry: the host may become reachable without changing this object.
 		note := fmt.Sprintf("failed to ping machine runtime instance: %s", err)
-		return sshRetryDelaySeconds, &tp_errors.ErrWithEvent{
+		return sshPingDelay(err), &tp_errors.ErrWithEvent{
 			Message: note,
 			Event: v0.Event{
 				Type:   util.Ptr(event.TypeWarning),

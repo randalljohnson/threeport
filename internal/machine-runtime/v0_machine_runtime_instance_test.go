@@ -23,7 +23,10 @@ import (
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+<<<<<<< HEAD
 	event "github.com/threeport/threeport/pkg/event/v0"
+=======
+>>>>>>> 9686fad7
 	tp_errors "github.com/threeport/threeport/pkg/errors/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
@@ -79,6 +82,7 @@ func TestMachineRuntimeInstanceCreated_HappyPath(t *testing.T) {
 
 	// check the handler records no event
 	assert.Empty(t, recorder.GetReasons(), "reconciler emits no Normal event on the success path; the wrapper covers the outcome and reachability is a log line")
+<<<<<<< HEAD
 }
 
 // TestMachineRuntimeInstanceCreated_NoHostname_RequeuesWithoutDialing covers
@@ -144,6 +148,10 @@ func TestMachineRuntimeInstanceCreated_NoHostname_RequeuesWithoutDialing(t *test
 // TestMachineRuntimeInstanceCreated_HostKeyCaptured covers the first-connect
 // path: HostKey is nil, so GetClient captures the server's key, the
 // reconciler PATCHes the MRI to persist it, and emits HostKeyCaptured +
+=======
+}
+
+>>>>>>> 9686fad7
 // TestMachineRuntimeInstanceCreated_HostKeyCaptured covers first connect
 // with no stored host key and persists the captured key.
 func TestMachineRuntimeInstanceCreated_HostKeyCaptured(t *testing.T) {
@@ -272,6 +280,7 @@ func TestMachineRuntimeInstanceCreated_HostKeyMismatch(t *testing.T) {
 
 	// check the handler records no event
 	assert.Empty(t, recorder.GetReasons(), "failure path should not call RecordEvent directly; the wrapper substitutes the event")
+<<<<<<< HEAD
 }
 
 // overrideUnpopulatedRequeueDelay sets unpopulatedRequeueDelaySeconds for one test.
@@ -786,6 +795,8 @@ func TestMachineRuntimeInstanceCreated_ManyConcurrent_NoConnLeak(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return runtime.NumGoroutine() <= baseline+10
 	}, 10*time.Second, 20*time.Millisecond, "goroutines must return to baseline after the burst")
+=======
+>>>>>>> 9686fad7
 }
 
 // hostKeyBase64 returns the base64-encoded marshalled public key matching

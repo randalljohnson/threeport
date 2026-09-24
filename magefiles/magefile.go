@@ -8,6 +8,11 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+<<<<<<< HEAD
+=======
+
+	"gopkg.in/yaml.v3"
+>>>>>>> 9686fad7
 
 	version "github.com/threeport/threeport/internal/version"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
@@ -438,6 +443,7 @@ func (Test) ModuleGen() error {
 		return fmt.Errorf("failed to type-check the generated module: %w", err)
 	}
 
+<<<<<<< HEAD
 	// run the generated plugin so cobra init panics on a redefined flag
 	if err := util.RunCommandStreamOutputInDir(
 		moduleTestPath,
@@ -446,6 +452,8 @@ func (Test) ModuleGen() error {
 		return fmt.Errorf("failed to run the generated module plugin: %w", err)
 	}
 
+=======
+>>>>>>> 9686fad7
 	// run the tests copied into the generated module. Type-checking does not
 	// reach what they cover: the generated config abstractions have failed at
 	// run time in ways that compile perfectly well.

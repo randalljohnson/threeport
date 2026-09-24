@@ -10,7 +10,13 @@ name: Release
 
 on:
   push:
+<<<<<<< HEAD
     tags: ['v*']
+=======
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+>>>>>>> 9686fad7
 
 permissions:
   contents: write

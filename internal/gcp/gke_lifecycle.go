@@ -15,10 +15,12 @@ import (
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
+<<<<<<< HEAD
 	encryption "github.com/threeport/threeport/pkg/encryption/v0"
 	event "github.com/threeport/threeport/pkg/event/v0"
+=======
+>>>>>>> 9686fad7
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 // gkeLifecycle implements provider.InfraLifecycleProvider for GCP GKE
@@ -262,6 +264,7 @@ func (g *gkeLifecycle) SetCreationFailed() error {
 	return err
 }
 
+<<<<<<< HEAD
 // SetDeletionFailed marks DeletionFailed=true in the API.
 func (g *gkeLifecycle) SetDeletionFailed() error {
 	deletionFailed := true
@@ -290,6 +293,8 @@ func (g *gkeLifecycle) RecordSuccessfulCreate() error {
 	)
 }
 
+=======
+>>>>>>> 9686fad7
 // ConfirmCreation sets CreationConfirmed and Reconciled=true.
 func (g *gkeLifecycle) ConfirmCreation() error {
 	reconciled := true
@@ -433,12 +438,17 @@ func buildGkeInfra(
 	}
 
 	if gcpProvider.ServiceAccountCredentials != nil && *gcpProvider.ServiceAccountCredentials != "" {
+<<<<<<< HEAD
 		decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
 		}
 		infraGKE.ServiceAccountCredentials = decryptedCredentials
 		email, err := serviceAccountEmailFromCredentials(decryptedCredentials)
+=======
+		infraGKE.ServiceAccountCredentials = *gcpProvider.ServiceAccountCredentials
+		email, err := serviceAccountEmailFromCredentials(infraGKE.ServiceAccountCredentials)
+>>>>>>> 9686fad7
 		if err != nil {
 			return nil, fmt.Errorf("failed to extract service account email: %w", err)
 		}

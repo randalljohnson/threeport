@@ -34,7 +34,13 @@ func dockerClient() (*client.Client, error) {
 	return client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 }
 
+<<<<<<< HEAD
 // CreateLocalRegistry starts the local registry container, reusing a leftover one when it is already present.
+=======
+// CreateLocalRegistry starts a Docker container to serve as a local container
+// registry.  If a local registry already exists with the <registryName> name,
+// it will return without error
+>>>>>>> 9686fad7
 func CreateLocalRegistry() error {
 	ctx := context.Background()
 	cli, err := dockerClient()

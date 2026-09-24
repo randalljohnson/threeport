@@ -103,6 +103,7 @@ func v0MachineRuntimeInstanceCreated(
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
+<<<<<<< HEAD
 	// load the parent definition early so the emit can name the married kind
 	// and the provider create path below can reuse it without a second lookup
 	var parentDef *v0.MachineRuntimeDefinition
@@ -137,6 +138,62 @@ func v0MachineRuntimeInstanceCreated(
 	); recordErr != nil {
 		log.Error(recordErr, "failed to record CreateInProgress event")
 	}
+=======
+	// establish an ssh connection to the machine
+	sshClient, capturedHostKey, err := machine.GetClient(machineRuntimeInstance, r.EncryptionKey)
+	if err != nil {
+		// retry: a credential or host may be fixed without changing this object.
+		note := fmt.Sprintf("failed to connect to machine runtime instance via ssh: %s", err)
+		return 30, &tp_errors.ErrWithEvent{
+			Message: note,
+			Event: v0.Event{
+				Type:   util.Ptr(event.TypeWarning),
+				Reason: util.Ptr("SSHConnectFailed"),
+				Note:   util.Ptr(note),
+			},
+		}
+	}
+	defer sshClient.Close()
+
+	// save captured host key if this is the first connection; set
+	// Reconciled=true on the update so the resulting update
+	// notification does not trigger another reconciliation pass
+	if capturedHostKey != "" {
+		if _, err := client.UpdateMachineRuntimeInstance(r.APIClient, r.APIServer, &v0.MachineRuntimeInstance{
+			Common:         v0.Common{ID: machineRuntimeInstance.ID},
+			Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(true)},
+			HostKey:        &capturedHostKey,
+		}); err != nil {
+			return controller.RetryOnNetworkErr(err, "failed to save captured host key")
+		}
+		log.Info(
+			"captured ssh host key",
+			"machineRuntimeInstance", *machineRuntimeInstance.Name,
+			"id", *machineRuntimeInstance.ID,
+		)
+	}
+
+	// verify the connection is usable
+	if err := machine.Ping(sshClient); err != nil {
+		// retry: the host may become reachable without changing this object.
+		note := fmt.Sprintf("failed to ping machine runtime instance: %s", err)
+		return 30, &tp_errors.ErrWithEvent{
+			Message: note,
+			Event: v0.Event{
+				Type:   util.Ptr(event.TypeWarning),
+				Reason: util.Ptr("SSHPingFailed"),
+				Note:   util.Ptr(note),
+			},
+		}
+	}
+
+	// log successful reachability
+	log.Info(
+		"machine runtime instance is reachable via ssh",
+		"machineRuntimeInstance", *machineRuntimeInstance.Name,
+		"id", *machineRuntimeInstance.ID,
+	)
+>>>>>>> 9686fad7
 
 	// when the instance is provider-provisioned and has no hostname yet, create
 	// the married provider instance and requeue so the ssh path below waits for

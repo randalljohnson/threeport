@@ -257,6 +257,7 @@ func init() {
 		&cliArgs.KindPortMappings,
 		"kind-port-mappings", []string{}, "Port mappings for kind provider. Format: <container-port>:<host-port>,<container-port>:<host-port>,...",
 	)
+<<<<<<< HEAD
 	UpCmd.Flags().StringVar(
 		&upApis,
 		"apis", "", "Optional. Comma-separated list of sdk-config api object group names (e.g. kubernetes_workload,gateway) to limit the install to those apis' controllers. Use \"none\" to install zero optional controllers. Defaults to empty, which installs all controllers.",
@@ -267,6 +268,8 @@ func init() {
 		threeport.DefaultConcurrentReconciles,
 		"Number of concurrent reconcile workers per object type.",
 	)
+=======
+>>>>>>> 9686fad7
 	UpCmd.Flags().IntVar(
 		&cliArgs.ApiPort,
 		"api-port", 0, fmt.Sprintf(

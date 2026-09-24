@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -119,9 +120,19 @@ func main() {
 		*msgBrokerHost,
 		*msgBrokerPort,
 	)
+
+	// the broker address without the credentials, for logging. The
+	// connection string carries the broker password, and a controller's
+	// container logs are readable by anyone who can read pods in the
+	// control plane namespace.
+	natsEndpoint := fmt.Sprintf(
+		"%s:%s",
+		*msgBrokerHost,
+		*msgBrokerPort,
+	)
 	nc, err := natsgo.Connect(natsConn)
 	if err != nil {
-		log.Error(err, "failed to connect to NATS message broker", "NATSConnection", natsConn)
+		log.Error(err, "failed to connect to NATS message broker", "NATSEndpoint", natsEndpoint)
 		os.Exit(1)
 	}
 
@@ -209,15 +220,21 @@ func main() {
 		ReconcileFunc:        observability.LoggingInstanceReconciler,
 	})
 
+	// readyFlags tracks whether each reconciler's JetStream subscription is alive
+	var readyFlags []*atomic.Bool
 	for _, r := range reconcilerConfigs {
 
 		// create JetStream consumer
 		consumer := r.Name + "Consumer"
-		js.AddConsumer(notif.ObservabilityStreamName, &natsgo.ConsumerConfig{
+		_, err = js.AddConsumer(notif.ObservabilityStreamName, &natsgo.ConsumerConfig{
 			AckPolicy:     natsgo.AckExplicitPolicy,
 			Durable:       consumer,
 			FilterSubject: r.NotifSubject,
 		})
+		if err != nil {
+			log.Error(err, "failed to create JetStream consumer for reconciler notifications", "reconcilerName", r.Name)
+			os.Exit(1)
+		}
 
 		// create durable pull subscription
 		sub, err := js.PullSubscribe(r.NotifSubject, consumer, natsgo.BindStream(notif.ObservabilityStreamName))
@@ -225,6 +242,11 @@ func main() {
 			log.Error(err, "failed to create pull subscription for reconciler notifications", "reconcilerName", r.Name)
 			os.Exit(1)
 		}
+
+		// track subscription readiness for health checks
+		ready := &atomic.Bool{}
+		ready.Store(true)
+		readyFlags = append(readyFlags, ready)
 
 		// create exit channel
 		shutdownChan := make(chan bool, 1)
@@ -245,6 +267,7 @@ func main() {
 			KeyValue:         kv,
 			Log:              &log,
 			Name:             r.Name,
+			Ready:            ready,
 			Shutdown:         shutdownChan,
 			ShutdownWait:     &shutdownWait,
 			Sub:              sub,
@@ -258,7 +281,7 @@ func main() {
 		"observability controller started",
 		"version", version.GetVersion(),
 		"controllerID", controllerID.String(),
-		"NATSConnection", natsConn,
+		"NATSEndpoint", natsEndpoint,
 		"lockBucketName", observability.LockBucketName,
 	)
 
@@ -283,6 +306,13 @@ func main() {
 
 	// set up health check endpoint
 	http.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
+		for _, rf := range readyFlags {
+			if !rf.Load() {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				w.Write([]byte("subscription not ready"))
+				return
+			}
+		}
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})

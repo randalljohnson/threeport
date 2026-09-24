@@ -196,6 +196,8 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					),
 				),
 
+				GenControllerStartupHook(objGroup),
+
 				Line().Comment("wait for API server to be reachable before proceeding"),
 				Qual(
 					"github.com/threeport/threeport/pkg/util/v0",
@@ -214,6 +216,16 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					Line().Op("*").Id("msgBrokerPort"),
 					Line(),
 				),
+				Line().Comment("the broker address without the credentials, for logging. The"),
+				Comment("connection string carries the broker password, and a controller's"),
+				Comment("container logs are readable by anyone who can read pods in the"),
+				Comment("control plane namespace."),
+				Id("natsEndpoint").Op(":=").Qual("fmt", "Sprintf").Call(
+					Line().Lit("%s:%s"),
+					Line().Op("*").Id("msgBrokerHost"),
+					Line().Op("*").Id("msgBrokerPort"),
+					Line(),
+				),
 				List(Id("nc"), Id("err")).Op(":=").Qual(
 					"github.com/nats-io/nats.go",
 					"Connect",
@@ -222,8 +234,8 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 					Id("log").Dot("Error").Call(
 						Err(),
 						Lit("failed to connect to NATS message broker"),
-						Lit("NATSConnection"),
-						Id("natsConn"),
+						Lit("NATSEndpoint"),
+						Id("natsEndpoint"),
 					),
 					Qual("os", "Exit").Call(Lit(1)),
 				),
@@ -320,6 +332,9 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 				),
 				reconcilerConfigs,
 
+				Line().Comment("readyFlags tracks whether each reconciler's JetStream subscription is alive"),
+				Var().Id("readyFlags").Index().Op("*").Qual("sync/atomic", "Bool"),
+
 				For(
 					Id("_").Op(",").Id("r").Op(":=").Range().Id("reconcilerConfigs"),
 				).BlockFunc(func(g *jen.Group) {
@@ -335,6 +350,7 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						Id("APIClient"):        Id("apiClient"),
 						Id("JetStreamContext"): Id("js"),
 						Id("Sub"):              Id("sub"),
+						Id("Ready"):            Id("ready"),
 						Id("KeyValue"):         Id("kv"),
 						Id("ControllerID"):     Id("controllerID"),
 						Id("Log"):              Op("&").Id("log"),
@@ -365,7 +381,7 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						"GetVersion",
 					).Call(),
 					Line().Lit("controllerID"), Id("controllerID").Dot("String").Call(),
-					Line().Lit("NATSConnection"), Id("natsConn"),
+					Line().Lit("NATSEndpoint"), Id("natsEndpoint"),
 					Line().Lit("lockBucketName"), Qual(
 						fmt.Sprintf(
 							"%s/internal/%s",
@@ -409,6 +425,15 @@ func GenControllerMain(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 						Id("w").Qual("net/http", "ResponseWriter"),
 						Id("r").Op("*").Qual("net/http", "Request"),
 					).Block(
+						For(
+							Id("_").Op(",").Id("rf").Op(":=").Range().Id("readyFlags"),
+						).Block(
+							If(Op("!").Id("rf").Dot("Load").Call()).Block(
+								Id("w").Dot("WriteHeader").Call(Qual("net/http", "StatusServiceUnavailable")),
+								Id("w").Dot("Write").Call(Index().Byte().Call(Lit("subscription not ready"))),
+								Return(),
+							),
+						),
 						Id("w").Dot("WriteHeader").Call(Qual("net/http", "StatusOK")),
 						Id("w").Dot("Write").Call(Index().Byte().Call(Lit("OK"))),
 					),
@@ -476,7 +501,7 @@ func ConfigurePullSubscription(
 		consumer = Id("consumer")
 		g.Line().Comment("create JetStream consumer")
 		g.Id("consumer").Op(":=").Id("r").Dot("Name").Op("+").Lit("Consumer")
-		g.Id("js").Dot("AddConsumer").Call(Qual(
+		g.Id("_").Op(",").Id("err").Op("=").Id("js").Dot("AddConsumer").Call(Qual(
 			fmt.Sprintf(
 				"%s/internal/%s/notif",
 				modulePath,
@@ -494,6 +519,15 @@ func ConfigurePullSubscription(
 			),
 			Id("FilterSubject"): Id("r").Dot("NotifSubject"),
 		}),
+		)
+		g.If(Id("err").Op("!=").Nil()).Block(
+			Id("log").Dot("Error").Call(
+				Id("err"),
+				Lit("failed to create JetStream consumer for reconciler notifications"),
+				Lit("reconcilerName"),
+				Id("r").Dot("Name"),
+			),
+			Qual("os", "Exit").Call(Lit(1)),
 		)
 	}
 
@@ -521,5 +555,27 @@ func ConfigurePullSubscription(
 			Id("r").Dot("Name"),
 		),
 		Qual("os", "Exit").Call(Lit(1)),
+	)
+
+	g.Line().Comment("track subscription readiness for health checks")
+	g.Id("ready").Op(":=").Op("&").Qual("sync/atomic", "Bool").Values()
+	g.Id("ready").Dot("Store").Call(Lit(true))
+	g.Id("readyFlags").Op("=").Append(Id("readyFlags"), Id("ready"))
+}
+
+// GenControllerStartupHook generates a call to the object group's configured
+// ControllerStartupHook, if any, logging (but not failing on) an error.
+// Returns an empty statement if no hook is configured for this object group.
+func GenControllerStartupHook(objGroup gen.ApiObjectGroup) jen.Code {
+	hook := objGroup.ControllerStartupHook
+	if hook == nil {
+		return Null()
+	}
+
+	return If(
+		Err().Op(":=").Qual(hook.PackagePath, hook.FuncName).Call(),
+		Err().Op("!=").Nil(),
+	).Block(
+		Id("log").Dot("Error").Call(Id("err"), Lit(hook.ErrorMessage)),
 	)
 }

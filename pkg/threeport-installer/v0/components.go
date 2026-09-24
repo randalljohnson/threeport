@@ -66,10 +66,12 @@ func (cpi *ControlPlaneInstaller) InstallComputeSpaceControlPlaneComponents(
 
 // InstallComputeSpaceWorkloadControllerRBAC grants the control-plane workload
 // controllers cluster-admin on a managed (compute space) GKE cluster.  The
-// helm-workload-controller and kubernetes-workload-controller deploy arbitrary
-// resources to managed clusters and connect to them as their own GKE Workload
-// Identity principals (via per-request ADC tokens), so the managed cluster must
-// authorize those principals directly.  This mirrors the bindings created on the
+// helm-workload-controller, kubernetes-workload-controller, and
+// control-plane-controller (deploying a child control plane's own workloads
+// onto the managed cluster) all deploy arbitrary resources to managed
+// clusters and connect to them as their own GKE Workload Identity principals
+// (via per-request ADC tokens), so the managed cluster must authorize those
+// principals directly.  This mirrors the bindings created on the
 // control-plane cluster in InstallThreeportControllers.
 //
 // Only the kind:User Workload Identity subject is bound: on a remote managed
@@ -85,6 +87,7 @@ func (cpi *ControlPlaneInstaller) InstallComputeSpaceWorkloadControllerRBAC(
 	workloadControllers := []string{
 		ThreeportHelmWorkloadControllerName,
 		ThreeportKubernetesWorkloadControllerName,
+		ThreeportControlPlaneControllerName,
 	}
 
 	for _, controllerName := range workloadControllers {
@@ -103,7 +106,7 @@ func (cpi *ControlPlaneInstaller) InstallComputeSpaceWorkloadControllerRBAC(
 				"subjects": []interface{}{
 					map[string]interface{}{
 						"kind":     "User",
-						"name":     fmt.Sprintf("serviceAccount:%s.svc.id.goog[%s/%s]", gcpProjectID, ControlPlaneNamespace, controllerName),
+						"name":     fmt.Sprintf("serviceAccount:%s.svc.id.goog[%s/%s]", gcpProjectID, cpi.Opts.Namespace, controllerName),
 						"apiGroup": "rbac.authorization.k8s.io",
 					},
 				},
@@ -528,9 +531,9 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControllers(
 		// WI principal to ensure RBAC applies to the actual pod identity.
 		if cpi.Opts.InfraProvider == v0.KubernetesRuntimeInfraProviderGKE && cpi.Opts.GcpProjectId != "" {
 			threeportWorkloadSubjects = append(threeportWorkloadSubjects, map[string]interface{}{
-				"kind":      "User",
-				"name":      fmt.Sprintf("serviceAccount:%s.svc.id.goog[%s/%s]", cpi.Opts.GcpProjectId, cpi.Opts.Namespace, controller.ServiceAccountName),
-				"apiGroup":  "rbac.authorization.k8s.io",
+				"kind":     "User",
+				"name":     fmt.Sprintf("serviceAccount:%s.svc.id.goog[%s/%s]", cpi.Opts.GcpProjectId, cpi.Opts.Namespace, controller.ServiceAccountName),
+				"apiGroup": "rbac.authorization.k8s.io",
 			})
 		}
 		threeportWorkloadClusterRoleBinding := &unstructured.Unstructured{
@@ -538,7 +541,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControllers(
 				"apiVersion": "rbac.authorization.k8s.io/v1",
 				"kind":       "ClusterRoleBinding",
 				"metadata": map[string]interface{}{
-					"name": fmt.Sprintf("%s-threeportworkloads", controller.ServiceAccountName),
+					"name": fmt.Sprintf("%s-%s-threeportworkloads", cpi.Opts.Namespace, controller.ServiceAccountName),
 				},
 				"roleRef": map[string]interface{}{
 					"apiGroup": "rbac.authorization.k8s.io",
@@ -555,13 +558,16 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControllers(
 		// The helm-workload-controller and kubernetes-workload-controller deploy
 		// arbitrary resources — Helm charts or raw manifests — that can define any
 		// Kubernetes resource type in any namespace (including creating
-		// namespaces). cluster-admin is required so they can manage the full
-		// lifecycle of those resources. On GKE with Workload Identity, each
-		// controller authenticates to the target cluster as its own WI principal
-		// (via per-request ADC tokens), so both the ServiceAccount and User
-		// subjects are bound.
+		// namespaces). The control-plane-controller similarly creates namespaces,
+		// secrets, service accounts, and StatefulSets/Deployments directly when
+		// bootstrapping a new child control plane. cluster-admin is required so
+		// they can manage the full lifecycle of those resources. On GKE with
+		// Workload Identity, each controller authenticates to the target cluster
+		// as its own WI principal (via per-request ADC tokens), so both the
+		// ServiceAccount and User subjects are bound.
 		if controller.Name == ThreeportHelmWorkloadControllerName ||
-			controller.Name == ThreeportKubernetesWorkloadControllerName {
+			controller.Name == ThreeportKubernetesWorkloadControllerName ||
+			controller.Name == ThreeportControlPlaneControllerName {
 			clusterAdminSubjects := []interface{}{
 				map[string]interface{}{
 					"kind":      "ServiceAccount",
@@ -581,7 +587,7 @@ func (cpi *ControlPlaneInstaller) InstallThreeportControllers(
 					"apiVersion": "rbac.authorization.k8s.io/v1",
 					"kind":       "ClusterRoleBinding",
 					"metadata": map[string]interface{}{
-						"name": fmt.Sprintf("%s-cluster-admin", controller.ServiceAccountName),
+						"name": fmt.Sprintf("%s-%s-cluster-admin", cpi.Opts.Namespace, controller.ServiceAccountName),
 					},
 					"roleRef": map[string]interface{}{
 						"apiGroup": "rbac.authorization.k8s.io",
@@ -1553,6 +1559,9 @@ func (cpi *ControlPlaneInstaller) getAPIArgs() []interface{} {
 		if !cpi.Opts.AuthEnabled {
 			args = append(args, "-auth-enabled=false")
 		}
+		if cpi.Opts.PaginationMode != nil && *cpi.Opts.PaginationMode != "" {
+			args = append(args, fmt.Sprintf("-pagination-mode=%s", *cpi.Opts.PaginationMode))
+		}
 		return args
 	default:
 		args := []interface{}{
@@ -1562,6 +1571,9 @@ func (cpi *ControlPlaneInstaller) getAPIArgs() []interface{} {
 		// disable auth if authConfig is not set in tptctl
 		if !cpi.Opts.AuthEnabled {
 			args = append(args, "-auth-enabled=false")
+		}
+		if cpi.Opts.PaginationMode != nil && *cpi.Opts.PaginationMode != "" {
+			args = append(args, fmt.Sprintf("-pagination-mode=%s", *cpi.Opts.PaginationMode))
 		}
 		return args
 	}
@@ -2000,7 +2012,28 @@ func (cpi *ControlPlaneInstaller) getImagePullSecrets(imagePullSecretName string
 	}
 }
 
-// GetThreeportAPIPort returns the port that the threeport API is running on.
+const (
+	// DefaultLocalAPIPortAuthEnabled and DefaultLocalAPIPortAuthDisabled are the
+	// host ports a local control plane publishes its API on.
+	//
+	// They are unprivileged. Binding below 1024 works on a laptop only because
+	// dockerd runs as root and binds on the container's behalf; it is not
+	// available under rootless Docker or Podman, on hosts that raise
+	// net.ipv4.ip_unprivileged_port_start, or on runners and Codespaces that
+	// reserve those ports for their own forwarding. The port is local to the
+	// install and recorded in its config, so nothing outside depends on the
+	// number - a user who wants 443 or 80 can ask for it with --api-port.
+	DefaultLocalAPIPortAuthEnabled  = 8443
+	DefaultLocalAPIPortAuthDisabled = 8080
+)
+
+// GetThreeportAPIPort returns the port a cloud-provisioned threeport API is
+// reached on.
+//
+// This is the port of the load balancer the cloud provider put in front of the
+// API, not a host port anything binds, so it stays at the standard 443 or 80.
+// A local control plane does not go through a load balancer and uses
+// GetLocalThreeportAPIPort instead.
 func GetThreeportAPIPort(authEnabled bool) int {
 	if authEnabled {
 		return 443
@@ -2009,13 +2042,30 @@ func GetThreeportAPIPort(authEnabled bool) int {
 	return 80
 }
 
+// GetLocalThreeportAPIPort returns the host port a local threeport API is
+// published on.
+//
+// A non-zero apiPort is the port the user asked for; zero means they did not
+// ask, and the unprivileged default for the auth setting applies.
+func GetLocalThreeportAPIPort(authEnabled bool, apiPort int) int {
+	if apiPort != 0 {
+		return apiPort
+	}
+
+	if authEnabled {
+		return DefaultLocalAPIPortAuthEnabled
+	}
+
+	return DefaultLocalAPIPortAuthDisabled
+}
+
 // GetLocalThreeportAPIEndpoint returns the endpoint for the threeport API
 // running locally.
-func GetLocalThreeportAPIEndpoint(authEnabled bool) string {
+func GetLocalThreeportAPIEndpoint(authEnabled bool, apiPort int) string {
 	return fmt.Sprintf(
 		"%s:%d",
 		ThreeportLocalAPIEndpoint,
-		GetThreeportAPIPort(authEnabled),
+		GetLocalThreeportAPIPort(authEnabled, apiPort),
 	)
 }
 

@@ -29,9 +29,6 @@ func sshFailureDelay(err error) int64 {
 	if errors.Is(err, context.Canceled) {
 		return 5
 	}
-	if errors.Is(err, context.DeadlineExceeded) {
-		return 9
-	}
 	return 0
 }
 
@@ -142,6 +139,29 @@ func v0MachineRuntimeInstanceCreated(
 			return 0, fmt.Errorf("failed to get machine runtime definition by ID: %w", err)
 		}
 		parentDef = def
+	}
+
+	// a pinned host key means this pass can finish without a lifecycle marker.
+	// every other create path records one so the failure stays distinct from
+	// a reachability claim.
+	if machineRuntimeInstance.HostKey == nil || *machineRuntimeInstance.HostKey == "" {
+		var createExtras []string
+		if parentDef != nil && parentDef.InfraProvider != nil && *parentDef.InfraProvider != "" {
+			if marriedKind := v0.MachineRuntimeMarriedKind(*parentDef.InfraProvider, "instance"); marriedKind != "" {
+				createExtras = append(createExtras, marriedKind)
+			}
+		}
+		if recordErr := r.EventsRecorder.RecordEvent(
+			&v0.Event{
+				Type:   util.Ptr(event.TypeNormal),
+				Reason: util.Ptr(event.ReasonCreateInProgress),
+				Note:   util.Ptr(event.CreateNote(machineRuntimeInstance, createExtras...)),
+			},
+			*machineRuntimeInstance.ID,
+			machineRuntimeInstance.GetFullyQualifiedType(),
+		); recordErr != nil {
+			log.Error(recordErr, "failed to record CreateInProgress event")
+		}
 	}
 
 	// when the instance is provider-provisioned and has no hostname yet, create

@@ -119,6 +119,9 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 				continue
 			}
 
+			// capture pre-pass reconciled state to gate the success-event emit
+			wasReconciled := false
+
 			// retrieve latest version of object
 			var latestMachineRuntimeDefinition tpapi_lib.ReconciledThreeportApiObject
 			var getLatestErr error
@@ -129,6 +132,9 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 					r.APIServer,
 					machineRuntimeDefinition.GetId(),
 				)
+				if latestObject != nil && latestObject.Reconciled != nil && *latestObject.Reconciled {
+					wasReconciled = true
+				}
 				latestMachineRuntimeDefinition = latestObject
 				getLatestErr = err
 			default:
@@ -148,8 +154,14 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 			}
 			machineRuntimeDefinition = latestMachineRuntimeDefinition
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if machineRuntimeDefinition.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("machine runtime definition scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if machineRuntimeDefinition.ScheduledForDeletion() != nil {
 					log.Info("machine runtime definition scheduled for deletion - skipping create")
@@ -418,7 +430,7 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledMachineRuntimeDefinition := api_v0.MachineRuntimeDefinition{
 					Common:         api_v0.Common{ID: util.Ptr(machineRuntimeDefinition.GetId())},
 					Reconciliation: api_v0.Reconciliation{Reconciled: util.Ptr(true)},
@@ -446,23 +458,25 @@ func MachineRuntimeDefinitionReconciler(r *controller.Reconciler) {
 				log.V(1).Info("machine runtime definition unlocked")
 			}
 
-			// log and record event for successful reconciliation
-			successMsg := fmt.Sprintf(
-				"machine runtime definition successfully reconciled for %s operation",
-				strings.ToLower(string(notif.Operation)),
-			)
-			if err := r.EventsRecorder.RecordEvent(
-				&api_v0.Event{
-					Note:   util.Ptr(successMsg),
-					Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
-					Type:   util.Ptr(event.TypeNormal),
-				},
-				machineRuntimeDefinition.GetId(),
-				machineRuntimeDefinition.GetFullyQualifiedType(),
-			); err != nil {
-				log.Error(err, "failed to record event for successful machine runtime definition reconciliation")
+			// emit success event only on the first-successful transition; skip on redelivery
+			if !wasReconciled {
+				successMsg := fmt.Sprintf(
+					"machine runtime definition successfully reconciled for %s operation",
+					strings.ToLower(string(notif.Operation)),
+				)
+				if err := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(successMsg),
+						Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					machineRuntimeDefinition.GetId(),
+					machineRuntimeDefinition.GetFullyQualifiedType(),
+				); err != nil {
+					log.Error(err, "failed to record event for successful machine runtime definition reconciliation")
+				}
+				log.Info(successMsg)
 			}
-			log.Info(successMsg)
 		}
 	}
 

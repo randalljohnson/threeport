@@ -17,7 +17,9 @@ import (
 )
 
 // v0GcpGceMachineRuntimeInstanceCreated performs reconciliation when a v0 GcpGceMachineRuntimeInstance
-// has been created.
+// has been created. Shared VPC resolution happens inside buildGceMachineInfra
+// so the network is looked up (or created) each time the pulumi program is
+// assembled and no FK is stored on the instance.
 func v0GcpGceMachineRuntimeInstanceCreated(
 	r *controller.Reconciler,
 	gcpGceMachineRuntimeInstance *v0.GcpGceMachineRuntimeInstance,

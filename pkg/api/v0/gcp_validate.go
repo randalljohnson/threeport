@@ -11,18 +11,8 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// beforeCreate rejects a duplicate GcpProvider name before persist.
+// beforeCreate validates the GcpProvider before create.
 func (g *GcpProvider) beforeCreate(tx *gorm.DB) error {
-	if g.Name == nil {
-		return nil
-	}
-	var n int64
-	if err := tx.Model(&GcpProvider{}).Where("name = ?", *g.Name).Count(&n).Error; err != nil {
-		return fmt.Errorf("failed to query gcp providers for name %s: %w", *g.Name, err)
-	}
-	if n > 0 {
-		return fmt.Errorf("gcp provider name %s already exists", *g.Name)
-	}
 	return nil
 }
 
@@ -171,9 +161,12 @@ func (g *GcpGceMachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// beforeUpdate rejects changes to the immutable placement and association fields.
+// beforeUpdate rejects changes to the immutable placement and association
+// fields. It checks each through lib.IsFieldChanged so immutability is enforced
+// under both PATCH and PUT; the region, zone, definition, and provider are
+// fixed once the VM is provisioned, while the ssh user stays mutable so a
+// pulumi up can apply it in place.
 func (g *GcpGceMachineRuntimeInstance) beforeUpdate(tx *gorm.DB) error {
-	// region, zone, definition, and provider stay fixed after the VM is provisioned
 	immutableFields := []struct {
 		column string
 		name   string
@@ -279,3 +272,4 @@ func (g *GcpGceMachineRuntimeInstance) afterUpdate(tx *gorm.DB) error {
 func (g *GcpGceMachineRuntimeInstance) afterDelete(tx *gorm.DB) error {
 	return nil
 }
+

@@ -566,7 +566,7 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 
 	// registering object GcpGceMachineRuntimeDefinition
 	object = api_v0.ModuleObject{
-		Description: util.Ptr("GcpGceMachineRuntimeDefinition is the configuration for GCE machine runtime instances."),
+		Description: util.Ptr("GcpGceMachineRuntimeDefinition provides the provisioning template for GCE machine runtime instances. It mirrors GcpGkeKubernetesRuntimeDefinition: the machine-shaping directives live here so every instance derived from the definition is provisioned identically."),
 		ModuleApiID: moduleApi.ID,
 		Name:        util.Ptr("GcpGceMachineRuntimeDefinition"),
 		Version:     util.Ptr("v0"),
@@ -610,7 +610,7 @@ func upsertModuleControllersObjectsRoutes(db *gorm.DB, moduleApi *api_v0.ModuleA
 
 	// registering object GcpGceMachineRuntimeInstance
 	object = api_v0.ModuleObject{
-		Description:        util.Ptr("GcpGceMachineRuntimeInstance is a deployed instance of a GCE virtual machine."),
+		Description:        util.Ptr("GcpGceMachineRuntimeInstance is a deployed GCE virtual machine provisioned through Threeport's durable infrastructure lifecycle. Network attachment, ingress rules, network CIDRs, and public-IP assignment live on the abstract MachineRuntimeInstance; the GCE reconciler reads them there so the shape is provider-agnostic."),
 		ModuleApiID:        moduleApi.ID,
 		ModuleControllerID: controller.ID,
 		Name:               util.Ptr("GcpGceMachineRuntimeInstance"),

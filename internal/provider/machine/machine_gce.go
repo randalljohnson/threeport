@@ -301,11 +301,14 @@ func (i *GceMachineInfra) SetStackState(state *datatypes.JSON) error {
 // pulumiProgram defines the Pulumi resources for the GCE VM stack.
 func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 	return func(pctx *pulumi.Context) error {
-		// create GCP provider
+		// configure the GCP provider from the supplied credentials
 		gcpProvider, err := gcp.NewProvider(pctx, "gcp-provider", &gcp.ProviderArgs{
 			Project:     pulumi.String(i.ProjectID),
 			Region:      pulumi.String(i.gcpRegion()),
 			Credentials: pulumi.String(i.ServiceAccountCredentials),
+			GcpClientOptions: gcp.ProviderGcpClientOptionsArgs{
+				DisableAuth: pulumi.Bool(false),
+			},
 		})
 		if err != nil {
 			return fmt.Errorf("failed to create GCP provider: %w", err)
@@ -357,8 +360,8 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 					strings.TrimSpace(i.sshPublicKeyAuthorized),
 				)),
 			},
-			Tags:   pulumi.StringArray{pulumi.String(sshTag)},
-			Labels: provider.GcpLabelsInput(i.RuntimeInstanceName),
+			Tags:   pulumi.StringArray{pulumi.String(i.RuntimeInstanceName)},
+			Labels: gcpLabelsInput(i.RuntimeInstanceName),
 		}, pulumi.Provider(gcpProvider))
 		if err != nil {
 			return fmt.Errorf("failed to create GCE instance: %w", err)
@@ -502,4 +505,11 @@ func (i *GceMachineInfra) persistGeneratedSSHKey() error {
 		return nil
 	}
 	return i.PersistSSHKey(i.sshPrivateKeyPEM)
+}
+
+// gcpLabelsInput builds the label map for a GCE VM.
+func gcpLabelsInput(name string) pulumi.StringMap {
+	return pulumi.StringMap{
+		"name": pulumi.String(name),
+	}
 }

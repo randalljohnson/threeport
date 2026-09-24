@@ -119,6 +119,9 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 				continue
 			}
 
+			// capture pre-pass reconciled state to gate the success-event emit
+			wasReconciled := false
+
 			// retrieve latest version of object
 			var latestGatewayDefinition tpapi_lib.ReconciledThreeportApiObject
 			var getLatestErr error
@@ -129,6 +132,9 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					r.APIServer,
 					gatewayDefinition.GetId(),
 				)
+				if latestObject != nil && latestObject.Reconciled != nil && *latestObject.Reconciled {
+					wasReconciled = true
+				}
 				latestGatewayDefinition = latestObject
 				getLatestErr = err
 			default:
@@ -209,7 +215,7 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("create requeued for future reconciliation")
+					log.V(1).Info("create requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						gatewayDefinition,
 						customRequeueDelay,
@@ -273,7 +279,7 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("update requeued for future reconciliation")
+					log.V(1).Info("update requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						gatewayDefinition,
 						customRequeueDelay,
@@ -351,7 +357,7 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 					continue
 				}
 				if customRequeueDelay != 0 {
-					log.Info("delete requeued for future reconciliation")
+					log.V(1).Info("delete requeued for future reconciliation")
 					r.UnlockAndRequeue(
 						gatewayDefinition,
 						customRequeueDelay,
@@ -446,23 +452,25 @@ func GatewayDefinitionReconciler(r *controller.Reconciler) {
 				log.V(1).Info("gateway definition unlocked")
 			}
 
-			// log and record event for successful reconciliation
-			successMsg := fmt.Sprintf(
-				"gateway definition successfully reconciled for %s operation",
-				strings.ToLower(string(notif.Operation)),
-			)
-			if err := r.EventsRecorder.RecordEvent(
-				&api_v0.Event{
-					Note:   util.Ptr(successMsg),
-					Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
-					Type:   util.Ptr(event.TypeNormal),
-				},
-				gatewayDefinition.GetId(),
-				gatewayDefinition.GetFullyQualifiedType(),
-			); err != nil {
-				log.Error(err, "failed to record event for successful gateway definition reconciliation")
+			// emit success event only on the first-successful transition; skip on redelivery
+			if !wasReconciled {
+				successMsg := fmt.Sprintf(
+					"gateway definition successfully reconciled for %s operation",
+					strings.ToLower(string(notif.Operation)),
+				)
+				if err := r.EventsRecorder.RecordEvent(
+					&api_v0.Event{
+						Note:   util.Ptr(successMsg),
+						Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
+						Type:   util.Ptr(event.TypeNormal),
+					},
+					gatewayDefinition.GetId(),
+					gatewayDefinition.GetFullyQualifiedType(),
+				); err != nil {
+					log.Error(err, "failed to record event for successful gateway definition reconciliation")
+				}
+				log.Info(successMsg)
 			}
-			log.Info(successMsg)
 		}
 	}
 

@@ -66,6 +66,7 @@ func setupEventsPerfHarness(tb testing.TB) (
 	require.NoError(tb, err)
 	require.NoError(tb, d.AutoMigrate(
 		&api.Event{},
+		&api.AttachedObjectReference{},
 		&api.ModuleApi{},
 		&api.ModuleApiRoute{},
 		&api.ModuleObject{},
@@ -127,6 +128,8 @@ func setupEventsPerfHarness(tb testing.TB) (
 		fresh := make([]api.Event, len(seeds))
 		copy(fresh, seeds)
 		for i := range fresh {
+			fresh[i].ObjectType = nil
+			fresh[i].ObjectID = nil
 			fresh[i].ObjectName = nil
 		}
 		return enrichEventsWithObjectInfo(context.Background(), d, fresh, logger)

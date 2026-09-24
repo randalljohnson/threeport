@@ -39,6 +39,9 @@ func GetEventsFilteredByQueryString(
 		if pageLimit > 0 {
 			url = fmt.Sprintf("%s&limit=%d", url, pageLimit)
 		}
+		if pageLimit > 0 {
+			url = fmt.Sprintf("%s&limit=%d", url, pageLimit)
+		}
 
 		response, err := client_lib.GetResponse(
 			apiClient,

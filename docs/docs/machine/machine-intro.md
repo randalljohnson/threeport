@@ -28,9 +28,10 @@ instance region at create.
 ## Next Steps
 
 A definition that names an infrastructure provider is how the controller
-creates the provider machine.  You can still import a machine that is
-already SSH-reachable by creating an instance with a credential and no
-location fields.
+creates the provider machine.  Deleting the instance deletes that machine
+and waits until it is gone.  You can still import a machine that is already
+SSH-reachable by creating an instance with a credential and no location
+fields.
 
 Once a host is registered, see the [Machine Workloads
 introduction](machine-workload-intro.md) to define and deploy workloads on

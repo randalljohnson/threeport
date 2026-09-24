@@ -45,3 +45,18 @@ type RefreshableProvider interface {
 	// RefreshStack refreshes the state to match cloud reality.
 	RefreshStack() error
 }
+
+// AdoptableProvider supports re-acquiring orphaned cloud resources that were
+// created before their state reached the database. Providers whose resource
+// names are deterministic implement this so a create that finds no usable
+// state can adopt an already-existing resource instead of colliding on its
+// name. The lifecycle handler calls DiscoverAndAdopt only on the no-existing-
+// state path, right before DeployInfra.
+type AdoptableProvider interface {
+	InfraProvider
+
+	// DiscoverAndAdopt checks the cloud for resources matching this
+	// provider's deterministic names and arranges for the next deploy to
+	// adopt any that already exist rather than create them.
+	DiscoverAndAdopt() error
+}

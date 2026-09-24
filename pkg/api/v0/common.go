@@ -44,6 +44,9 @@ type Reconciliation struct {
 	// Used by controllers to confirm deletion of an object.
 	DeletionConfirmed *time.Time `validate:"optional"`
 
+	// A flag set to true if deletion of the object fails
+	DeletionFailed *bool `validate:"optional" gorm:"default:false"`
+
 	// InterruptReconciliation is used by the controller to indicated that future
 	// reconcilation should be interrupted.  Useful in cases where there is a
 	// situation where future reconciliation could be descructive such as
@@ -61,7 +64,8 @@ func ReconciliationStateChanged(a, b Reconciliation) bool {
 		!boolPtrEqual(a.CreationFailed, b.CreationFailed) ||
 		!timePtrEqual(a.DeletionScheduled, b.DeletionScheduled) ||
 		!timePtrSet(a.DeletionAcknowledged, b.DeletionAcknowledged) ||
-		!timePtrEqual(a.DeletionConfirmed, b.DeletionConfirmed)
+		!timePtrEqual(a.DeletionConfirmed, b.DeletionConfirmed) ||
+		!boolPtrEqual(a.DeletionFailed, b.DeletionFailed)
 }
 
 // ReconciliationUpdateNotifiable reports whether an update should notify the

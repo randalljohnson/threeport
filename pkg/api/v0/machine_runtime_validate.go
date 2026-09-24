@@ -17,13 +17,20 @@ const (
 	MachineRuntimeInfraProviderGCE = "gce"
 )
 
+// RelationshipTaggedForeignKeys returns the relationship-tagged foreign keys on
+// MachineRuntimeDefinition. The definition has no relationship-tagged foreign
+// keys, so this satisfies the interface with an empty list so lifecycle emit
+// sites can pass the object as the note owner.
+func (m *MachineRuntimeDefinition) RelationshipTaggedForeignKeys() []RelationshipTaggedForeignKey {
+	return nil
+}
+
 // beforeCreate validates the MachineRuntimeDefinition before create.
 func (m *MachineRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
 // beforeUpdate validates the MachineRuntimeDefinition before update.
-//
 // Receiver semantics depend on the GORM call shape; see
 // pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
@@ -34,10 +41,6 @@ func (m *MachineRuntimeDefinition) beforeCreate(tx *gorm.DB) error {
 //   - lib.IncomingValues(tx): values being written
 //   - lib.IsFullReplace(tx): true on PUT (Save shape)
 //   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
-//
-// Import:
-//
-//	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 //
 // Import:
 //
@@ -120,7 +123,6 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 }
 
 // beforeUpdate validates the MachineRuntimeInstance before update.
-//
 // Receiver semantics depend on the GORM call shape; see
 // pkg/api/lib/v0/update_helpers.go for the full model. The simplest
 // per-field check is:
@@ -131,10 +133,6 @@ func (m *MachineRuntimeInstance) beforeCreate(tx *gorm.DB) error {
 //   - lib.IncomingValues(tx): values being written
 //   - lib.IsFullReplace(tx): true on PUT (Save shape)
 //   - lib.IsPartialUpdate(tx): true on PATCH/DELETE (Updates shape)
-//
-// Import:
-//
-//	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 //
 // Import:
 //
@@ -202,4 +200,15 @@ func (m *MachineRuntimeInstance) afterUpdate(tx *gorm.DB) error {
 // afterDelete runs after the MachineRuntimeInstance is deleted.
 func (m *MachineRuntimeInstance) afterDelete(tx *gorm.DB) error {
 	return nil
+}
+
+// MachineRuntimeMarriedKind returns the kebab-case married attached-object
+// kind for infraProvider and suffix ("definition" or "instance").
+// Returns "" when CloudProviderForInfraProvider fails.
+func MachineRuntimeMarriedKind(infraProvider, suffix string) string {
+	cloud, err := CloudProviderForInfraProvider(infraProvider)
+	if err != nil {
+		return ""
+	}
+	return cloud + "-" + infraProvider + "-machine-runtime-" + suffix
 }

@@ -1,6 +1,8 @@
 package gcp
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -15,9 +17,14 @@ import (
 	client "github.com/threeport/threeport/pkg/client/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	encryption "github.com/threeport/threeport/pkg/encryption/v0"
+	event "github.com/threeport/threeport/pkg/event/v0"
 	notifications "github.com/threeport/threeport/pkg/notifications/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
+
+// defaultGceImageID is the boot image used when a GCE machine runtime
+// definition leaves ImageID unset.
+const defaultGceImageID = "debian-cloud/debian-12"
 
 // gceMachineLifecycle implements provider.InfraLifecycleProvider for GCP GCE
 // machine runtime instances.
@@ -30,8 +37,15 @@ type gceMachineLifecycle struct {
 
 var _ provider.InfraLifecycleProvider = (*gceMachineLifecycle)(nil)
 
-// StackKey returns the GCE instance name.
+// StackKey returns the runtime-instance name so the shared state machine
+// serializes pulumi operations against one local state directory.
 func (g *gceMachineLifecycle) StackKey() string {
+	if g.instance == nil || g.instance.Name == nil {
+		if g.log != nil {
+			g.log.Info("GCE machine runtime instance missing name; returning empty stack key")
+		}
+		return ""
+	}
 	return *g.instance.Name
 }
 
@@ -155,10 +169,7 @@ func (g *gceMachineLifecycle) OnCreateConfirmed(_ provider.InfraProvider) error 
 func (g *gceMachineLifecycle) SaveCreateOutputs(infra provider.InfraProvider, state *datatypes.JSON) error {
 	gceInfra, ok := infra.(*machine.GceMachineInfra)
 	if !ok {
-		return fmt.Errorf(
-			"failed to save GCE create outputs: expected *machine.GceMachineInfra, got %T",
-			infra,
-		)
+		return errors.New("failed to save GCE create outputs: expected *machine.GceMachineInfra")
 	}
 
 	hostname, externalIP, sshKey := gceInfra.CreateOutputs()
@@ -176,12 +187,48 @@ func (g *gceMachineLifecycle) SaveCreateOutputs(infra provider.InfraProvider, st
 	); err != nil {
 		return fmt.Errorf("failed to update GCE instance with create outputs: %w", err)
 	}
+
+	// persist the GCE resource inventory onto the abstract machine runtime
+	// instance so a downstream consumer can read the payload without
+	// crossing into the provider-specific row. skip when no parent link is
+	// present, which is the shape a fixture or a partial create can produce
+	if g.instance == nil || g.instance.MachineRuntimeInstanceID == nil {
+		return nil
+	}
+	inventory := gceInfra.BuildResourceInventory()
+	inventoryBytes, err := json.Marshal(inventory)
+	if err != nil {
+		return fmt.Errorf("failed to marshal GCE resource inventory: %w", err)
+	}
+	inventoryJSON := datatypes.JSON(inventoryBytes)
+	mriUpdate := v0.MachineRuntimeInstance{
+		Common:            v0.Common{ID: g.instance.MachineRuntimeInstanceID},
+		ResourceInventory: &inventoryJSON,
+	}
+	if _, err := client.UpdateMachineRuntimeInstance(
+		g.r.APIClient,
+		g.r.APIServer,
+		&mriUpdate,
+	); err != nil {
+		return fmt.Errorf("failed to update machine runtime instance with resource inventory: %w", err)
+	}
 	return nil
 }
 
-// OnDeleteConfirmed performs provider-specific post-deletion cleanup.
-func (g *gceMachineLifecycle) OnDeleteConfirmed(_ provider.InfraProvider) error {
-	return nil
+// OnDeleteConfirmed validates against the compute API that the machine's VM and
+// firewall are actually gone after destroy, and reclaims any the destroy left
+// behind, so a checkpoint that drifted out of sync with the cloud cannot confirm
+// a deletion that abandoned a live resource.
+func (g *gceMachineLifecycle) OnDeleteConfirmed(infra provider.InfraProvider) error {
+	gceInfra, ok := infra.(*machine.GceMachineInfra)
+	if !ok {
+		return errors.New("failed to reclaim GCE orphans: expected *machine.GceMachineInfra")
+	}
+	cloud, err := newComputeOrphanReclaimCloud(gceInfra)
+	if err != nil {
+		return err
+	}
+	return reclaimOrphans(cloud)
 }
 
 // AckCreation sets CreationAcknowledged and clears CreationFailed.
@@ -223,6 +270,34 @@ func (g *gceMachineLifecycle) SetCreationFailed() error {
 	}
 	_, err := client.UpdateGcpGceMachineRuntimeInstance(g.r.APIClient, g.r.APIServer, &failedUpdate)
 	return err
+}
+
+// SetDeletionFailed marks DeletionFailed=true in the API.
+func (g *gceMachineLifecycle) SetDeletionFailed() error {
+	deletionFailed := true
+	failedUpdate := v0.GcpGceMachineRuntimeInstance{
+		Common: v0.Common{ID: &g.instanceID},
+		Reconciliation: v0.Reconciliation{
+			DeletionFailed: &deletionFailed,
+		},
+	}
+	_, err := client.UpdateGcpGceMachineRuntimeInstance(g.r.APIClient, g.r.APIServer, &failedUpdate)
+	return err
+}
+
+// RecordSuccessfulCreate records a CreateSuccessful event when provisioning
+// finishes. ConfirmCreation sets Reconciled first, so a redelivered pass's
+// wasReconciled gate skips the generated wrapper emit.
+func (g *gceMachineLifecycle) RecordSuccessfulCreate() error {
+	return g.r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonCreateSuccessful),
+			Note:   util.Ptr("provisioning complete"),
+		},
+		g.instance.GetId(),
+		g.instance.GetFullyQualifiedType(),
+	)
 }
 
 // ConfirmCreation sets CreationConfirmed and Reconciled=true.
@@ -383,8 +458,11 @@ func buildGceMachineInfra(
 	if definition.MachineType != nil {
 		infraGce.MachineType = *definition.MachineType
 	}
-	if definition.ImageID != nil {
+	// default the boot image when the definition leaves ImageID unset
+	if definition.ImageID != nil && *definition.ImageID != "" {
 		infraGce.ImageID = *definition.ImageID
+	} else {
+		infraGce.ImageID = defaultGceImageID
 	}
 
 	if instance.Region != nil {
@@ -393,16 +471,26 @@ func buildGceMachineInfra(
 	if instance.Zone != nil {
 		infraGce.Zone = *instance.Zone
 	}
-	if instance.NetworkID != nil {
-		infraGce.NetworkID = *instance.NetworkID
-	}
 	if instance.SSHUser != nil {
 		infraGce.SSHUser = *instance.SSHUser
 	}
-	if instance.SSHSourceRanges != nil {
-		infraGce.SSHSourceRanges = append([]string(nil), *instance.SSHSourceRanges...)
-	}
 
+	// load the parent machine runtime instance so NetworkID, SubnetID,
+	// IngressRules, NetworkCIDR, SubnetCIDR, and AssignPublicIP are read from
+	// the abstract instance; a nil MachineRuntimeInstanceID leaves those
+	// fields at their zero values.
+	var mri *v0.MachineRuntimeInstance
+	if instance.MachineRuntimeInstanceID != nil {
+		var err error
+		mri, err = client.GetMachineRuntimeInstanceByID(
+			r.APIClient,
+			r.APIServer,
+			*instance.MachineRuntimeInstanceID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve machine runtime instance by ID: %w", err)
+		}
+	}
 	if gcpProvider.ServiceAccountCredentials == nil || *gcpProvider.ServiceAccountCredentials == "" {
 		return nil, fmt.Errorf("gcp provider %s has no service account credentials", *gcpProvider.Name)
 	}
@@ -413,6 +501,64 @@ func buildGceMachineInfra(
 	}
 	infraGce.ServiceAccountCredentials = decryptedCredentials
 
+	// translate each portable ingress rule to the provider-side shape; each
+	// non-nil string/slice field is copied out of its pointer so a partial
+	// rule renders as an empty value on the provider rather than a panic.
+	if mri != nil && mri.IngressRules != nil {
+		for _, rule := range *mri.IngressRules {
+			gceRule := machine.GceIngressRule{}
+			if rule.Protocol != nil {
+				gceRule.Protocol = *rule.Protocol
+			}
+			if rule.Ports != nil {
+				gceRule.Ports = append([]string(nil), *rule.Ports...)
+			}
+			if rule.SourceRanges != nil {
+				gceRule.SourceRanges = append([]string(nil), *rule.SourceRanges...)
+			}
+			if rule.Description != nil {
+				gceRule.Description = *rule.Description
+			}
+			infraGce.IngressRules = append(infraGce.IngressRules, gceRule)
+		}
+	}
+
+	if mri != nil {
+		if mri.NetworkID != nil {
+			infraGce.NetworkID = *mri.NetworkID
+		}
+		if mri.SubnetID != nil {
+			infraGce.SubnetID = *mri.SubnetID
+		}
+		if mri.NetworkCIDR != nil {
+			infraGce.NetworkCIDR = *mri.NetworkCIDR
+		}
+		if mri.SubnetCIDR != nil {
+			infraGce.SubnetCIDR = *mri.SubnetCIDR
+		}
+		if mri.AssignPublicIP != nil {
+			infraGce.AssignPublicIP = *mri.AssignPublicIP
+		}
+	}
+
+	// require service account credentials so create does not fall through to ambient ADC
+	if gcpProvider.ServiceAccountCredentials == nil || *gcpProvider.ServiceAccountCredentials == "" {
+		if gcpProvider.ID == nil {
+			return nil, errors.New("gcp provider has no service account credentials")
+		}
+		return nil, fmt.Errorf("gcp provider %d has no service account credentials", *gcpProvider.ID)
+	}
+	decryptedCredentials, decryptErr := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
+	if decryptErr != nil {
+		return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", decryptErr)
+	}
+	infraGce.ServiceAccountCredentials = decryptedCredentials
+
+	// rehydrate the persisted SSH key onto the rebuilt provider so a re-deploy
+	// reuses it instead of minting a fresh pair and rotating the instance's
+	// authorized key away from the key this control plane holds. The stored key
+	// is encrypted at rest, so decrypt it first; it is unset on a clean first
+	// create, in which case the provider generates a new pair.
 	if instance.SSHKey != nil && *instance.SSHKey != "" {
 		// decrypt and seed persisted SSH key
 		decryptedKey, err := encryption.Decrypt(r.EncryptionKey, *instance.SSHKey)

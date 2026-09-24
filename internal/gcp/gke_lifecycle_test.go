@@ -1123,7 +1123,7 @@ func TestBuildGkeInfra_MapsDefinitionNodePoolFields(t *testing.T) {
 
 	key, err := encryption.GenerateKey()
 	require.NoError(t, err)
-	enc, err := encryption.Encrypt(key, `{"type":"service_account"}`)
+	enc, err := encryption.Encrypt(key, `{"type":"service_account","client_email":"test-sa@proj-x.iam.gserviceaccount.com"}`)
 	require.NoError(t, err)
 	gcpProvider := v0.GcpProvider{
 		Common:                    v0.Common{ID: &gcpProviderID},

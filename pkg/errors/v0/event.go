@@ -12,6 +12,14 @@ type ErrWithEvent struct {
 
 	// Event is the event that caused the error
 	Event v0.Event
+
+	// Cause is the error this one wraps, when there is one.
+	Cause error
+}
+
+// Unwrap returns Cause so errors.Is reaches the dial error.
+func (e *ErrWithEvent) Unwrap() error {
+	return e.Cause
 }
 
 // Error returns the Message field.

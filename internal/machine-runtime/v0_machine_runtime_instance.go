@@ -132,7 +132,15 @@ func v0MachineRuntimeInstanceCreated(
 		); eventErr != nil {
 			log.Error(eventErr, "failed to record event for ssh connect failure")
 		}
-		return sshRetryDelaySeconds, fmt.Errorf("failed to connect to machine runtime instance via ssh: %w", err)
+		return sshRetryDelaySeconds, &tp_errors.ErrWithEvent{
+			Message: note,
+			Cause:   err,
+			Event: v0.Event{
+				Type:   util.Ptr(event.TypeWarning),
+				Reason: util.Ptr("SSHConnectFailed"),
+				Note:   util.Ptr(note),
+			},
+		}
 	}
 	defer sshClient.Close()
 

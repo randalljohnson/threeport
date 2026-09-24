@@ -35,13 +35,10 @@ import (
 )
 
 var ErrThreeportConfigAlreadyExists = errors.New("threeport config already contains a control plane with the requested name")
-<<<<<<< HEAD
 
 // localRuntimeLocation is the location recorded for a kubernetes runtime that
 // has no region to derive one from. Rebuilds use it too: the config never stores location.
 const localRuntimeLocation = "Local"
-=======
->>>>>>> 9686fad7
 
 // GenesisControlPlaneCLIArgs is the set of control plane arguments passed to one of
 // the CLI tools.
@@ -192,10 +189,7 @@ func (a *GenesisControlPlaneCLIArgs) CreateInstaller() (*threeport.ControlPlaneI
 	cpi.Opts.TeardownOnFailure = a.TeardownOnFailure
 	cpi.Opts.LocalRegistry = a.LocalRegistry
 	cpi.Opts.KindPortMappings = a.KindPortMappings
-<<<<<<< HEAD
 	cpi.Opts.ConcurrentReconciles = a.ConcurrentReconciles
-=======
->>>>>>> 9686fad7
 	// a kind port mapping for the API's node port says the same thing --api-port
 	// says, so the two are folded into one value here. The kind mapping and the
 	// endpoint written to the threeport config both read that value, so they
@@ -1517,7 +1511,6 @@ func ensureBootstrapKubernetesRuntime(
 	return def, inst, nil
 }
 
-<<<<<<< HEAD
 // WaitForThreeportAPI retries a version request until the api returns 200.
 // A ready rest-api deployment does not mean that endpoint answers.
 func WaitForThreeportAPI(apiClient *http.Client, apiEndpoint string) error {
@@ -1789,8 +1782,6 @@ func ensureBootstrapControlPlane(
 	return nil
 }
 
-=======
->>>>>>> 9686fad7
 // dropSameNameControlPlane removes a same-name config entry when force is
 // set, and rejects the install when that entry exists and force is unset.
 func dropSameNameControlPlane(cfg *ThreeportConfig, name string, force bool) error {

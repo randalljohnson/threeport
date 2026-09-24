@@ -3472,14 +3472,14 @@ const docTemplate = `{
         },
         "/v0/events-filtered": {
             "get": {
-                "description": "Get events from the Threeport database, narrowed by the object_type and object_id columns each event row carries.",
+                "description": "Get all events joined with attached object references from the Threeport database.",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "summary": "gets all events, filtered by subject.",
+                "summary": "gets all events joined with attached object references.",
                 "operationId": "get-v0-events-filtered",
                 "parameters": [
                     {
@@ -3490,7 +3490,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "filter events by object type name; CamelCase Go TypeName like 'KubernetesWorkloadInstance'. Filters on its own, and narrows objectid, objectname, or objectnameprefix to one kind",
+                        "description": "filter events by object type name (with objectname); CamelCase Go TypeName like 'KubernetesWorkloadInstance'",
                         "name": "objecttypename",
                         "in": "query"
                     },
@@ -3508,26 +3508,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "filter events by exact object name; matches every subject type carrying that name, deleted subjects included, unless objecttypename narrows it",
+                        "description": "filter events by object name (with objecttypename)",
                         "name": "objectname",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "filter events by object name prefix; matches every subject whose name starts with this token, deleted subjects included, across every subject type unless objecttypename narrows it",
-                        "name": "objectnameprefix",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "filter events by exact Reason match (case-sensitive CamelCase, e.g. 'SuccessfulCreate')",
-                        "name": "reason",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "filter events by Reason prefix (case-sensitive CamelCase, matches Reason values starting with this token)",
-                        "name": "reasonprefix",
                         "in": "query"
                     }
                 ],
@@ -4973,7 +4955,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact gcp gce machine runtime definition name (case sensitive)",
+                        "description": "gcp gce machine runtime definition search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -5029,12 +5011,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -5132,12 +5108,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -5243,12 +5213,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -5272,7 +5236,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "filter by exact gcp gce machine runtime instance name (case sensitive)",
+                        "description": "gcp gce machine runtime instance search by name",
                         "name": "name",
                         "in": "query"
                     }
@@ -5328,12 +5292,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -5435,12 +5393,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/v0.Response"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -5538,12 +5490,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/v0.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/v0.Response"
                         }
@@ -17394,9 +17340,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "datatypes.JSON": {
-            "type": "object"
-        },
         "v0.ApiObjectVersions": {
             "type": "object",
             "required": [
@@ -17453,10 +17396,135 @@ const docTemplate = `{
             }
         },
         "v0.AwsEksKubernetesRuntimeDefinition": {
-            "type": "object"
+            "type": "object",
+            "required": [
+                "DefaultNodeGroupInitialSize",
+                "DefaultNodeGroupInstanceType",
+                "DefaultNodeGroupMaximumSize",
+                "DefaultNodeGroupMinimumSize",
+                "KubernetesRuntimeDefinitionID",
+                "Name",
+                "ZoneCount"
+            ],
+            "properties": {
+                "AwsEksKubernetesRuntimeInstances": {
+                    "description": "The AWS EKS kubernetes runtime instances derived from this definition.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v0.AwsEksKubernetesRuntimeInstance"
+                    }
+                },
+                "DefaultNodeGroupInitialSize": {
+                    "description": "The number of nodes in the default initial node group.",
+                    "type": "integer"
+                },
+                "DefaultNodeGroupInstanceType": {
+                    "description": "The AWS instance type for the default initial node group.",
+                    "type": "string"
+                },
+                "DefaultNodeGroupMaximumSize": {
+                    "description": "The maximum number of nodes the default initial node group should have.",
+                    "type": "integer"
+                },
+                "DefaultNodeGroupMinimumSize": {
+                    "description": "The minimum number of nodes the default initial node group should have.",
+                    "type": "integer"
+                },
+                "KubernetesRuntimeDefinitionID": {
+                    "description": "The kubernetes runtime definition for an EKS cluster in AWS.",
+                    "type": "integer"
+                },
+                "Name": {
+                    "description": "An arbitrary name for the definition.",
+                    "type": "string"
+                },
+                "ProfileID": {
+                    "description": "The profile to associate with the definition.  Profile is a named\nstandard configuration for a definition object.",
+                    "type": "integer"
+                },
+                "TierID": {
+                    "description": "The tier to associate with the definition.  Tier is a level of\ncriticality for access control.",
+                    "type": "integer"
+                },
+                "ZoneCount": {
+                    "description": "The number of zones the cluster should span for availability.",
+                    "type": "integer"
+                }
+            }
         },
         "v0.AwsEksKubernetesRuntimeInstance": {
-            "type": "object"
+            "type": "object",
+            "required": [
+                "AwsEksKubernetesRuntimeDefinitionID",
+                "AwsProviderID",
+                "KubernetesRuntimeInstanceID",
+                "Name"
+            ],
+            "properties": {
+                "AwsEksKubernetesRuntimeDefinitionID": {
+                    "description": "The definition that configures this instance.",
+                    "type": "integer"
+                },
+                "AwsProviderID": {
+                    "description": "The AWS provider in which the EKS cluster is provisioned.",
+                    "type": "integer"
+                },
+                "CreationAcknowledged": {
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "type": "string"
+                },
+                "CreationConfirmed": {
+                    "description": "Used by controllers to confirm deletion of an object.",
+                    "type": "string"
+                },
+                "CreationFailed": {
+                    "description": "Gets set to true if creation process fails.",
+                    "type": "boolean"
+                },
+                "DeletionAcknowledged": {
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
+                    "type": "string"
+                },
+                "DeletionConfirmed": {
+                    "description": "Used by controllers to confirm deletion of an object.",
+                    "type": "string"
+                },
+                "DeletionScheduled": {
+                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
+                    "type": "string"
+                },
+                "InterruptReconciliation": {
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "type": "boolean"
+                },
+                "KubernetesRuntimeInstanceID": {
+                    "description": "The kubernetes runtime instance associated with the AWS EKS cluster.",
+                    "type": "integer"
+                },
+                "Name": {
+                    "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "Reconciled": {
+                    "description": "Indicates if object is considered to be reconciled by the object's controller.",
+                    "type": "boolean"
+                },
+                "Region": {
+                    "description": "The AWS region in which the cluster is provisioned.",
+                    "type": "string"
+                },
+                "ResourceInventory": {
+                    "description": "An inventory of all AWS resources for the EKS cluster.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "Status": {
+                    "description": "The status of the instance.\nTODO: use a custom type",
+                    "type": "string"
+                }
+            }
         },
         "v0.AwsProvider": {
             "type": "object",
@@ -17516,27 +17584,24 @@ const docTemplate = `{
             "properties": {
                 "AdditionalEnvRef": {
                     "description": "The additional env reference to be added to the environment variables of the component.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "AdditionalVolumeMounts": {
                     "description": "The additional volume mounts to be added to the deployment spec of the component.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "AdditionalVolumes": {
                     "description": "The additional volumes to be added to the deployment spec of the component.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "BinaryName": {
                     "description": "The binary name of the component.",
@@ -17598,11 +17663,11 @@ const docTemplate = `{
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -17610,23 +17675,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -17687,11 +17748,11 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -17706,16 +17767,12 @@ const docTemplate = `{
                     }
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -17726,7 +17783,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "IsSelf": {
@@ -17776,11 +17833,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -17788,16 +17845,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -17815,7 +17868,7 @@ const docTemplate = `{
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -17850,11 +17903,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -17862,16 +17915,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -17882,7 +17931,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -17913,8 +17962,6 @@ const docTemplate = `{
                 "Count",
                 "EventTime",
                 "LastObservedTime",
-                "ObjectID",
-                "ObjectType",
                 "Reason",
                 "ReportingController",
                 "Type"
@@ -17937,15 +17984,13 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "ObjectID": {
-                    "description": "The id of the object this event is about",
                     "type": "integer"
                 },
                 "ObjectName": {
-                    "description": "The name of the object this event is about, resolved on read",
                     "type": "string"
                 },
                 "ObjectType": {
-                    "description": "The fully qualified type of the object this event is about",
+                    "description": "Fields carrying the event's subject - the object the event is\nabout. They flow in both directions:\n  - On create: the caller sets ObjectType (fully qualified type form) + ObjectID\n    in the request body. Event.BeforeCreate validates them;\n    Event.AfterCreate inserts the matching AttachedObjectReference\n    in the same transaction. ObjectName is ignored on write.\n  - On read: GetEventsFilteredByQueryString\n    projects the joined AOR's base object back into these\n    fields, then resolves ObjectName via the type's name resolver.\n\ngorm:\"-\" keeps them off the Event row in the schema - the AOR\nis the source of truth on disk for the subject linkage.\n\nFor an event describing a script failure on a\nMachineRuntimeInstance named \"some-host\" (id 42), these hold:\n  ObjectType = \"threeport.io/v0.MachineRuntimeInstance\"\n  ObjectID   = 42\n  ObjectName = \"some-host\"   (read only - ignored on create)\nA consumer like ` + "`" + `tptctl get events` + "`" + ` uses them to render\n\"threeport.io/machine-runtime-instance/some-host\" in the OBJECT\ncolumn.",
                     "type": "string"
                 },
                 "Reason": {
@@ -17969,11 +18014,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -17981,16 +18026,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18015,7 +18056,7 @@ const docTemplate = `{
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesWorkloadDefinitionID": {
@@ -18094,11 +18135,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18106,16 +18147,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18126,7 +18163,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18221,11 +18258,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18233,16 +18270,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18265,7 +18298,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "MachineRuntimeInstanceID": {
@@ -18274,6 +18307,10 @@ const docTemplate = `{
                 },
                 "Name": {
                     "description": "An arbitrary name the instance",
+                    "type": "string"
+                },
+                "NetworkID": {
+                    "description": "The network the VM attaches to.",
                     "type": "string"
                 },
                 "Reconciled": {
@@ -18295,6 +18332,13 @@ const docTemplate = `{
                 "SSHKey": {
                     "description": "The generated SSH private key, surfaced once after provisioning.",
                     "type": "string"
+                },
+                "SSHSourceRanges": {
+                    "description": "CIDR ranges allowed to reach the VM over SSH. Empty means the provider\ndefault open range.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "SSHUser": {
                     "description": "The SSH username provisioned on the VM.",
@@ -18377,11 +18421,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18389,16 +18433,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18413,7 +18453,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18434,11 +18474,10 @@ const docTemplate = `{
                 },
                 "ResourceInventory": {
                     "description": "An inventory of all GCP resources for the GKE cluster.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "Status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
@@ -18495,7 +18534,10 @@ const docTemplate = `{
                     "description": "Complete kubernetes resources that will be appended to the provided\nhelm chart.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/datatypes.JSON"
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
                     }
                 },
                 "Chart": {
@@ -18507,11 +18549,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18519,16 +18561,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18542,7 +18580,7 @@ const docTemplate = `{
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -18583,15 +18621,18 @@ const docTemplate = `{
                     "description": "Complete kubernetes resources that will be appended to the provided\nhelm chart.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/datatypes.JSON"
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18599,16 +18640,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18619,7 +18656,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -18656,11 +18693,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18668,16 +18705,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18696,7 +18729,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstances": {
@@ -18776,11 +18809,11 @@ const docTemplate = `{
                     }
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18792,16 +18825,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -18816,7 +18845,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeDefinitionID": {
@@ -18868,11 +18897,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18880,23 +18909,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesWorkloadInstances": {
@@ -18944,11 +18969,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -18956,23 +18981,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -19013,11 +19034,10 @@ const docTemplate = `{
             "properties": {
                 "JSONDefinition": {
                     "description": "The individual manifest in JSON format.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "KubernetesWorkloadDefinitionID": {
                     "description": "The kubernetes workload definition this resource belongs to.",
@@ -19034,11 +19054,10 @@ const docTemplate = `{
             "properties": {
                 "JSONDefinition": {
                     "description": "The individual manifest in JSON format.  This field is a superset of\nKubernetesWorkloadResourceDefinition.JSONDefinition in that it has\nnamespace management and other configuration — such as resource\nallocation management — added.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "KubernetesWorkloadInstanceID": {
                     "description": "The kubernetes workload instance this resource belongs to.",
@@ -19054,11 +19073,10 @@ const docTemplate = `{
                 },
                 "RuntimeDefinition": {
                     "description": "The JSON definition of a Kubernetes resource as stored in etcd in the\nkubernetes runtime.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "ScheduledForDeletion": {
                     "description": "Whether another controller has scheduled this resource for deletion",
@@ -19155,11 +19173,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19167,23 +19185,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "LoggingInstances": {
@@ -19244,11 +19258,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19256,23 +19270,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -19319,54 +19329,16 @@ const docTemplate = `{
                 "Name"
             ],
             "properties": {
-                "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
-                    "type": "string"
-                },
-                "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
-                    "type": "string"
-                },
-                "CreationFailed": {
-                    "description": "Gets set to true if creation process fails.",
-                    "type": "boolean"
-                },
-                "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
-                    "type": "string"
-                },
-                "DeletionConfirmed": {
-                    "description": "Used by controllers to confirm deletion of an object.",
-                    "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
-                "DeletionScheduled": {
-                    "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
-                    "type": "string"
-                },
+
                 "ImageID": {
-                    "description": "The provider image identifier used to boot the machine",
+                    "description": "The provider image identifier used to boot the machine.",
                     "type": "string"
                 },
                 "InfraProvider": {
-                    "description": "The infrastructure provider that provisions machines from this definition",
+                    "description": "The infrastructure provider that provisions machines from this\ndefinition. Empty for imported machines that already exist.",
                     "type": "string"
                 },
-                "InfraProviderAccountName": {
-                    "description": "The provider account name that selects which account the machine is\nprovisioned on, empty falling back to the default provider account",
-                    "type": "string"
-                },
-                "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
-                    "type": "boolean"
-                },
-                "MachineProfile": {
-                    "description": "The CPU-to-memory ratio of the machine",
-                    "type": "string"
-                },
+
                 "MachineRuntimeInstances": {
                     "description": "The associated machine runtime instances that are deployed from this\ndefinition.",
                     "type": "array",
@@ -19375,11 +19347,11 @@ const docTemplate = `{
                     }
                 },
                 "MachineSize": {
-                    "description": "The compute capacity of the machine",
+                    "description": "The compute capacity of the machine. Resolved server-side together with\nthe machine profile to a provider machine type.",
                     "type": "string"
                 },
                 "MachineType": {
-                    "description": "The provider-specific machine type",
+                    "description": "The provider-specific machine type. Populated by the controller from the\nmachine size and profile; not supplied for provider-provisioned machines.",
                     "type": "string"
                 },
                 "Name": {
@@ -19407,11 +19379,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19419,16 +19391,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -19439,15 +19407,15 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Hostname": {
-                    "description": "The hostname or IP address used to reach the machine. Optional at\ncreate so the abstract instance can exist before the machine is\nprovisioned; populated once the machine is reachable.\n\nidx_machine_runtime_instance_hostname is a partial unique index that\nallows at most one live instance per hostname, so a single machine\ncannot be represented by two records that each drive their own\nreconciliation against it. The deleted_at predicate keeps\nsoft-deleted rows out of the unique slot, so the hostname of a\ndeleted instance is available to a new one right away. CockroachDB\ntreats every NULL as distinct in a unique index, so any number of\ninstances may hold no hostname while they wait on provisioning.\nAn empty string is excluded the same way, because it is not a\nhostname either.",
+                    "description": "The hostname or IP address used to reach the machine. Optional at\ncreate so the abstract instance can exist before the machine is\nprovisioned; populated once the machine is reachable.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Location": {
-                    "description": "The abstract threeport location for the machine",
+                    "description": "The abstract threeport location for the machine. Mapped server-side to a\nprovider region and zone. Optional so imported machines that supply a\nconcrete region directly still validate.",
                     "type": "string"
                 },
                 "MachineRuntimeDefinitionID": {
@@ -19478,11 +19446,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "Region": {
-                    "description": "The provider region in which the machine is provisioned",
+                    "description": "The provider region in which the machine is provisioned.",
                     "type": "string"
                 },
                 "ResourceInventory": {
-                    "description": "An inventory of all provider resources backing this machine",
+                    "description": "An inventory of all provider resources backing this machine, used for\ncrash recovery and deprovisioning.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/datatypes.JSON"
@@ -19503,10 +19471,6 @@ const docTemplate = `{
                 },
                 "Status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
-                    "type": "string"
-                },
-                "SubnetID": {
-                    "description": "The provider subnet identifier the machine attaches to",
                     "type": "string"
                 }
             }
@@ -19580,11 +19544,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19592,16 +19556,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -19615,7 +19575,7 @@ const docTemplate = `{
                     }
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "MachineRuntimeInstanceID": {
@@ -19665,11 +19625,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19677,23 +19637,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmChartVersion": {
@@ -19742,11 +19698,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19754,23 +19710,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmValuesDocument": {
@@ -19939,11 +19891,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -19951,16 +19903,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -19979,7 +19927,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -20016,11 +19964,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20028,16 +19976,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -20052,7 +19996,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -20084,11 +20028,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20096,16 +20040,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -20120,7 +20060,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmChartVersion": {
@@ -20193,11 +20133,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20205,16 +20145,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -20225,7 +20161,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubePrometheusStackHelmValuesDocument": {
@@ -20338,11 +20274,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20350,23 +20286,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -20395,11 +20327,10 @@ const docTemplate = `{
                 },
                 "ResourceInventory": {
                     "description": "An inventory of all OCI resources for the OKE cluster.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "Status": {
                     "description": "The status of the instance.\nTODO: use a custom type",
@@ -20555,11 +20486,11 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20568,30 +20499,25 @@ const docTemplate = `{
                 },
                 "Data": {
                     "description": "The secret value to be stored in the provider.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/datatypes.JSON"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -20628,11 +20554,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20640,16 +20566,12 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
-                },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
                 },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
@@ -20660,7 +20582,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "KubernetesRuntimeInstanceID": {
@@ -20721,11 +20643,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20733,23 +20655,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {
@@ -20790,11 +20708,11 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "CreationAcknowledged": {
-                    "description": "The last time creation was acknowledged as begun",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "CreationConfirmed": {
-                    "description": "Used by controllers to confirm creation of an object.",
+                    "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
                 "CreationFailed": {
@@ -20802,23 +20720,19 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "DeletionAcknowledged": {
-                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun.",
+                    "description": "Used by controllers to acknowledge deletion and indicate that deletion\nreconciliation has begun so that subsequent reconciliation attempts can\nact accordingly.",
                     "type": "string"
                 },
                 "DeletionConfirmed": {
                     "description": "Used by controllers to confirm deletion of an object.",
                     "type": "string"
                 },
-                "DeletionFailed": {
-                    "description": "A flag set to true if deletion of the object fails",
-                    "type": "boolean"
-                },
                 "DeletionScheduled": {
                     "description": "Used to inform reconcilers that an object is being deleted so they may\ncomplete delete reconciliation before actually deleting the object from the database.",
                     "type": "string"
                 },
                 "InterruptReconciliation": {
-                    "description": "InterruptReconciliation is used by the controller to indicate that future\nreconciliation should be interrupted. Useful in cases where there is a\nsituation where future reconciliation could be destructive such as\nspinning up more infrastructure when there is a unresolved problem.",
+                    "description": "InterruptReconciliation is used by the controller to indicated that future\nreconcilation should be interrupted.  Useful in cases where there is a\nsituation where future reconciliation could be descructive such as\nspinning up more infrastructure when there is a unresolved problem.",
                     "type": "boolean"
                 },
                 "Name": {

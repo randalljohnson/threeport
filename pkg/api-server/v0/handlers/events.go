@@ -115,7 +115,7 @@ func (h Handler) GetEventsFiltered(c echo.Context) error {
 	var filter v0.Event
 	if err := c.Bind(&filter); err != nil {
 		h.Logger.Error("handler error: error binding filter", zap.Error(err))
-		return apiserver_lib.ResponseStatusBindErr(c, pageParams, err, objectType)
+		return apiserver_lib.ResponseStatus400(c, pageParams, err, objectType)
 	}
 
 	// collect the subject filter. objecttypename, objectid, objectname,

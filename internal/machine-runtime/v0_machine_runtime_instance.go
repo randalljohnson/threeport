@@ -305,9 +305,6 @@ func reconcileProviderInstance(
 		}
 		gcpGceMachineRuntimeDefinition := (*gcpGceMachineRuntimeDefinitions)[0]
 
-		if machineRuntimeInstance.SSHUser == nil || *machineRuntimeInstance.SSHUser == "" {
-			return 0, fmt.Errorf("failed to create GCE machine runtime instance: ssh user is empty")
-		}
 		// create GCE machine runtime instance on the default network
 		gcpGceMachineRuntimeInstance := v0.GcpGceMachineRuntimeInstance{
 			Instance: v0.Instance{

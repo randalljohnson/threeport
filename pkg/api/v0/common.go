@@ -25,7 +25,7 @@ type Reconciliation struct {
 	CreationAcknowledged *time.Time `validate:"optional"`
 
 	// Used by controllers to confirm creation of an object.
-	CreationConfirmed *time.Time `json:",omitempty" validate:"optional"`
+	CreationConfirmed *time.Time `validate:"optional"`
 
 	// Gets set to true if creation process fails.
 	CreationFailed *bool `validate:"optional" gorm:"default:false"`

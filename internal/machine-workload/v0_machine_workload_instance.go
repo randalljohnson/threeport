@@ -30,9 +30,7 @@ const (
 	// defaultShell is used when the MachineWorkloadDefinition does not specify a shell.
 	defaultShell = "/bin/bash"
 
-	// maxEventMessageChars caps the size of an Event Note so we don't
-	// write arbitrarily large rows to the DB when a script emits
-	// megabytes of output.
+	// maxEventMessageChars is the rune cap for truncateMessage.
 	maxEventMessageChars = 32768
 )
 
@@ -41,10 +39,9 @@ const (
 // meaningless when the output is captured to a log or event Note.
 var ansiEscape = regexp.MustCompile(`\x1b\[[0-9;?]*[a-zA-Z]|\x1b\][^\x07]*\x07`)
 
-// v0MachineWorkloadInstanceCreated performs reconciliation when a v0
-// MachineWorkloadInstance has been created.  It resolves the related machine
-// runtime and machine workload definition, opens an SSH connection, executes the
-// create script, and records events for the output.
+// v0MachineWorkloadInstanceCreated runs the definition create script against
+// the related machine runtime instance and patches Status. It sets Reconciled
+// only when the script succeeds.
 func v0MachineWorkloadInstanceCreated(
 	r *controller.Reconciler,
 	machineWorkloadInstance *v0.MachineWorkloadInstance,
@@ -67,7 +64,7 @@ func v0MachineWorkloadInstanceCreated(
 		*machineWorkloadInstance.MachineRuntimeInstanceID,
 	)
 	if err != nil {
-		return controller.Done, fmt.Errorf("failed to get machine runtime instance: %w", err)
+		return 0, fmt.Errorf("failed to get machine runtime instance: %w", err)
 	}
 
 	// wait for the runtime to be reconciled before running workloads against it
@@ -80,12 +77,15 @@ func v0MachineWorkloadInstanceCreated(
 
 	// patch Status; always send Reconciled so PATCH cannot keep a prior true
 	patch := v0.MachineWorkloadInstance{
-		Common:         v0.Common{ID: machineWorkloadInstance.ID},
-		Status:         util.Ptr(string(wlStatus)),
-		Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(scriptErr == nil)},
+		Common: v0.Common{ID: machineWorkloadInstance.ID},
+		Status: util.Ptr(string(wlStatus)),
+		Reconciliation: v0.Reconciliation{
+			Reconciled:     util.Ptr(scriptErr == nil),
+			CreationFailed: util.Ptr(scriptErr != nil),
+		},
 	}
 	if _, err := client.UpdateMachineWorkloadInstance(r.APIClient, r.APIServer, &patch); err != nil {
-		return controller.Done, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
+		return 0, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
 	}
 
 	// requeue on failure so the script is retried
@@ -96,10 +96,9 @@ func v0MachineWorkloadInstanceCreated(
 	return controller.Done, nil
 }
 
-// v0MachineWorkloadInstanceUpdated performs reconciliation when a v0
-// MachineWorkloadInstance has been updated.  It resolves the related machine
-// runtime and machine workload definition, opens an SSH connection, executes
-// the update script, and records events for the output.
+// v0MachineWorkloadInstanceUpdated runs the definition update script against
+// the related machine runtime instance and patches Status. It sets Reconciled
+// only when the script succeeds.
 func v0MachineWorkloadInstanceUpdated(
 	r *controller.Reconciler,
 	machineWorkloadInstance *v0.MachineWorkloadInstance,
@@ -112,12 +111,12 @@ func v0MachineWorkloadInstanceUpdated(
 		*machineWorkloadInstance.MachineWorkloadDefinitionID,
 	)
 	if err != nil {
-		return controller.Done, fmt.Errorf("failed to get machine workload definition: %w", err)
+		return 0, fmt.Errorf("failed to get machine workload definition: %w", err)
 	}
 
 	// skip when no update script is defined
 	if mwd.UpdateScript == nil {
-		return controller.Done, nil
+		return 0, nil
 	}
 
 	// get related machine runtime instance
@@ -127,12 +126,12 @@ func v0MachineWorkloadInstanceUpdated(
 		*machineWorkloadInstance.MachineRuntimeInstanceID,
 	)
 	if err != nil {
-		return controller.Done, fmt.Errorf("failed to get machine runtime instance: %w", err)
+		return 0, fmt.Errorf("failed to get machine runtime instance: %w", err)
 	}
 
 	// wait for the runtime to be reconciled before running workloads against it
 	if mri.Reconciled == nil || !*mri.Reconciled {
-		return controller.Requeue30s, nil
+		return 30, nil
 	}
 
 	// run the update script and record results
@@ -145,7 +144,7 @@ func v0MachineWorkloadInstanceUpdated(
 		Reconciliation: v0.Reconciliation{Reconciled: util.Ptr(scriptErr == nil)},
 	}
 	if _, err := client.UpdateMachineWorkloadInstance(r.APIClient, r.APIServer, &patch); err != nil {
-		return controller.Done, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
+		return 0, fmt.Errorf("failed to update machine workload instance with run result: %w", err)
 	}
 
 	// requeue on failure so the script is retried
@@ -153,21 +152,16 @@ func v0MachineWorkloadInstanceUpdated(
 		return controller.Requeue30s, scriptErr
 	}
 
-	return controller.Done, nil
+	return 0, nil
 }
 
-// unreachableDeleteGracePeriod bounds how long the delete path keeps retrying
-// while the host is unreachable. Once deletion has been scheduled for longer
-// than this, the host is treated as gone and the delete is allowed to confirm
-// rather than requeue forever. Package-level so tests can shrink it.
+// unreachableDeleteGracePeriod is how long delete keeps retrying after DeletionScheduled.
+// Past that, confirm deletion even if GetClient or the delete script is still failing.
 var unreachableDeleteGracePeriod = 15 * time.Minute
 
-// v0MachineWorkloadInstanceDeleted performs reconciliation when a v0
-// MachineWorkloadInstance has been deleted. It runs the delete script from the
-// associated definition before the generated reconciler removes the instance
-// from the database. When the host machine has already been deleted, or when
-// the host stays unreachable past the grace period, it lets the delete confirm
-// so a workload is not stuck waiting on a machine that is gone.
+// v0MachineWorkloadInstanceDeleted runs the definition delete script before the
+// generated reconciler removes the instance. A missing host confirms immediately.
+// An unreachable host or a failed script confirms after the grace period.
 func v0MachineWorkloadInstanceDeleted(
 	r *controller.Reconciler,
 	machineWorkloadInstance *v0.MachineWorkloadInstance,
@@ -180,18 +174,15 @@ func v0MachineWorkloadInstanceDeleted(
 		*machineWorkloadInstance.MachineWorkloadDefinitionID,
 	)
 	if err != nil {
-		return controller.Done, fmt.Errorf("failed to get machine workload definition: %w", err)
+		return 0, fmt.Errorf("failed to get machine workload definition: %w", err)
 	}
 
-	// the delete script is a required column, but guard against a nil pointer so
-	// a malformed definition returns an error rather than panicking on deref
+	// require a delete script so a nil pointer does not panic on deref
 	if mwd.DeleteScript == nil {
-		return controller.Done, fmt.Errorf("machine workload definition %d has no delete script", *mwd.ID)
+		return 0, fmt.Errorf("machine workload definition %d has no delete script", *mwd.ID)
 	}
 
-	// get related machine runtime instance; when the host has already been
-	// deleted, there is nothing to run the delete script against, so record an
-	// info event and let the delete confirm
+	// get related machine runtime instance; confirm delete if the host is already gone
 	mri, err := client.GetMachineRuntimeInstanceByID(
 		r.APIClient,
 		r.APIServer,
@@ -210,31 +201,112 @@ func v0MachineWorkloadInstanceDeleted(
 			); eventErr != nil {
 				log.Error(eventErr, "failed to record event for missing host machine runtime instance")
 			}
-			return controller.Done, nil
+			return 0, nil
 		}
-		return controller.Done, fmt.Errorf("failed to get machine runtime instance: %w", err)
+		return 0, fmt.Errorf("failed to get machine runtime instance: %w", err)
 	}
 
-	// run the delete script and record results; delete does not persist a
-	// status back to the instance since the row is about to be removed
+	// dial SSH before the delete script so a connect failure is distinct from a script failure
+	probeClient, _, err := machine.GetClient(mri, r.EncryptionKey)
+	if err != nil {
+		if sshDialFailed(err) && deletionScheduledExceeds(machineWorkloadInstance.DeletionScheduled, unreachableDeleteGracePeriod) {
+			if eventErr := r.EventsRecorder.RecordEvent(
+				&v0.Event{
+					Type:   util.Ptr(event.TypeWarning),
+					Reason: util.Ptr("DeleteScriptSkipped"),
+					Note:   util.Ptr("host stayed unreachable past the delete grace period; confirming deletion without a successful delete script run"),
+				},
+				*machineWorkloadInstance.ID,
+				machineWorkloadInstance.GetFullyQualifiedType(),
+			); eventErr != nil {
+				log.Error(eventErr, "failed to record event for skipped delete script")
+			}
+			return 0, nil
+		}
+		// requeue while the host is unreachable; return ErrWithEvent for the wrapper
+		note := fmt.Sprintf("failed to connect to machine runtime instance to run delete script: %s", err)
+		return 30, &tp_errors.ErrWithEvent{
+			Message: note,
+			Event: v0.Event{
+				Type:   util.Ptr(event.TypeWarning),
+				Reason: util.Ptr("SSHConnectFailed"),
+				Note:   util.Ptr(note),
+			},
+		}
+	}
+	probeClient.Close()
+
+	// run the delete script without patching Status
 	_, scriptErr := runScript(r, machineWorkloadInstance, mri, mwd, *mwd.DeleteScript, "delete", log)
-
-	// requeue in 30s on failure so the script is retried; propagate the
-	// ErrWithEvent so the wrapper substitutes the specific reason for
-	// the generic FailedDelete event
 	if scriptErr != nil {
-		return 30, scriptErr
+		// confirm deletion after the grace period and record the script event here
+		if deletionScheduledExceeds(machineWorkloadInstance.DeletionScheduled, unreachableDeleteGracePeriod) {
+			var errWithEvent *tp_errors.ErrWithEvent
+			if errors.As(scriptErr, &errWithEvent) {
+				if eventErr := r.EventsRecorder.RecordEvent(
+					&errWithEvent.Event,
+					*machineWorkloadInstance.ID,
+					machineWorkloadInstance.GetFullyQualifiedType(),
+				); eventErr != nil {
+					log.Error(eventErr, "failed to record event for failed delete script")
+				}
+			}
+			if eventErr := r.EventsRecorder.RecordEvent(
+				&v0.Event{
+					Type:   util.Ptr(event.TypeWarning),
+					Reason: util.Ptr("DeleteScriptFailedGraceExceeded"),
+					Note:   util.Ptr("delete script kept failing past the delete grace period; confirming deletion without a successful delete script run"),
+				},
+				*machineWorkloadInstance.ID,
+				machineWorkloadInstance.GetFullyQualifiedType(),
+			); eventErr != nil {
+				log.Error(eventErr, "failed to record event for skipped delete script")
+			}
+			return 0, nil
+		}
+
+		// within the grace period, requeue in 30s so the script is retried,
+		// propagating the ErrWithEvent so the wrapper substitutes the specific
+		// reason for the generic FailedDelete event
+		return controller.Requeue30s, scriptErr
 	}
 
-	return controller.Done, nil
+	return 0, nil
 }
 
-// runScript establishes an SSH connection to the machine runtime, executes the
-// given script, and returns the derived workload instance status along with an
-// error carrying the specific-reason event for failure paths. Success emits a
-// Normal event in place; failure paths defer emission to the wrapper's
-// HandleEventOverride so the specific reason replaces the generic FailedCreate
-// / FailedUpdate / FailedDelete event.
+// deletionScheduledExceeds reports whether deletion was scheduled longer than grace ago.
+// A nil timestamp has not been scheduled, so the grace period has not been exceeded.
+func deletionScheduledExceeds(deletionScheduled *time.Time, grace time.Duration) bool {
+	if deletionScheduled == nil {
+		return false
+	}
+	return time.Since(*deletionScheduled) > grace
+}
+
+// sshDialFailed reports a TCP-level SSH connect failure, not auth, host-key,
+// decrypt, or missing-credential errors.
+func sshDialFailed(err error) bool {
+	if err == nil {
+		return false
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		return true
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "connection refused") ||
+		strings.Contains(msg, "no route to host") ||
+		strings.Contains(msg, "network is unreachable") ||
+		strings.Contains(msg, "i/o timeout") ||
+		strings.Contains(msg, "connection timed out")
+}
+
+// runScript connects over ssh, runs script, and returns the derived workload status.
+// Script, timeout, and connect failures return ErrWithEvent; decrypt failures do not.
 func runScript(
 	r *controller.Reconciler,
 	mwi *v0.MachineWorkloadInstance,
@@ -247,8 +319,7 @@ func runScript(
 	// establish ssh connection to the runtime
 	sshClient, _, err := machine.GetClient(mri, r.EncryptionKey)
 	if err != nil {
-		// return an ErrWithEvent so the wrapper substitutes the specific
-		// reason for the generic FailedCreate / FailedUpdate / FailedDelete
+		// surface the connect failure as an event
 		note := fmt.Sprintf("failed to connect to machine runtime instance: %s", err)
 		return status.WorkloadInstanceStatusError, &tp_errors.ErrWithEvent{
 			Message: note,
@@ -293,7 +364,7 @@ func runScript(
 		mwd.Timeout,
 	)
 
-	// derive status and event content from the execution result
+	// derive status and event content from the result
 	var wlStatus status.WorkloadInstanceStatus
 	var reason, eventType, message string
 	switch {
@@ -316,9 +387,7 @@ func runScript(
 		message = fmt.Sprintf("%s script failed with exit code %d (stderr: %s)", scriptName, exitCode, truncateMessage(sanitizeScriptOutput(stderr)))
 	}
 
-	// success path logs completion; failure paths defer to the wrapper via
-	// ErrWithEvent so the specific reason replaces the generic FailedCreate
-	// / FailedUpdate / FailedDelete event
+	// log a successful run; stdout is diagnostic detail, not an event
 	if wlStatus == status.WorkloadInstanceStatusHealthy {
 		log.Info(
 			"machine workload script completed successfully",

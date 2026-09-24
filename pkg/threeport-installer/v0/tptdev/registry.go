@@ -13,7 +13,6 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	v1 "k8s.io/api/core/v1"
-	kubeerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -28,30 +27,20 @@ const (
 	registryPort  = "5001"
 )
 
-// dockerClient returns a client that speaks whatever API the daemon offers.
-// The library default is newer than the daemon on the GitHub-hosted runner.
-func dockerClient() (*client.Client, error) {
-	return client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-}
-
-// CreateLocalRegistry starts the local registry container, reusing a leftover one when it is already present.
+// CreateLocalRegistry starts a Docker container to serve as a local container
+// registry.  If a local registry already exists with the <registryName> name,
+// it will return without error
 func CreateLocalRegistry() error {
 	ctx := context.Background()
-	cli, err := dockerClient()
+	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
 	defer cli.Close()
 
-	existing, err := cli.ContainerInspect(ctx, registryName)
+	_, err = cli.ContainerInspect(ctx, registryName)
 	if err == nil {
-		// start a leftover registry that is created or exited
-		if registryNeedsStart(existing.State.Status) {
-			if err := cli.ContainerStart(ctx, existing.ID, container.StartOptions{}); err != nil {
-				return fmt.Errorf("failed to start the existing registry container: %w", err)
-			}
-		}
-
+		// registry already exists
 		return nil
 	}
 
@@ -100,16 +89,6 @@ func CreateLocalRegistry() error {
 	return nil
 }
 
-// registryNeedsStart reports whether a leftover registry container can be started.
-func registryNeedsStart(status string) bool {
-	switch status {
-	case container.StateCreated, container.StateExited:
-		return true
-	default:
-		return false
-	}
-}
-
 // ConnectLocalRegistry connects a local Docker container registry to a kind cluster.
 //
 // kubeconfigPath is the kubeconfig the rest of the command resolved, from
@@ -119,7 +98,7 @@ func registryNeedsStart(status string) bool {
 // location, which may be a different cluster or none at all.
 func ConnectLocalRegistry(clusterName string, kubeconfigPath string) error {
 	ctx := context.Background()
-	cli, err := dockerClient()
+	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
@@ -164,7 +143,7 @@ func ConnectLocalRegistry(clusterName string, kubeconfigPath string) error {
 // container registry.
 func DeleteLocalRegistry() error {
 	ctx := context.Background()
-	cli, err := dockerClient()
+	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
@@ -174,12 +153,7 @@ func DeleteLocalRegistry() error {
 		return fmt.Errorf("failed to stop registry docker container: %w", err)
 	}
 
-	// remove the registry container and the anonymous volume docker created
-	// from the image's /var/lib/registry path. that volume outlives the
-	// container, holds every pushed image, and is not attached later
-	if err := cli.ContainerRemove(ctx, registryName, container.RemoveOptions{
-		RemoveVolumes: true,
-	}); err != nil {
+	if err := cli.ContainerRemove(ctx, registryName, container.RemoveOptions{}); err != nil {
 		return fmt.Errorf("failed to remove registry docker container: %w", err)
 	}
 
@@ -225,11 +199,8 @@ func applyK8sConfig(kubeconfigPath string) error {
 		},
 	}
 
-	// ignore already exists; the configmap body is static
 	if _, err = clientset.CoreV1().ConfigMaps("kube-public").Create(context.TODO(), configMap, metav1.CreateOptions{}); err != nil {
-		if !kubeerr.IsAlreadyExists(err) {
-			return fmt.Errorf("failed to create configmap for local registry: %w", err)
-		}
+		return fmt.Errorf("failed to create configmap for local registry: %w", err)
 	}
 
 	return nil

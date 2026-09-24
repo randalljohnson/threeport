@@ -261,7 +261,6 @@ func (g *GcpGkeKubernetesRuntimeInstanceConfig) Replace(
 		Region:                              gcpGkeKubernetesRuntimeInstanceValues.Region,
 		KubernetesRuntimeInstanceID:         existingGcpGkeKubernetesRuntimeInstance.KubernetesRuntimeInstanceID,
 		GcpGkeKubernetesRuntimeDefinitionID: existingGcpGkeKubernetesRuntimeInstance.GcpGkeKubernetesRuntimeDefinitionID,
-		GcpProviderID:                       existingGcpGkeKubernetesRuntimeInstance.GcpProviderID,
 	}
 
 	// replace gcp gke kubernetes runtime instance

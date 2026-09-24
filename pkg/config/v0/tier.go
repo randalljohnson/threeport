@@ -23,9 +23,9 @@ type TierConfig struct {
 // TierValues contains all the attributes needed to manage
 // the Tier API object.
 type TierValues struct {
-	Name        *string
-	Criticality *int
-	Age         *string
+	Name        *string `json:",omitempty"`
+	Criticality *int    `json:",omitempty"`
+	Age         *string `json:",omitempty"`
 }
 
 // Get gets tiers from the Threeport API.

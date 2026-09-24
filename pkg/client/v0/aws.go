@@ -26,9 +26,7 @@ func GetAwsProviderByDefaultProvider(apiClient *http.Client, apiAddr string) (*v
 	if err != nil {
 		return &awsProvider, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
 	}
-	if len(response.Data) < 1 {
-		return &awsProvider, errors.New("no aws provider found marked as the default provider")
-	}
+	// TODO: check for response.Data len == 0
 
 	jsonData, err := json.Marshal(response.Data[0])
 	if err != nil {
@@ -58,10 +56,6 @@ func GetAwsProviderByAccountID(apiClient *http.Client, apiAddr string, accountID
 	)
 	if err != nil {
 		return &awsProvider, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
-	}
-
-	if len(response.Data) < 1 {
-		return &awsProvider, fmt.Errorf("no aws provider found with account ID %s", accountID)
 	}
 
 	jsonData, err := json.Marshal(response.Data[0])

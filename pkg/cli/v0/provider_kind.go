@@ -90,7 +90,6 @@ func DeployKindInfra(
 	if cpi.Opts.LocalRegistry {
 		if err := tptdev.ConnectLocalRegistry(
 			provider.ThreeportRuntimeName(cpi.Opts.ControlPlaneName),
-			cpi.Opts.KubeconfigPath,
 		); err != nil {
 			return uninstaller.cleanOnCreateError("failed to connect local container registry to Threeport control plane cluster", err)
 		}

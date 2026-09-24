@@ -272,10 +272,6 @@ func init() {
 		&noCache,
 		"no-cache", false, "Build go binaries without the local go cache (passes -a to go build).",
 	)
-	buildCmd.Flags().StringVar(
-		&kubeconfigPath,
-		"kubeconfig", "", "Kubeconfig file to use (default is $KUBECONFIG, then ~/.kube/config).",
-	)
 }
 
 // detectAuthEnabled reports whether the control plane API deployment enables auth.

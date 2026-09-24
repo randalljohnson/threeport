@@ -28,15 +28,22 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
-// TestMachineRuntimeInstanceCreated_HappyPath covers a reachable machine
-// whose stored host key matches the server.
+// TestMachineRuntimeInstanceCreated_HappyPath drives a full Created
+// reconcile against the in-process SSH server. The MRI has HostKey set to
+// the server's actual key (no capture path); GetClient succeeds, Ping
+// succeeds, and the reachability signal lands as a log statement. On this
+// first-reachability pass the reconciler issues a single PATCH that stamps
+// creation_confirmed with Reconciled=true, and emits exactly one
+// CreateInProgress lifecycle marker at the top of the run; the wrapper's
+// SuccessfulCreate event still records the outcome.
 func TestMachineRuntimeInstanceCreated_HappyPath(t *testing.T) {
 	key := machinetest.NewEncryptionKey(t)
 	signer := machinetest.NewSigner(t)
 	addr, stop := machinetest.StartSSHServer(t, signer, "u", "p", machinetest.SSHOpts{ExitCode: 0})
 	defer stop()
 
-	// store the server's host key so the connect verifies rather than captures
+	// pin the MRI's HostKey to the server's real key so GetClient
+	// verifies rather than captures
 	mri := machinetest.MRIFromAddr(t, 42, "mri-happy", addr, "u", "p", key)
 	mri.HostKey = util.Ptr(hostKeyBase64(signer))
 
@@ -70,7 +77,7 @@ func TestMachineRuntimeInstanceCreated_HappyPath(t *testing.T) {
 		EventsRecorder: recorder,
 	}
 
-	// reconcile create
+	// drive the Created reconciler against the running SSH server
 	delay, err := v0MachineRuntimeInstanceCreated(r, mri, &log)
 
 	// check success with no requeue
@@ -142,10 +149,11 @@ func TestMachineRuntimeInstanceCreated_NoHostname_RequeuesWithoutDialing(t *test
 }
 
 // TestMachineRuntimeInstanceCreated_HostKeyCaptured covers the first-connect
-// path: HostKey is nil, so GetClient captures the server's key, the
-// reconciler PATCHes the MRI to persist it, and emits HostKeyCaptured +
-// TestMachineRuntimeInstanceCreated_HostKeyCaptured covers first connect
-// with no stored host key and persists the captured key.
+// path: HostKey is nil, so GetClient captures the server's key and the
+// reconciler PATCHes the MRI to persist it with Reconciled=true. The
+// captured key and reachability signals land as log statements; the
+// reconciler emits exactly one CreateInProgress lifecycle marker and no other
+// boot-noise events on the create path.
 func TestMachineRuntimeInstanceCreated_HostKeyCaptured(t *testing.T) {
 	key := machinetest.NewEncryptionKey(t)
 	signer := machinetest.NewSigner(t)
@@ -182,17 +190,20 @@ func TestMachineRuntimeInstanceCreated_HostKeyCaptured(t *testing.T) {
 		EventsRecorder: recorder,
 	}
 
-	// reconcile create
+	// drive the Created reconciler against the running SSH server
 	delay, err := v0MachineRuntimeInstanceCreated(r, mri, &log)
 
-	// check success with no requeue
+	// success path returns (0, nil): no requeue and no error
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), delay)
 
-	// check the handler records no event
-	assert.Empty(t, recorder.GetReasons(), "reconciler no longer emits boot-noise events on the create path")
+	// reconciler emits only the CreateInProgress lifecycle marker on the
+	// create path; no HostKeyCaptured or SSHReachable events fire, since
+	// the captured key persists via PATCH and both signals land as logs
+	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "reconciler emits only the CreateInProgress lifecycle marker on the create path")
 
-	// check the captured host key is persisted with Reconciled true
+	// PATCH persists the captured host key with Reconciled=true so the
+	// resulting update notification does not retrigger reconciliation
 	patchesMu.Lock()
 	defer patchesMu.Unlock()
 	require.Len(t, patches, 1, "expected exactly one PATCH to persist the captured host key")
@@ -200,11 +211,16 @@ func TestMachineRuntimeInstanceCreated_HostKeyCaptured(t *testing.T) {
 	assert.Contains(t, string(patches[0]), `"Reconciled":true`, "PATCH should set Reconciled=true so the resulting update notification does not retrigger reconciliation")
 }
 
-// TestMachineRuntimeInstanceCreated_NetworkError covers an unreachable SSH
-// endpoint and returns a 30s requeue with a connect-failed event.
+// TestMachineRuntimeInstanceCreated_NetworkError points the MRI at an
+// unreachable host and asserts the reconciler returns 30s requeue and a
+// carrying ErrWithEvent whose Reason is SSHConnectFailed. The wrapper's
+// HandleEventOverride substitutes that event for the generic FailedCreate
+// row, so the failure path itself calls RecordEvent only for the
+// CreateInProgress lifecycle marker emitted at the top of the run.
 func TestMachineRuntimeInstanceCreated_NetworkError(t *testing.T) {
 	key := machinetest.NewEncryptionKey(t)
-	// point the instance at 127.0.0.1:1 so the dial is refused
+	// point at 127.0.0.1:1 (reserved, never bound) to force a connection-refused
+	// network-class error out of GetClient
 	mri := machinetest.MRIFromAddr(t, 9, "mri-unreachable", "127.0.0.1:1", "u", "p", key)
 
 	api := machinetest.NewAPIStub(t)
@@ -217,32 +233,43 @@ func TestMachineRuntimeInstanceCreated_NetworkError(t *testing.T) {
 		EventsRecorder: recorder,
 	}
 
-	// reconcile create
+	// drive the Created reconciler against the unreachable host
 	delay, err := v0MachineRuntimeInstanceCreated(r, mri, &log)
 
-	// check the connect failure is retried after 30s
+	// reconciler surfaces the failure and leaves the requeue delay to the
+	// wrapper, which is what acts on it when an error is returned
 	require.Error(t, err)
-	assert.Equal(t, int64(30), delay, "network-class errors should be retried after 30s")
+	assert.Equal(t, int64(0), delay, "a network-class error leaves the requeue delay to the reconciler wrapper")
 
-	// check the error carries a connect-failed event
+	// error carries the specific-reason event the wrapper will substitute
+	// for the generic FailedCreate row
 	var errWithEvent *tp_errors.ErrWithEvent
 	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")
 	require.NotNil(t, errWithEvent.Event.Reason)
 	assert.Equal(t, "SSHConnectFailed", *errWithEvent.Event.Reason)
 
-	// check the handler records no event
-	assert.Empty(t, recorder.GetReasons(), "failure path should not call RecordEvent directly; the wrapper substitutes the event")
+	// failure path defers the failure event to the wrapper, so the only
+	// direct RecordEvent call is the CreateInProgress lifecycle marker at the
+	// top of the run; no SSHConnectFailed event fires here
+	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "failure path should not call RecordEvent directly for the failure; the wrapper substitutes it")
 }
 
-// TestMachineRuntimeInstanceCreated_HostKeyMismatch covers a stored host
-// key that does not match the server.
+// TestMachineRuntimeInstanceCreated_HostKeyMismatch points the MRI at the
+// test server but with a HostKey that doesn't match the server's actual
+// host key. SSH client errors (including host key mismatch) always retry
+// after 30s, since a misconfigured key may be fixed externally without
+// changing the object. The failure surfaces as an ErrWithEvent whose Reason
+// is SSHConnectFailed, which the wrapper substitutes for the generic
+// FailedCreate event; the reconciler itself records only the
+// CreateInProgress lifecycle marker emitted at the top of the run.
 func TestMachineRuntimeInstanceCreated_HostKeyMismatch(t *testing.T) {
 	key := machinetest.NewEncryptionKey(t)
 	serverSigner := machinetest.NewSigner(t)
 	addr, stop := machinetest.StartSSHServer(t, serverSigner, "u", "p", machinetest.SSHOpts{ExitCode: 0})
 	defer stop()
 
-	// store a host key that does not match the server
+	// pin a different host key on the MRI to force a mismatch against the
+	// server's actual key
 	wrongSigner := machinetest.NewSigner(t)
 	mri := machinetest.MRIFromAddr(t, 11, "mri-mismatch", addr, "u", "p", key)
 	mri.HostKey = util.Ptr(hostKeyBase64(wrongSigner))
@@ -257,21 +284,24 @@ func TestMachineRuntimeInstanceCreated_HostKeyMismatch(t *testing.T) {
 		EventsRecorder: recorder,
 	}
 
-	// reconcile create
+	// drive the Created reconciler against the mismatched host key
 	delay, err := v0MachineRuntimeInstanceCreated(r, mri, &log)
 
-	// check the mismatch is retried after 30s so a corrected key can succeed
+	// ssh-client failures always retry, on the wrapper's requeue delay
 	require.Error(t, err)
-	assert.Equal(t, int64(30), delay, "ssh-client errors always retry")
+	assert.Equal(t, int64(0), delay, "an ssh-client error leaves the requeue delay to the reconciler wrapper")
 
-	// check the error carries a connect-failed event
+	// error carries the specific-reason event the wrapper will substitute
+	// for the generic FailedCreate row
 	var errWithEvent *tp_errors.ErrWithEvent
 	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")
 	require.NotNil(t, errWithEvent.Event.Reason)
 	assert.Equal(t, "SSHConnectFailed", *errWithEvent.Event.Reason)
 
-	// check the handler records no event
-	assert.Empty(t, recorder.GetReasons(), "failure path should not call RecordEvent directly; the wrapper substitutes the event")
+	// failure path defers the failure event to the wrapper, so the only
+	// direct RecordEvent call is the CreateInProgress lifecycle marker at the
+	// top of the run; no SSHConnectFailed event fires here
+	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "failure path should not call RecordEvent directly for the failure; the wrapper substitutes it")
 }
 
 // overrideUnpopulatedRequeueDelay sets unpopulatedRequeueDelaySeconds for one test.

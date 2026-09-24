@@ -132,8 +132,11 @@ func (i *GceMachineInfra) BuildResourceInventory() map[string]any {
 	}
 }
 
-// GcpClientOptions appends the instance service account credentials to the
-// GCP client options. An empty credential leaves the options unchanged.
+// GcpClientOptions returns the GCP SDK client options for this instance.
+// When ServiceAccountCredentials is set it appends that JSON key after any
+// base options so concurrent calls for different accounts authenticate
+// independently. Exported for orphan reclaim, which builds its client outside
+// this package.
 func (i *GceMachineInfra) GcpClientOptions(base ...option.ClientOption) []option.ClientOption {
 	if i.ServiceAccountCredentials == "" {
 		return base

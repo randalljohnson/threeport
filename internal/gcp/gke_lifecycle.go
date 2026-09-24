@@ -308,9 +308,9 @@ func (g *gkeLifecycle) SetDeletionFailed() error {
 	return err
 }
 
-// RecordSuccessfulCreate records a CreateSuccessful event for provisioning
-// completion. ConfirmCreation sets Reconciled=true first, so the generated
-// reconciler's wasReconciled gate skips its own emit on redelivery.
+// RecordSuccessfulCreate records a CreateSuccessful event for the GKE instance.
+// ConfirmCreation sets Reconciled=true first, so a later reconcile pass sees
+// wasReconciled and skips the generated wrapper's success emit.
 func (g *gkeLifecycle) RecordSuccessfulCreate() error {
 	return g.r.EventsRecorder.RecordEvent(
 		&v0.Event{

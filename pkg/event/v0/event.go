@@ -31,6 +31,14 @@ const (
 	ReasonDeleteSuccessful = "DeleteSuccessful"
 	ReasonDeleteFailed     = "DeleteFailed"
 
+	// Names the generated reconcilers still emit.
+	ReasonSuccessfulCreate = "SuccessfulCreate"
+	ReasonFailedCreate     = "FailedCreate"
+	ReasonSuccessfulUpdate = "SuccessfulUpdate"
+	ReasonFailedUpdate     = "FailedUpdate"
+	ReasonSuccessfulDelete = "SuccessfulDelete"
+	ReasonFailedDelete     = "FailedDelete"
+
 	// Default event types
 	TypeNormal  = "Normal"
 	TypeWarning = "Warning"

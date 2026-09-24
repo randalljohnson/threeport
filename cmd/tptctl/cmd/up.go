@@ -88,6 +88,7 @@ control planes if they are used to create or are created by another control plan
 		if err := cli.ValidateCreateGenesisControlPlaneFlags(
 			cliArgs.ControlPlaneName,
 			cliArgs.InfraProvider,
+			cliArgs.Tier,
 			cliArgs.CreateRootDomain,
 			cliArgs.AuthEnabled,
 			cliArgs.KindPortMappings,

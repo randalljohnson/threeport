@@ -1275,6 +1275,7 @@ func apiPortFromKindMappings(kindPortMappings []string) int {
 func ValidateCreateGenesisControlPlaneFlags(
 	instanceName string,
 	infraProvider string,
+	tier string,
 	createRootDomain string,
 	authEnabled bool,
 	kindPortMappings []string,
@@ -1282,6 +1283,14 @@ func ValidateCreateGenesisControlPlaneFlags(
 	clusterName string,
 	apiPort int,
 ) error {
+	// reject a tier other than dev or prod
+	if tier != threeport.ControlPlaneTierDev && tier != threeport.ControlPlaneTierProd {
+		return fmt.Errorf(
+			"invalid tier value '%s' - must be one of [%s, %s]",
+			tier, threeport.ControlPlaneTierDev, threeport.ControlPlaneTierProd,
+		)
+	}
+
 	// ensure name length doesn't exceed maximum
 	if utf8.RuneCountInString(instanceName) > threeport.InstanceNameMaxLength {
 		return fmt.Errorf(

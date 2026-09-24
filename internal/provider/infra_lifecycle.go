@@ -167,6 +167,7 @@ type ReconciliationSnapshot struct {
 	DeletionScheduled    *time.Time
 	DeletionAcknowledged *time.Time
 	DeletionConfirmed    *time.Time
+	DeletionFailed       bool
 	ResourceInventory    *datatypes.JSON
 }
 

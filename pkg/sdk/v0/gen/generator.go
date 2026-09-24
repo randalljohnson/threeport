@@ -1093,6 +1093,20 @@ func (g *Generator) ValidateTags() error {
 						lib.ValidateRequired, lib.ValidateOptional, lib.ValidateOptionalAssociation,
 					))
 				}
+				// reject a validate tag whose json tag omits omitempty
+				validateValue := tagMap[string(lib.ValidateTag)]
+				if validateValue == string(lib.ValidateRequired) ||
+					validateValue == string(lib.ValidateOptional) ||
+					validateValue == string(lib.ValidateOptionalAssociation) {
+					j, ok := tagMap[string(lib.JsonTag)]
+					if !ok || !strings.Contains(j, lib.JsonOmitempty) {
+						problems = append(problems, fmt.Sprintf(
+							"%s.%s: %s:%q field requires json:%q",
+							objectName, fieldName,
+							lib.ValidateTag, validateValue, ","+lib.JsonOmitempty,
+						))
+					}
+				}
 				// persist defaults to true — only PersistFalse opts out;
 				// any other value (including an explicit "true") is noise
 				// and likely indicates a misunderstanding

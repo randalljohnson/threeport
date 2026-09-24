@@ -14,7 +14,6 @@ import (
 	client "github.com/threeport/threeport/pkg/client/v0"
 	kube "github.com/threeport/threeport/pkg/kube/v0"
 	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	kubemetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

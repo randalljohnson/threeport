@@ -13,11 +13,9 @@ import (
 	strcase "github.com/iancoleman/strcase"
 	cobra "github.com/spf13/cobra"
 
-	apilib "github.com/threeport/threeport/pkg/api/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	cli "github.com/threeport/threeport/pkg/cli/v0"
 	client_v0 "github.com/threeport/threeport/pkg/client/v0"
-	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
 var (

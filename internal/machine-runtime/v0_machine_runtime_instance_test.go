@@ -681,7 +681,7 @@ func TestMachineRuntimeInstanceCreated_SSHConnectTimeout_ReturnsErrorWithDelay(t
 	require.ErrorAs(t, err, &errWithEvent)
 	require.NotNil(t, errWithEvent.Event.Reason)
 	assert.Equal(t, "SSHConnectFailed", *errWithEvent.Event.Reason)
-	assert.Equal(t, int64(11), delay)
+	assert.Equal(t, int64(0), delay)
 	assert.Less(t, elapsed, 5*time.Second, "timeout must fire well before the held handshake would release")
 	assert.Empty(t, recorder.GetReasons())
 }

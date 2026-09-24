@@ -44,8 +44,6 @@ func (k *KubernetesRuntimeInstanceConfig) Get(
 	kubernetesRuntimeInstanceValues := k.KubernetesRuntimeInstance
 	// get API objects
 	var kubernetesRuntimeInstances *[]api_v0.KubernetesRuntimeInstance
-	// set listPath on the all-instances branch to prefetch definition names
-	listPath := false
 	switch {
 	// if name is provided, get kubernetes runtime instance by name
 	case kubernetesRuntimeInstanceValues.Name != nil:
@@ -61,23 +59,18 @@ func (k *KubernetesRuntimeInstanceConfig) Get(
 			return nil, fmt.Errorf("failed to get kubernetes runtime instances from Threeport API: %w", err)
 		}
 		kubernetesRuntimeInstances = allKubernetesRuntimeInstances
-		listPath = true
 	}
 
-	// prefetch definition names once on the list path
-	var definitionNamesByID map[uint]*string
-	if listPath {
-		// get all kubernetes runtime definitions
-		allDefs, err := client_v0.GetKubernetesRuntimeDefinitions(apiClient, apiEndpoint)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get kubernetes runtime definitions from Threeport API: %w", err)
-		}
-		definitionNamesByID = make(map[uint]*string, len(*allDefs))
-		for i := range *allDefs {
-			def := (*allDefs)[i]
-			if def.ID != nil {
-				definitionNamesByID[*def.ID] = def.Name
-			}
+	// load definition names once; an instance stores the definition id, not its name
+	allDefs, err := client_v0.GetKubernetesRuntimeDefinitions(apiClient, apiEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get kubernetes runtime definitions from Threeport API: %w", err)
+	}
+	definitionNamesByID := make(map[uint]*string, len(*allDefs))
+	for i := range *allDefs {
+		def := (*allDefs)[i]
+		if def.ID != nil {
+			definitionNamesByID[*def.ID] = def.Name
 		}
 	}
 
@@ -88,19 +81,9 @@ func (k *KubernetesRuntimeInstanceConfig) Get(
 		var kubernetesRuntimeDefinition *KubernetesRuntimeDefinitionValues
 
 		if kubernetesRuntimeInstance.KubernetesRuntimeDefinitionID != nil {
-			if listPath {
-				if name, ok := definitionNamesByID[*kubernetesRuntimeInstance.KubernetesRuntimeDefinitionID]; ok {
-					kubernetesRuntimeDefinition = &KubernetesRuntimeDefinitionValues{
-						Name: name,
-					}
-				}
-			} else {
-				// get kubernetes runtime definition by ID
-				krd, err := client_v0.GetKubernetesRuntimeDefinitionByID(apiClient, apiEndpoint, *kubernetesRuntimeInstance.KubernetesRuntimeDefinitionID)
-				if err == nil {
-					kubernetesRuntimeDefinition = &KubernetesRuntimeDefinitionValues{
-						Name: krd.Name,
-					}
+			if name, ok := definitionNamesByID[*kubernetesRuntimeInstance.KubernetesRuntimeDefinitionID]; ok {
+				kubernetesRuntimeDefinition = &KubernetesRuntimeDefinitionValues{
+					Name: name,
 				}
 			}
 		}

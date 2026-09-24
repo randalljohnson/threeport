@@ -2,11 +2,9 @@ package v0
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -22,11 +20,6 @@ import (
 // TestMachineRuntimeInstanceGetDedupesDefinitionLookups covers Get listing
 // instances that share a definition ID without repeating that ID fetch.
 func TestMachineRuntimeInstanceGetDedupesDefinitionLookups(t *testing.T) {
-	var (
-		mu          sync.Mutex
-		defHitsByID = map[uint]int{}
-	)
-
 	// setup three instances on definition 100 and one on 200
 	sharedDefName := util.Ptr("shared-def")
 	otherDefName := util.Ptr("other-def")
@@ -39,8 +32,9 @@ func TestMachineRuntimeInstanceGetDedupesDefinitionLookups(t *testing.T) {
 	}
 
 	var listHits int32
+	var definitionListHits int32
 
-	// serve instance list and definition-by-id
+	// serve instance list and definition list
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v0/machine-runtime-instances", func(w http.ResponseWriter, r *http.Request) {
 		// count list hits and return all fixtures
@@ -51,33 +45,20 @@ func TestMachineRuntimeInstanceGetDedupesDefinitionLookups(t *testing.T) {
 		}
 		writeResponse(t, w, data)
 	})
-	mux.HandleFunc("/v0/machine-runtime-definitions/", func(w http.ResponseWriter, r *http.Request) {
-		// count the id in the path and return that definition
-		idStr := strings.TrimPrefix(r.URL.Path, "/v0/machine-runtime-definitions/")
-		var id uint
-		if _, err := fmt.Sscan(idStr, &id); err != nil {
-			http.Error(w, "bad id", http.StatusBadRequest)
-			return
+	mux.HandleFunc("/v0/machine-runtime-definitions", func(w http.ResponseWriter, r *http.Request) {
+		// count the definition list and return both fixtures
+		atomic.AddInt32(&definitionListHits, 1)
+		defs := []apiserver_lib.Object{
+			api_v0.MachineRuntimeDefinition{
+				Common:     api_v0.Common{ID: util.Ptr(uint(100))},
+				Definition: api_v0.Definition{Name: sharedDefName},
+			},
+			api_v0.MachineRuntimeDefinition{
+				Common:     api_v0.Common{ID: util.Ptr(uint(200))},
+				Definition: api_v0.Definition{Name: otherDefName},
+			},
 		}
-		mu.Lock()
-		defHitsByID[id]++
-		mu.Unlock()
-
-		var name *string
-		switch id {
-		case 100:
-			name = sharedDefName
-		case 200:
-			name = otherDefName
-		default:
-			http.Error(w, "unknown id", http.StatusNotFound)
-			return
-		}
-		def := api_v0.MachineRuntimeDefinition{
-			Common:     api_v0.Common{ID: util.Ptr(id)},
-			Definition: api_v0.Definition{Name: name},
-		}
-		writeResponse(t, w, []apiserver_lib.Object{def})
+		writeResponse(t, w, defs)
 	})
 
 	srv := httptest.NewServer(mux)
@@ -99,12 +80,9 @@ func TestMachineRuntimeInstanceGetDedupesDefinitionLookups(t *testing.T) {
 	assert.Equal(t, sharedDefName, (*got)[2].MachineRuntimeInstance.MachineRuntimeDefinition.Name)
 	assert.Equal(t, otherDefName, (*got)[3].MachineRuntimeInstance.MachineRuntimeDefinition.Name)
 
-	// assert the list ran once and each definition ID was fetched once
-	assert.Equal(t, int32(1), atomic.LoadInt32(&listHits), "list endpoint should be hit once")
-	mu.Lock()
-	defer mu.Unlock()
-	assert.Equal(t, 1, defHitsByID[100], "shared definition id 100 should be fetched exactly once, not once per instance")
-	assert.Equal(t, 1, defHitsByID[200], "distinct definition id 200 should be fetched exactly once")
+	// assert each list ran once
+	assert.Equal(t, int32(1), atomic.LoadInt32(&listHits), "instance list should be hit once")
+	assert.Equal(t, int32(1), atomic.LoadInt32(&definitionListHits), "definition list should be hit once")
 }
 
 // makeInstance returns a MachineRuntimeInstance for id, name, and definition id.

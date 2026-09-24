@@ -18,6 +18,9 @@ on:
       - edited
       - synchronize
       - reopened
+  # fork integration branch: run unit, cockroach, and integration on every push
+  push:
+    branches: [dev]
 
 permissions:
   contents: read
@@ -25,14 +28,13 @@ permissions:
 jobs:
   unit-tests:
     name: Unit Tests
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-24.04' }}
     steps:
     - name: Checkout
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
     - name: Go setup
       uses: ./.github/actions/go-setup
-
     - name: Install threeport-sdk
       run: mage install:sdk
 
@@ -45,12 +47,46 @@ jobs:
     - name: Unit tests
       run: mage test:unit
 
+    - name: Race tests
+      run: mage test:race
+
     - name: Generate and type-check a module
       run: mage test:moduleGen
 
+  cockroach-tests:
+    name: CockroachDB Tests
+    runs-on: ubuntu-24.04
+    env:
+      GOPATH: /home/runner/go
+    steps:
+    - name: Checkout
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+    - name: Set up Go
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+      with:
+        go-version: '1.27'
+        cache: false
+
+    - name: Cache Go build + module cache
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          go-${{ runner.os }}-
+
+    - name: Install mage
+      run: go install github.com/magefile/mage@v1.17.2
+
+    - name: CockroachDB tests
+      run: mage test:cockroach
+
   integration-tests:
     name: Integration Tests
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-24.04' }}
     env:
       # target the local registry for both the image build and the install
       # step; mage self-derives the base tag (no per-arch suffix), so build and
@@ -68,7 +104,7 @@ jobs:
       with:
         # share host network so buildx reaches the local registry started in
         # the next step.
-        driver-opts: network=host
+        driver-opts: network=host # buildx reaches the local registry
 
     - name: Create local container registry
       run: mage dev:localRegistryUp
@@ -89,3 +125,11 @@ jobs:
 
     - name: Generate, build and install a module
       run: mage test:moduleInstall
+
+    # Always run: tear down the kind cluster + tptctl state + local registry
+    # so a failed run doesn't leave orphaned containers/networks in the
+    # shared /opt/dind-storage hostPath that would trip the next run on the
+    # same node with a "node(s) already exist for a cluster" error.
+    - name: Teardown
+      if: always()
+      run: mage ci:teardown

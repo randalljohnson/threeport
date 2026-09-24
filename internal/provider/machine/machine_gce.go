@@ -312,9 +312,6 @@ func (i *GceMachineInfra) pulumiProgram() pulumi.RunFunc {
 			Project:     pulumi.String(i.ProjectID),
 			Region:      pulumi.String(i.gcpRegion()),
 			Credentials: pulumi.String(i.ServiceAccountCredentials),
-			GcpClientOptions: gcp.ProviderGcpClientOptionsArgs{
-				DisableAuth: pulumi.Bool(false),
-			},
 		})
 		if err != nil {
 			return fmt.Errorf("failed to create GCP provider: %w", err)

@@ -121,15 +121,18 @@ func v0MachineRuntimeInstanceCreated(
 	if err != nil {
 		// retry: a credential or host may be fixed without changing this object.
 		note := fmt.Sprintf("failed to connect to machine runtime instance via ssh: %s", err)
-		return sshRetryDelaySeconds, &tp_errors.ErrWithEvent{
-			Message: note,
-			Event: v0.Event{
+		if eventErr := r.EventsRecorder.RecordEvent(
+			&v0.Event{
 				Type:   util.Ptr(event.TypeWarning),
 				Reason: util.Ptr("SSHConnectFailed"),
 				Note:   util.Ptr(note),
 			},
+			*machineRuntimeInstance.ID,
+			machineRuntimeInstance.GetFullyQualifiedType(),
+		); eventErr != nil {
+			log.Error(eventErr, "failed to record event for ssh connect failure")
 		}
-
+		return sshRetryDelaySeconds, fmt.Errorf("failed to connect to machine runtime instance via ssh: %w", err)
 	}
 	defer sshClient.Close()
 
@@ -163,19 +166,6 @@ func v0MachineRuntimeInstanceCreated(
 		}
 		if _, err := client.UpdateMachineRuntimeInstance(r.APIClient, r.APIServer, update); err != nil {
 			return controller.RetryOnNetworkErr(err, "failed to persist host key and creation confirmed on machine runtime instance")
-		}
-		if capturedHostKey != "" {
-			if eventErr := r.EventsRecorder.RecordEvent(
-				&v0.Event{
-					Type:   util.Ptr(event.TypeNormal),
-					Reason: util.Ptr("HostKeyCaptured"),
-					Note:   util.Ptr(fmt.Sprintf("captured ssh host key for %s", *machineRuntimeInstance.Name)),
-				},
-				*machineRuntimeInstance.ID,
-				machineRuntimeInstance.GetFullyQualifiedType(),
-			); eventErr != nil {
-				log.Error(eventErr, "failed to record event for host key capture")
-			}
 		}
 	}
 

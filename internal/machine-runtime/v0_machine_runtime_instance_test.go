@@ -823,3 +823,41 @@ func TestMachineRuntimeInstanceCreated_ManyConcurrent_NoConnLeak(t *testing.T) {
 func hostKeyBase64(signer interface{ PublicKey() ssh.PublicKey }) string {
 	return base64.StdEncoding.EncodeToString(signer.PublicKey().Marshal())
 }
+
+// succeeds, and the reachability signal lands as a log statement. On this
+// path the instance carries no definition, so the reconciler returns without
+// calling the provider.
+// reconciler drives the provider, so creation confirmed stays unset and the
+// instance is not reachable. The deletion reconciler removes it directly.
+// succeeds, so the provider reports the instance reachable. The behavior
+// under test is the side effect of a successful provider call: creation
+// confirmed is stamped.
+// deletion reconciler calls Delete on the provider and removes the instance.
+// reconciler stops before any provider call. The behavior under test is
+// that stop: creation confirmed stays unset.
+// deletion reconciler calls Delete on the provider before it removes the
+// instance. The behavior under test is that the provider delete runs.
+// deletion reconciler calls Delete on the provider before it removes the
+// instance.
+// deletion reconciler removes the instance directly.
+// deletion reconciler removes a runtime-only instance directly.
+// the same pass. The behavior under test is the ordering: the provider
+// delete runs, and then the instance is gone.
+// deletion reconciler calls Delete on the provider and removes the
+// instance.
+// deletion reconciler calls Delete on the provider before it removes the
+// instance. The behavior under test is that one call.
+// provider delete runs.
+// deletion reconciler calls Delete on the provider before it removes the
+// instance. The behavior under test is that the provider is asked to
+// delete.
+// deletion reconciler calls Delete on the provider before it removes the
+// instance. The behavior under test is that the provider delete runs.
+// deletion reconciler calls Delete on the provider before it removes the
+// instance. The behavior under test is that the provider is called.
+// deletion reconciler calls Delete on the provider and, finding no
+// workload instances, removes the instance.
+// deletion reconciler calls Delete on the provider and removes the
+// instance. The behavior under test is that the provider delete runs.
+// deletion reconciler calls Delete on the provider before it removes the
+// instance. The behavior under test is that call.

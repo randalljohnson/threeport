@@ -170,13 +170,13 @@ func v0MachineRuntimeInstanceCreated(
 		note := fmt.Sprintf("failed to connect to machine runtime instance via ssh: %s", err)
 		return sshFailureDelay(err), &tp_errors.ErrWithEvent{
 			Message: note,
+			Cause:   err,
 			Event: v0.Event{
 				Type:   util.Ptr(event.TypeWarning),
 				Reason: util.Ptr("SSHConnectFailed"),
 				Note:   util.Ptr(note),
 			},
 		}
-
 	}
 	defer sshClient.Close()
 

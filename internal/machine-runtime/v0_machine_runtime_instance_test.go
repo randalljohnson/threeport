@@ -24,7 +24,6 @@ import (
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	controller "github.com/threeport/threeport/pkg/controller/v0"
 	tp_errors "github.com/threeport/threeport/pkg/errors/v0"
-	event "github.com/threeport/threeport/pkg/event/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
@@ -90,7 +89,7 @@ func TestMachineRuntimeInstanceCreated_HappyPath(t *testing.T) {
 // TestMachineRuntimeInstanceCreated_NoHostname_RequeuesWithoutDialing covers
 // the deferred-dial path: an instance whose hostname is not yet populated
 // requeues with the unpopulated delay, returns no error, dials no SSH server,
-// records nothing beyond the CreateInProgress lifecycle marker, and persists
+// records no event, and persists
 // no update, so Reconciled stays unset until the machine is reachable. Both a
 // nil and an empty-string hostname take this path.
 func TestMachineRuntimeInstanceCreated_NoHostname_RequeuesWithoutDialing(t *testing.T) {
@@ -138,9 +137,8 @@ func TestMachineRuntimeInstanceCreated_NoHostname_RequeuesWithoutDialing(t *test
 			// assert requeue without error, event, or patch
 			require.NoError(t, err, "an unpopulated instance must requeue without erroring")
 			assert.Equal(t, int64(3), delay, "an unpopulated instance requeues with the unpopulated delay")
-			// verify only the lifecycle marker fires; nothing may claim
-			// reachability before the machine has been dialed
-			assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "no reachability event may be recorded before the machine is reachable")
+			// verify no event fires before the machine has been dialed
+			assert.Empty(t, recorder.GetReasons(), "no event may be recorded before the machine is reachable")
 			// verify nothing is persisted so Reconciled stays unset until reachable
 			assert.Equal(t, int64(0), atomic.LoadInt64(patchCount), "no update may be persisted, so Reconciled stays unset")
 		})
@@ -150,9 +148,8 @@ func TestMachineRuntimeInstanceCreated_NoHostname_RequeuesWithoutDialing(t *test
 // TestMachineRuntimeInstanceCreated_HostKeyCaptured covers the first-connect
 // path: HostKey is nil, so GetClient captures the server's key and the
 // reconciler PATCHes the MRI to persist it with Reconciled=true. The
-// captured key and reachability signals land as log statements; the
-// reconciler emits exactly one CreateInProgress lifecycle marker and no other
-// boot-noise events on the create path.
+// captured key and reachability signals land as log statements. The
+// handler records no event.
 func TestMachineRuntimeInstanceCreated_HostKeyCaptured(t *testing.T) {
 	key := machinetest.NewEncryptionKey(t)
 	signer := machinetest.NewSigner(t)
@@ -196,10 +193,8 @@ func TestMachineRuntimeInstanceCreated_HostKeyCaptured(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), delay)
 
-	// reconciler emits only the CreateInProgress lifecycle marker on the
-	// create path; no HostKeyCaptured or SSHReachable events fire, since
-	// the captured key persists via PATCH and both signals land as logs
-	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "reconciler emits only the CreateInProgress lifecycle marker on the create path")
+	// captured key and reachability are log lines, so the handler records nothing
+	assert.Empty(t, recorder.GetReasons(), "reconciler no longer emits boot-noise events on the create path")
 
 	// PATCH persists the captured host key with Reconciled=true so the
 	// resulting update notification does not retrigger reconciliation
@@ -214,8 +209,7 @@ func TestMachineRuntimeInstanceCreated_HostKeyCaptured(t *testing.T) {
 // unreachable host and asserts the reconciler returns 30s requeue and a
 // carrying ErrWithEvent whose Reason is SSHConnectFailed. The wrapper's
 // HandleEventOverride substitutes that event for the generic FailedCreate
-// row, so the failure path itself calls RecordEvent only for the
-// CreateInProgress lifecycle marker emitted at the top of the run.
+// row, so the failure path itself records no event.
 func TestMachineRuntimeInstanceCreated_NetworkError(t *testing.T) {
 	key := machinetest.NewEncryptionKey(t)
 	// point at 127.0.0.1:1 (reserved, never bound) to force a connection-refused
@@ -247,10 +241,8 @@ func TestMachineRuntimeInstanceCreated_NetworkError(t *testing.T) {
 	require.NotNil(t, errWithEvent.Event.Reason)
 	assert.Equal(t, "SSHConnectFailed", *errWithEvent.Event.Reason)
 
-	// failure path defers the failure event to the wrapper, so the only
-	// direct RecordEvent call is the CreateInProgress lifecycle marker at the
-	// top of the run; no SSHConnectFailed event fires here
-	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "failure path should not call RecordEvent directly for the failure; the wrapper substitutes it")
+	// failure path defers the failure event to the wrapper
+	assert.Empty(t, recorder.GetReasons(), "failure path should not call RecordEvent directly; the wrapper substitutes the event")
 }
 
 // TestMachineRuntimeInstanceCreated_HostKeyMismatch points the MRI at the
@@ -259,8 +251,7 @@ func TestMachineRuntimeInstanceCreated_NetworkError(t *testing.T) {
 // after 30s, since a misconfigured key may be fixed externally without
 // changing the object. The failure surfaces as an ErrWithEvent whose Reason
 // is SSHConnectFailed, which the wrapper substitutes for the generic
-// FailedCreate event; the reconciler itself records only the
-// CreateInProgress lifecycle marker emitted at the top of the run.
+// FailedCreate event. The handler records no event.
 func TestMachineRuntimeInstanceCreated_HostKeyMismatch(t *testing.T) {
 	key := machinetest.NewEncryptionKey(t)
 	serverSigner := machinetest.NewSigner(t)
@@ -297,10 +288,8 @@ func TestMachineRuntimeInstanceCreated_HostKeyMismatch(t *testing.T) {
 	require.NotNil(t, errWithEvent.Event.Reason)
 	assert.Equal(t, "SSHConnectFailed", *errWithEvent.Event.Reason)
 
-	// failure path defers the failure event to the wrapper, so the only
-	// direct RecordEvent call is the CreateInProgress lifecycle marker at the
-	// top of the run; no SSHConnectFailed event fires here
-	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "failure path should not call RecordEvent directly for the failure; the wrapper substitutes it")
+	// failure path defers the failure event to the wrapper
+	assert.Empty(t, recorder.GetReasons(), "failure path should not call RecordEvent directly; the wrapper substitutes the event")
 }
 
 // overrideUnpopulatedRequeueDelay sets unpopulatedRequeueDelaySeconds for one test.
@@ -488,9 +477,8 @@ func TestMachineRuntimeInstanceCreated_HostKeyPatchFails_Retries(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, int64(30), delay, "transport failures on the first-reachability PATCH requeue after 30s")
 
-	// the only event is the lifecycle marker at the top of the run; a
-	// reconcile whose persist failed records nothing about reachability
-	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "a failed persist records nothing beyond the lifecycle marker")
+	// a reconcile whose persist failed records nothing about reachability
+	assert.Empty(t, recorder.GetReasons(), "no events may be recorded when the capture PATCH fails")
 }
 
 // TestMachineRuntimeInstanceCreated_HostKeyPatchHTTP500_TerminalError is
@@ -526,7 +514,7 @@ func TestMachineRuntimeInstanceCreated_HostKeyPatchHTTP500_TerminalError(t *test
 	// a server-side rejection is terminal for this pass, but still an error
 	require.Error(t, err)
 	assert.Equal(t, int64(0), delay, "an http 500 is not a network error, so no requeue delay")
-	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "a rejected persist records nothing beyond the lifecycle marker")
+	assert.Empty(t, recorder.GetReasons(), "a rejected persist records no event")
 }
 
 // TestMachineRuntimeInstanceCreated_EventRecordingFailure_Continues sets
@@ -698,7 +686,7 @@ func TestMachineRuntimeInstanceCreated_SSHConnectTimeout_ReturnsErrorWithDelay(t
 	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")
 	require.NotNil(t, errWithEvent.Event.Reason)
 	assert.Equal(t, "SSHConnectFailed", *errWithEvent.Event.Reason)
-	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "failure path should not call RecordEvent directly for the failure; the wrapper substitutes it")
+	assert.Empty(t, recorder.GetReasons(), "failure path should not call RecordEvent directly; the wrapper substitutes the event")
 }
 
 // TestMachineRuntimeInstanceCreated_ConcurrentReconciles_NoRace covers concurrent

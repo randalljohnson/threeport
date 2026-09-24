@@ -1121,9 +1121,14 @@ func TestBuildGkeInfra_MapsDefinitionNodePoolFields(t *testing.T) {
 	projectID := "some-project"
 	gcpProviderID := uint(1)
 
+	key, err := encryption.GenerateKey()
+	require.NoError(t, err)
+	enc, err := encryption.Encrypt(key, `{"type":"service_account"}`)
+	require.NoError(t, err)
 	gcpProvider := v0.GcpProvider{
-		Common:    v0.Common{ID: &gcpProviderID},
-		ProjectID: &projectID,
+		Common:                    v0.Common{ID: &gcpProviderID},
+		ProjectID:                 &projectID,
+		ServiceAccountCredentials: &enc,
 	}
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1139,8 +1144,9 @@ func TestBuildGkeInfra_MapsDefinitionNodePoolFields(t *testing.T) {
 	defer srv.Close()
 
 	r := &controller.Reconciler{
-		APIClient: &http.Client{},
-		APIServer: strings.TrimPrefix(srv.URL, "http://"),
+		APIClient:     &http.Client{},
+		APIServer:     strings.TrimPrefix(srv.URL, "http://"),
+		EncryptionKey: key,
 	}
 
 	instanceName := "test-instance"

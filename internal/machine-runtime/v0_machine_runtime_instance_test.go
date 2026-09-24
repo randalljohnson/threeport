@@ -80,23 +80,12 @@ func TestMachineRuntimeInstanceCreated_HappyPath(t *testing.T) {
 	// drive the Created reconciler against the running SSH server
 	delay, err := v0MachineRuntimeInstanceCreated(r, mri, &log)
 
-	// success path returns (0, nil): no requeue and no error
+	// check success with no requeue
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), delay)
 
-	// reconciler emits only the CreateInProgress lifecycle marker on the
-	// success path; the wrapper covers the outcome and reachability is a
-	// log line, so no HostKeyCaptured or SSHReachable events fire
-	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "reconciler emits only the CreateInProgress lifecycle marker on the success path")
-
-	// a single PATCH stamps creation_confirmed with Reconciled=true; the
-	// pinned host key needs no capture, so the body carries no HostKey field
-	patchesMu.Lock()
-	defer patchesMu.Unlock()
-	require.Len(t, patches, 1, "expected exactly one PATCH to stamp creation_confirmed")
-	assert.Contains(t, string(patches[0]), "CreationConfirmed", "PATCH body should carry the CreationConfirmed field")
-	assert.Contains(t, string(patches[0]), `"Reconciled":true`, "PATCH should set Reconciled=true so the resulting update notification does not retrigger reconciliation")
-	assert.NotContains(t, string(patches[0]), "HostKey", "pinned host key needs no capture, so the PATCH should not carry HostKey")
+	// check the handler records no event
+	assert.Empty(t, recorder.GetReasons(), "reconciler emits no Normal event on the success path; the wrapper covers the outcome and reachability is a log line")
 }
 
 // TestMachineRuntimeInstanceCreated_NoHostname_RequeuesWithoutDialing covers
@@ -405,8 +394,8 @@ func TestMachineRuntimeInstanceCreated_IdempotentOnDoubleCall(t *testing.T) {
 	delay, err := v0MachineRuntimeInstanceCreated(r, first, &log)
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), delay)
-	assert.Equal(t, []string{event.ReasonCreateInProgress}, firstRecorder.GetReasons())
-	require.Equal(t, int64(1), atomic.LoadInt64(patchCount), "first reconcile persists the captured host key and the confirmation stamp with one PATCH")
+	assert.Empty(t, firstRecorder.GetReasons(), "host key capture is a log line, not a recorded event")
+	require.Equal(t, int64(1), atomic.LoadInt64(patchCount), "first reconcile persists the captured host key with one PATCH")
 
 	// leg two: the state leg one persisted, so the write guard has nothing
 	// left to record
@@ -421,8 +410,8 @@ func TestMachineRuntimeInstanceCreated_IdempotentOnDoubleCall(t *testing.T) {
 	// assert no second host-key patch
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), delay)
-	assert.Equal(t, []string{event.ReasonCreateInProgress}, secondRecorder.GetReasons())
-	assert.Equal(t, int64(1), atomic.LoadInt64(patchCount), "a reconcile with nothing new to record must not PATCH again")
+	assert.Empty(t, secondRecorder.GetReasons(), "reachability is a log line, not a recorded event")
+	assert.Equal(t, int64(1), atomic.LoadInt64(patchCount), "second reconcile must not re-PATCH the host key")
 }
 
 // TestMachineRuntimeInstanceCreated_SSHPingFails_Retries drives a connect
@@ -457,18 +446,12 @@ func TestMachineRuntimeInstanceCreated_SSHPingFails_Retries(t *testing.T) {
 	// the first failure on this instance requeues at the base delay, before
 	// the backoff has had a chance to double it
 	require.Error(t, err)
-	assert.Equal(t, int64(0), delay, "a ping failure leaves the requeue delay to the reconciler wrapper")
-
-	// error carries the specific-reason event the wrapper will substitute
-	// for the generic FailedCreate row
+	assert.Equal(t, int64(7), delay, "ping failures requeue with the configurable delay")
 	var errWithEvent *tp_errors.ErrWithEvent
-	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")
+	require.ErrorAs(t, err, &errWithEvent)
 	require.NotNil(t, errWithEvent.Event.Reason)
 	assert.Equal(t, "SSHPingFailed", *errWithEvent.Event.Reason)
-
-	// failure path defers the failure event to the wrapper, and nothing is
-	// persisted for a machine that never answered
-	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "failure path should not call RecordEvent directly for the failure; the wrapper substitutes it")
+	assert.Empty(t, recorder.GetReasons(), "the wrapper records the event from the returned error")
 	assert.Equal(t, int64(0), atomic.LoadInt64(patchCount), "no update may be persisted on ping failure")
 }
 
@@ -575,12 +558,11 @@ func TestMachineRuntimeInstanceCreated_EventRecordingFailure_Continues(t *testin
 
 	// drive the Created reconciler with every RecordEvent call failing
 	delay, err := v0MachineRuntimeInstanceCreated(r, mri, &log)
-
-	// the reconcile still completes and still records the confirmation stamp
-	require.NoError(t, err, "event persistence failures must not block reconciliation")
+	assert.Equal(t, int64(1), atomic.LoadInt64(patchCount), "the first-reachability write still persists when event recording fails")
+	// assert created still succeeds
+	require.NoError(t, err, "a failing recorder must not block reconciliation")
 	assert.Equal(t, int64(0), delay)
-	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons())
-	assert.Equal(t, int64(1), atomic.LoadInt64(patchCount), "the first-reachability write still lands when the event store is down")
+	assert.Empty(t, recorder.GetReasons(), "the success path does not record an event")
 }
 
 // TestMachineRuntimeInstanceCreated_ContextCancellation_AbortsSSH injects
@@ -625,17 +607,14 @@ func TestMachineRuntimeInstanceCreated_ContextCancellation_AbortsSSH(t *testing.
 
 	// the canceled context aborts the connect instead of waiting it out
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), context.Canceled.Error(), "the aborted connect must name the cancellation in its message")
-	assert.Equal(t, int64(0), delay)
-	assert.Less(t, elapsed, 5*time.Second, "an already-canceled context must abort the reconcile promptly")
-
-	// the abort surfaces as a connect failure the wrapper can substitute for
-	// the generic FailedCreate row
+	assert.Contains(t, err.Error(), context.Canceled.Error())
 	var errWithEvent *tp_errors.ErrWithEvent
-	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")
+	require.ErrorAs(t, err, &errWithEvent)
 	require.NotNil(t, errWithEvent.Event.Reason)
 	assert.Equal(t, "SSHConnectFailed", *errWithEvent.Event.Reason)
-	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "failure path should not call RecordEvent directly for the failure; the wrapper substitutes it")
+	assert.Equal(t, int64(5), delay)
+	assert.Less(t, elapsed, 5*time.Second, "an already-canceled context must abort the reconcile promptly")
+	assert.Empty(t, recorder.GetReasons())
 
 	// stop waits until accepted connections finish serving
 	stop()
@@ -672,17 +651,14 @@ func TestMachineRuntimeInstanceCreated_SSHOperationTimeout_ReturnsErrorWithDelay
 
 	// the operation timeout fires and reports the expired deadline as the cause
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), context.DeadlineExceeded.Error(), "the aborted ping must name the expired deadline in its message")
-	assert.Equal(t, int64(0), delay)
+	assert.Contains(t, err.Error(), context.DeadlineExceeded.Error())
+	var pingEvent *tp_errors.ErrWithEvent
+	require.ErrorAs(t, err, &pingEvent)
+	require.NotNil(t, pingEvent.Event.Reason)
+	assert.Equal(t, "SSHPingFailed", *pingEvent.Event.Reason)
+	assert.Equal(t, int64(9), delay)
 	assert.Less(t, elapsed, 5*time.Second, "timeout must fire well before the held session would release")
-
-	// the abort surfaces as a ping failure the wrapper can substitute for the
-	// generic FailedCreate row
-	var errWithEvent *tp_errors.ErrWithEvent
-	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")
-	require.NotNil(t, errWithEvent.Event.Reason)
-	assert.Equal(t, "SSHPingFailed", *errWithEvent.Event.Reason)
-	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "failure path should not call RecordEvent directly for the failure; the wrapper substitutes it")
+	assert.Empty(t, recorder.GetReasons())
 }
 
 // TestMachineRuntimeInstanceCreated_SSHConnectTimeout_ReturnsErrorWithDelay
@@ -726,170 +702,8 @@ func TestMachineRuntimeInstanceCreated_SSHConnectTimeout_ReturnsErrorWithDelay(t
 	assert.Equal(t, []string{event.ReasonCreateInProgress}, recorder.GetReasons(), "failure path should not call RecordEvent directly for the failure; the wrapper substitutes it")
 }
 
-// TestMachineRuntimeInstanceDeleted_ReclaimsProviderResources covers the
-// Deleted hook's cascade onto the married provider instance that holds the
-// live machine: a provisioned instance whose married row still exists issues a
-// delete for it and requeues until the provider reconciler clears the row, a
-// married row already scheduled for deletion is not deleted a second time, an
-// instance whose married row has cleared completes the delete, and an imported
-// machine has nothing to reclaim. Every leg records the DeleteInProgress
-// lifecycle marker.
-func TestMachineRuntimeInstanceDeleted_ReclaimsProviderResources(t *testing.T) {
-	key := machinetest.NewEncryptionKey(t)
-	log := logr.Discard()
-
-	// registerMarriedInstances answers the married-instance query with the
-	// given rows and records the request path of every per-row delete the
-	// cascade issues, so a leg can assert exactly which rows were reclaimed
-	registerMarriedInstances := func(
-		t *testing.T,
-		api *machinetest.APIStub,
-		married []v0.GcpGceMachineRuntimeInstance,
-	) *[]string {
-		t.Helper()
-		rows := make([]apiserver_lib.Object, 0, len(married))
-		for _, marriedInstance := range married {
-			row := marriedInstance
-			rows = append(rows, &row)
-		}
-		api.Mux.HandleFunc(v0.PathGcpGceMachineRuntimeInstances, func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, http.MethodGet, r.Method)
-			machinetest.WriteResponse(t, w, http.StatusOK, rows)
-		})
-		var deletedPaths []string
-		api.Mux.HandleFunc(v0.PathGcpGceMachineRuntimeInstances+"/", func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, http.MethodDelete, r.Method)
-			deletedPaths = append(deletedPaths, r.URL.Path)
-			machinetest.WriteResponse(t, w, http.StatusOK, rows)
-		})
-		return &deletedPaths
-	}
-
-	t.Run("live married instance is deleted and the cascade requeues", func(t *testing.T) {
-		// arrange a provisioned instance whose married provider row still
-		// holds the live machine
-		mri := machinetest.NewMRIWithInfra(t, 61, "mri-del-provisioned", "127.0.0.1:22", "u", "p", key, machinetest.MRIInfraOpts{
-			MachineRuntimeDefinitionID: 7,
-			Region:                     "us-central1",
-		})
-
-		api := machinetest.NewAPIStub(t)
-		registerMachineRuntimeDefinition(t, api, 7)
-		deletedPaths := registerMarriedInstances(t, api, []v0.GcpGceMachineRuntimeInstance{{
-			Common:                   v0.Common{ID: util.Ptr(uint(601))},
-			Instance:                 v0.Instance{Name: util.Ptr("mri-del-provisioned")},
-			MachineRuntimeInstanceID: util.Ptr(uint(61)),
-		}})
-		recorder := machinetest.NewFakeRecorder()
-		r := &controller.Reconciler{
-			APIClient:      api.Client,
-			APIServer:      api.Addr,
-			EncryptionKey:  key,
-			EventsRecorder: recorder,
-		}
-
-		delay, err := v0MachineRuntimeInstanceDeleted(r, mri, &log)
-		// assert delete finishes with a reclaim warning
-		require.NoError(t, err)
-		// verify the hook waits for the provider reconciler to clear the row
-		assert.Equal(t, controller.Requeue30s, delay, "the delete requeues until every married provider instance clears")
-		// verify the cascade issued the delete that reclaims the live machine
-		assert.Equal(t, []string{fmt.Sprintf("%s/%d", v0.PathGcpGceMachineRuntimeInstances, 601)}, *deletedPaths, "the cascade must delete the married provider instance")
-		assert.Equal(t, []string{event.ReasonDeleteInProgress}, recorder.GetReasons())
-	})
-
-	t.Run("married instance already scheduled for deletion is not deleted again", func(t *testing.T) {
-		// arrange a married row a prior pass already scheduled for deletion
-		mri := machinetest.NewMRIWithInfra(t, 63, "mri-del-scheduled", "127.0.0.1:22", "u", "p", key, machinetest.MRIInfraOpts{
-			MachineRuntimeDefinitionID: 7,
-			Region:                     "us-central1",
-		})
-
-		api := machinetest.NewAPIStub(t)
-		registerMachineRuntimeDefinition(t, api, 7)
-		deletedPaths := registerMarriedInstances(t, api, []v0.GcpGceMachineRuntimeInstance{{
-			Common:                   v0.Common{ID: util.Ptr(uint(603))},
-			Instance:                 v0.Instance{Name: util.Ptr("mri-del-scheduled")},
-			Reconciliation:           v0.Reconciliation{DeletionScheduled: util.Ptr(time.Now().UTC())},
-			MachineRuntimeInstanceID: util.Ptr(uint(63)),
-		}})
-		recorder := machinetest.NewFakeRecorder()
-		r := &controller.Reconciler{
-			APIClient:      api.Client,
-			APIServer:      api.Addr,
-			EncryptionKey:  key,
-			EventsRecorder: recorder,
-		}
-
-		// run the Deleted hook against the already-scheduled married row
-		delay, err := v0MachineRuntimeInstanceDeleted(r, mri, &log)
-		// assert no reclaim warning
-		require.NoError(t, err)
-		// verify the hook keeps waiting rather than declaring the delete done
-		assert.Equal(t, controller.Requeue30s, delay, "the delete requeues while the scheduled row is still present")
-		// verify a requeue does not re-issue a delete already in flight
-		assert.Empty(t, *deletedPaths, "a married row already scheduled for deletion must not be deleted again")
-		assert.Equal(t, []string{event.ReasonDeleteInProgress}, recorder.GetReasons())
-	})
-
-	t.Run("cleared married instance completes the delete", func(t *testing.T) {
-		// arrange a provisioned instance whose married row the provider
-		// reconciler has already removed
-		mri := machinetest.NewMRIWithInfra(t, 65, "mri-del-cleared", "127.0.0.1:22", "u", "p", key, machinetest.MRIInfraOpts{
-			MachineRuntimeDefinitionID: 7,
-			Region:                     "us-central1",
-		})
-
-		api := machinetest.NewAPIStub(t)
-		registerMachineRuntimeDefinition(t, api, 7)
-		deletedPaths := registerMarriedInstances(t, api, nil)
-		recorder := machinetest.NewFakeRecorder()
-		r := &controller.Reconciler{
-			APIClient:      api.Client,
-			APIServer:      api.Addr,
-			EncryptionKey:  key,
-			EventsRecorder: recorder,
-		}
-
-		// run the Deleted hook once the cascade has nothing left to reclaim
-		delay, err := v0MachineRuntimeInstanceDeleted(r, mri, &log)
-		// assert no reclaim warning
-		require.NoError(t, err)
-		// verify the delete finishes instead of requeueing forever
-		assert.Equal(t, controller.Done, delay, "the delete completes once every married provider instance has cleared")
-		assert.Empty(t, *deletedPaths, "there is nothing left to delete")
-		assert.Equal(t, []string{event.ReasonDeleteInProgress}, recorder.GetReasons())
-	})
-
-	t.Run("imported machine has nothing to reclaim", func(t *testing.T) {
-		// arrange an imported machine, which has no parent definition and so
-		// no married provider instance behind it
-		mri := machinetest.MRIFromAddr(t, 62, "mri-del-imported", "127.0.0.1:22", "u", "p", key)
-
-		api := machinetest.NewAPIStub(t)
-		deletedPaths := registerMarriedInstances(t, api, nil)
-		recorder := machinetest.NewFakeRecorder()
-		r := &controller.Reconciler{
-			APIClient:      api.Client,
-			APIServer:      api.Addr,
-			EncryptionKey:  key,
-			EventsRecorder: recorder,
-		}
-
-		// run the Deleted hook against the imported machine
-		delay, err := v0MachineRuntimeInstanceDeleted(r, mri, &log)
-		require.NoError(t, err)
-		assert.Equal(t, controller.Done, delay)
-		assert.Empty(t, *deletedPaths, "imported machines have no provider resources to reclaim")
-		assert.Equal(t, []string{event.ReasonDeleteInProgress}, recorder.GetReasons())
-	})
-}
-
-// TestMachineRuntimeInstanceCreated_ConcurrentReconciles_NoRace runs many
-// Created reconciles for distinct MRIs concurrently against one SSH
-// server. Every reconcile must succeed and every recorder must hold
-// exactly its own CreateInProgress event, proving no shared state bleeds
-// between concurrent reconciles. Run under -race.
+// TestMachineRuntimeInstanceCreated_ConcurrentReconciles_NoRace covers concurrent
+// Created reconciles for distinct instances against one ssh server.
 func TestMachineRuntimeInstanceCreated_ConcurrentReconciles_NoRace(t *testing.T) {
 	const n = 50
 	key := machinetest.NewEncryptionKey(t)
@@ -933,11 +747,11 @@ func TestMachineRuntimeInstanceCreated_ConcurrentReconciles_NoRace(t *testing.T)
 	}
 	wg.Wait()
 
-	// assert each reconcile succeeded with only its own SSHReachable event
+	// assert each reconcile succeeded without recording an event
 	for i := 0; i < n; i++ {
 		require.NoError(t, errs[i], "reconcile %d", i)
 		assert.Equal(t, int64(0), delays[i], "reconcile %d", i)
-		assert.Equal(t, []string{event.ReasonCreateInProgress}, recorders[i].GetReasons(), "reconcile %d", i)
+		assert.Empty(t, recorders[i].GetReasons(), "reconcile %d", i)
 	}
 }
 

@@ -28,6 +28,7 @@ var (
 	eventsOutput     string
 	eventsSort       string
 	eventsLimit      int
+	eventsTopLevel   bool
 	eventsWide       bool
 	eventsReverse    bool
 	eventsSince      time.Duration

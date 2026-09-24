@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/datatypes"
+
 	"gorm.io/gorm"
 
 	util "github.com/threeport/threeport/pkg/util/v0"
@@ -190,7 +190,7 @@ func TestMachineRuntimeInstance_BeforeCreate_RejectsProviderWithoutRegion(t *tes
 
 	err := db.Create(mri).Error
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "must have a location or region when the definition specifies an infra provider")
+	assert.Contains(t, err.Error(), "must have a region when the definition specifies an infra provider")
 }
 
 // TestMachineRuntimeInstance_BeforeCreate_AcceptsProviderWithRegion accepts

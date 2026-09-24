@@ -489,16 +489,18 @@ func buildGkeInfra(
 		WorkerNodeInitialCount: int32(*definition.DefaultNodeGroupInitialSize),
 	}
 
-	decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
+	if gcpProvider.ServiceAccountCredentials != nil && *gcpProvider.ServiceAccountCredentials != "" {
+		decryptedCredentials, err := encryption.Decrypt(r.EncryptionKey, *gcpProvider.ServiceAccountCredentials)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt gcp provider service account credentials: %w", err)
+		}
+		infraGKE.ServiceAccountCredentials = decryptedCredentials
+		email, err := serviceAccountEmailFromCredentials(decryptedCredentials)
+		if err != nil {
+			return nil, fmt.Errorf("failed to extract service account email: %w", err)
+		}
+		infraGKE.ServiceAccountEmail = email
 	}
-	infraGKE.ServiceAccountCredentials = decryptedCredentials
-	email, err := serviceAccountEmailFromCredentials(decryptedCredentials)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract service account email: %w", err)
-	}
-	infraGKE.ServiceAccountEmail = email
 
 	return infraGKE, nil
 }

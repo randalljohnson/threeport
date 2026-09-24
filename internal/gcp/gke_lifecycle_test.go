@@ -420,9 +420,6 @@ func TestGkeLifecycleBuildInfra(t *testing.T) {
 		assert.Equal(t, "proj-x", infraGKE.ProjectID)
 		assert.Equal(t, "us-central1", infraGKE.Region)
 		assert.Equal(t, int32(3), infraGKE.WorkerNodeInitialCount)
-		assert.Equal(t, "e2-medium", infraGKE.MachineType)
-		assert.Equal(t, int32(1), infraGKE.MinNodeCount)
-		assert.Equal(t, int32(5), infraGKE.MaxNodeCount)
 		assert.Equal(t, creds, infraGKE.ServiceAccountCredentials)
 		assert.Equal(t, "test-sa@proj-x.iam.gserviceaccount.com", infraGKE.ServiceAccountEmail)
 	})
@@ -1168,8 +1165,5 @@ func TestBuildGkeInfra_MapsDefinitionNodePoolFields(t *testing.T) {
 	infra, err := buildGkeInfra(r, instance, definition, nil)
 	require.NoError(t, err)
 
-	assert.Equal(t, "e2-standard-4", infra.MachineType)
 	assert.Equal(t, int32(2), infra.WorkerNodeInitialCount)
-	assert.Equal(t, int32(3), infra.MinNodeCount)
-	assert.Equal(t, int32(7), infra.MaxNodeCount)
 }

@@ -28,6 +28,9 @@ import (
 // Package-level so tests can override it.
 var unpopulatedRequeueDelaySeconds int64 = 15
 
+// sshRetryDelaySeconds is the requeue delay after an SSH connect or ping failure.
+var sshRetryDelaySeconds int64 = 30
+
 // sshOperationTimeout bounds GetClient and Ping so a hung handshake cannot hold the reconcile.
 var sshOperationTimeout = 30 * time.Second
 
@@ -155,7 +158,7 @@ func v0MachineRuntimeInstanceCreated(
 	if err != nil {
 		// retry: a credential or host may be fixed without changing this object.
 		note := fmt.Sprintf("failed to connect to machine runtime instance via ssh: %s", err)
-		return 0, &tp_errors.ErrWithEvent{
+		return sshRetryDelaySeconds, &tp_errors.ErrWithEvent{
 			Message: note,
 			Event: v0.Event{
 				Type:   util.Ptr(event.TypeWarning),
@@ -163,6 +166,7 @@ func v0MachineRuntimeInstanceCreated(
 				Note:   util.Ptr(note),
 			},
 		}
+
 	}
 	defer sshClient.Close()
 
@@ -170,7 +174,7 @@ func v0MachineRuntimeInstanceCreated(
 	if err := pingWithContext(ctx, sshClient); err != nil {
 		// retry: the host may become reachable without changing this object.
 		note := fmt.Sprintf("failed to ping machine runtime instance: %s", err)
-		return 0, &tp_errors.ErrWithEvent{
+		return sshRetryDelaySeconds, &tp_errors.ErrWithEvent{
 			Message: note,
 			Event: v0.Event{
 				Type:   util.Ptr(event.TypeWarning),
@@ -354,9 +358,7 @@ func v0MachineRuntimeInstanceUpdated(
 	return controller.Done, nil
 }
 
-// marriedInstanceKind loads the instance's parent definition and returns the
-// concrete married attached-object kind, or "" if the instance has no parent,
-// the lookup fails, or the provider is unknown.
+// marriedInstanceKind returns the provider instance kind when this instance has a definition.
 func marriedInstanceKind(
 	r *controller.Reconciler,
 	machineRuntimeInstance *v0.MachineRuntimeInstance,

@@ -48,10 +48,12 @@ type MachineRuntimeInstance struct {
 	// cannot be represented by two records that each drive their own
 	// reconciliation against it. The deleted_at predicate keeps
 	// soft-deleted rows out of the unique slot, so the hostname of a
-	// deleted instance is available to a new one right away. Empty and
-	// null hostnames stay out of the unique slot so two unprovisioned
-	// instances can coexist.
-	Hostname *string `validate:"optional" gorm:"uniqueIndex:idx_machine_runtime_instance_hostname,where:deleted_at IS NULL AND hostname IS NOT NULL AND hostname <> ''"`
+	// deleted instance is available to a new one right away. CockroachDB
+	// treats every NULL as distinct in a unique index, so any number of
+	// instances may hold no hostname while they wait on provisioning.
+	// An empty string is excluded the same way, because it is not a
+	// hostname either.
+	Hostname *string `json:",omitempty" validate:"optional" gorm:"uniqueIndex:idx_machine_runtime_instance_hostname,where:deleted_at IS NULL AND hostname IS NOT NULL AND hostname <> ''"`
 
 	// The SSH username for authenticating to the machine. Optional at create
 	// for the same reason as the hostname; populated once the machine is

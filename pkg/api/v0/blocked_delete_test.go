@@ -1,17 +1,21 @@
 package v0
 
 import (
+	"context"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+
+	lib "github.com/threeport/threeport/pkg/api/lib/v0"
+	auth "github.com/threeport/threeport/pkg/auth/v0"
 )
 
-// TestFormatObjectPath covers the renderer that turns an AOR's raw
-// FQT + id (and optional id->name map) into the
-// "<api-namespace>/<kebab-kind>/<name-or-id>" form rendered into
-// blocked-delete responses, events output, etc. Pure function; the
-// table reads as a flat input -> output mapping.
+// TestFormatObjectPath covers FormatObjectPath turning an AOR FQT plus id
+// (and optional id->name map) into "<api-namespace>/<kebab-kind>/<name-or-id>".
 func TestFormatObjectPath(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -116,6 +120,7 @@ func TestFormatBlockedDelete(t *testing.T) {
 			},
 			wantHas: []string{
 				"threeport.io/kubernetes-workload-definition/5",
+				ErrMsgDeleteBlocked,
 				"cannot be deleted while 1 object(s) still reference it",
 				"threeport.io/kubernetes-workload-instance/11",
 				"Remove dependents first.",
@@ -208,4 +213,187 @@ func TestBlockedDeleteError_DefaultError(t *testing.T) {
 	assert.Contains(t, msg, "threeport.io/kubernetes-workload-definition/5", "base path should be id-only at error.Error() level")
 	assert.Contains(t, msg, "threeport.io/kubernetes-workload-instance/11", "attacher path should be id-only at error.Error() level")
 	assert.NotContains(t, msg, "my-", "Error() does not get a names map; no resolved name should leak")
+}
+
+// FQTs and ids used when planting incoming AORs for the blocking-policy tests.
+const (
+	blockedDeleteBaseType     = "threeport.io/v0.MachineRuntimeInstance"
+	blockedDeleteBaseID       = uint(5)
+	blockedDeleteAttacherType = "threeport.io/v0.GcpGceMachineRuntimeInstance"
+)
+
+// setupBlockedDeleteTestDB returns an in-memory sqlite db with the AOR table migrated.
+func setupBlockedDeleteTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&AttachedObjectReference{}))
+	return db
+}
+
+// plantBlockingAOR inserts one incoming AOR of rel pointing at the base object.
+func plantBlockingAOR(t *testing.T, db *gorm.DB, rel Relationship, attacherID uint) {
+	t.Helper()
+	r := rel
+	bt := blockedDeleteBaseType
+	bid := blockedDeleteBaseID
+	at := blockedDeleteAttacherType
+	aid := attacherID
+	require.NoError(t, db.Create(&AttachedObjectReference{
+		ObjectType:         &bt,
+		ObjectID:           &bid,
+		AttachedObjectType: &at,
+		AttachedObjectID:   &aid,
+		Relationship:       &r,
+	}).Error)
+}
+
+// withCallerOU returns a db session whose context carries CallerIdentity.OrganizationalUnit.
+func withCallerOU(db *gorm.DB, ou string) *gorm.DB {
+	ctx := lib.WithCaller(context.Background(), lib.CallerIdentity{OrganizationalUnit: ou})
+	return db.WithContext(ctx)
+}
+
+// TestFindBlockingAttachedObjectReferences_ExternalCaller covers blocking of an
+// external caller by requires, owns, and marries.
+func TestFindBlockingAttachedObjectReferences_ExternalCaller(t *testing.T) {
+	cases := []struct {
+		name string
+		rel  Relationship
+	}{
+		{name: "requires blocks external", rel: RelationshipRequires},
+		{name: "owns blocks external", rel: RelationshipOwns},
+		{name: "marries blocks external", rel: RelationshipMarries},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// open in-memory db and plant one incoming AOR
+			db := setupBlockedDeleteTestDB(t)
+			plantBlockingAOR(t, db, tc.rel, 11)
+
+			// find blocking refs for an external caller
+			blocking, err := findBlockingAttachedObjectReferences(
+				db, blockedDeleteBaseType, uintPtr(blockedDeleteBaseID), "external",
+			)
+			require.NoError(t, err)
+
+			// require the planted relationship as the blocker
+			require.Len(t, blocking, 1, "external caller should be blocked by %s", tc.rel)
+			require.NotNil(t, blocking[0].Relationship)
+			assert.Equal(t, tc.rel, *blocking[0].Relationship)
+		})
+	}
+}
+
+// TestFindBlockingAttachedObjectReferences_ControlPlaneCaller covers the
+// control-plane carve-out for owns and marries.
+func TestFindBlockingAttachedObjectReferences_ControlPlaneCaller(t *testing.T) {
+	cases := []struct {
+		name        string
+		rel         Relationship
+		wantBlocked bool
+	}{
+		{name: "requires blocks control-plane", rel: RelationshipRequires, wantBlocked: true},
+		{name: "owns does not block control-plane", rel: RelationshipOwns, wantBlocked: false},
+		{name: "marries does not block control-plane", rel: RelationshipMarries, wantBlocked: false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// open in-memory db and plant one incoming AOR
+			db := setupBlockedDeleteTestDB(t)
+			plantBlockingAOR(t, db, tc.rel, 11)
+
+			// find blocking refs for a control-plane caller
+			blocking, err := findBlockingAttachedObjectReferences(
+				db, blockedDeleteBaseType, uintPtr(blockedDeleteBaseID), auth.OUControlPlane,
+			)
+			require.NoError(t, err)
+
+			if tc.wantBlocked {
+				require.Len(t, blocking, 1, "control-plane caller should be blocked by %s", tc.rel)
+				require.NotNil(t, blocking[0].Relationship)
+				assert.Equal(t, tc.rel, *blocking[0].Relationship)
+				return
+			}
+			assert.Empty(t, blocking, "control-plane caller should not be blocked by %s", tc.rel)
+		})
+	}
+}
+
+// machineRuntimeInstanceProbe is a stub object that reports the planted
+// base FQT and id.
+type machineRuntimeInstanceProbe struct {
+	ID *uint `gorm:"primaryKey"`
+}
+
+func (p *machineRuntimeInstanceProbe) GetFullyQualifiedType() string {
+	return blockedDeleteBaseType
+}
+
+// TestCheckBlockingAttachedObjectReferences_ExternalCaller covers a
+// BlockedDeleteError for an external caller on requires, owns, and marries.
+func TestCheckBlockingAttachedObjectReferences_ExternalCaller(t *testing.T) {
+	cases := []struct {
+		name string
+		rel  Relationship
+	}{
+		{name: "requires blocks external", rel: RelationshipRequires},
+		{name: "owns blocks external", rel: RelationshipOwns},
+		{name: "marries blocks external", rel: RelationshipMarries},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// plant one incoming AOR and probe the base object by id
+			db := setupBlockedDeleteTestDB(t)
+			plantBlockingAOR(t, db, tc.rel, 11)
+			probe := &machineRuntimeInstanceProbe{ID: uintPtr(blockedDeleteBaseID)}
+
+			// check the policy for an external caller on the context
+			err := CheckBlockingAttachedObjectReferences(withCallerOU(db, "external"), probe)
+
+			require.Error(t, err, "external caller should be blocked by %s", tc.rel)
+			blockedErr, ok := err.(*BlockedDeleteError)
+			require.True(t, ok, "error should be a BlockedDeleteError")
+			require.Len(t, blockedErr.AttachedRefs, 1)
+		})
+	}
+}
+
+// TestCheckBlockingAttachedObjectReferences_ControlPlaneCaller covers the
+// control-plane carve-out through CheckBlockingAttachedObjectReferences.
+func TestCheckBlockingAttachedObjectReferences_ControlPlaneCaller(t *testing.T) {
+	cases := []struct {
+		name        string
+		rel         Relationship
+		wantBlocked bool
+	}{
+		{name: "requires blocks control-plane", rel: RelationshipRequires, wantBlocked: true},
+		{name: "owns does not block control-plane", rel: RelationshipOwns, wantBlocked: false},
+		{name: "marries does not block control-plane", rel: RelationshipMarries, wantBlocked: false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// plant one incoming AOR and probe the base object by id
+			db := setupBlockedDeleteTestDB(t)
+			plantBlockingAOR(t, db, tc.rel, 11)
+			probe := &machineRuntimeInstanceProbe{ID: uintPtr(blockedDeleteBaseID)}
+
+			// check the policy for a control-plane caller on the context
+			err := CheckBlockingAttachedObjectReferences(
+				withCallerOU(db, auth.OUControlPlane), probe,
+			)
+
+			if tc.wantBlocked {
+				require.Error(t, err, "control-plane caller should be blocked by %s", tc.rel)
+				_, ok := err.(*BlockedDeleteError)
+				require.True(t, ok, "error should be a BlockedDeleteError")
+				return
+			}
+			require.NoError(t, err, "control-plane caller should not be blocked by %s", tc.rel)
+		})
+	}
 }

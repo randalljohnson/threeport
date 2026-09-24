@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-logr/logr"
 
-	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
+	mapping "github.com/threeport/threeport/pkg/mapping/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
 	client "github.com/threeport/threeport/pkg/client/v0"
 	client_lib "github.com/threeport/threeport/pkg/client/lib/v0"

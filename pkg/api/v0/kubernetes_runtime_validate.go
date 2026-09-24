@@ -7,7 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/threeport/threeport/internal/kubernetes-runtime/mapping"
+	mapping "github.com/threeport/threeport/pkg/mapping/v0"
 	util "github.com/threeport/threeport/pkg/util/v0"
 	lib "github.com/threeport/threeport/pkg/api/lib/v0"
 )

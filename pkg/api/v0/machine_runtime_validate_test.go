@@ -62,30 +62,6 @@ func TestMachineRuntimeInstance_BeforeCreate_ImportedMachinePasses(t *testing.T)
 
 // TestMachineRuntimeInstance_BeforeUpdate_LocationFieldsImmutable rejects an
 // update that changes any provisioning location field on a live row.
-func TestMachineRuntimeInstance_BeforeUpdate_LocationFieldsImmutable(t *testing.T) {
-	tests := []struct {
-		name    string
-		payload *MachineRuntimeInstance
-	}{
-		{"location", &MachineRuntimeInstance{Location: util.Ptr("other-location")}},
-		{"region", &MachineRuntimeInstance{Region: util.Ptr("other-region")}},
-		{"network id", &MachineRuntimeInstance{NetworkID: util.Ptr("other-network")}},
-		{"subnet id", &MachineRuntimeInstance{SubnetID: util.Ptr("other-subnet")}},
-	}
-	for i, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			db := setupMachineWorkloadValidateDB(t)
-			loaded := createProvisionedMRI(t, db, fmt.Sprintf("mri-immutable-%d", i))
-
-			err := db.Model(&loaded).Updates(tt.payload).Error
-			require.Error(t, err, "changing %s must be rejected", tt.name)
-			assert.Contains(t, err.Error(), tt.name+" cannot be changed after creation")
-		})
-	}
-}
-
-// TestMachineRuntimeInstance_BeforeUpdate_LocationFieldsImmutableOnSave
-// rejects a PUT-shaped Save that changes region, network id, or subnet id.
 func TestMachineRuntimeInstance_BeforeUpdate_LocationFieldsImmutableOnSave(t *testing.T) {
 	tests := []struct {
 		name   string

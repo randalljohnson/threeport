@@ -3,6 +3,7 @@
 package v0
 
 import (
+	"errors"
 	"bytes"
 	"encoding/json"
 	"fmt"

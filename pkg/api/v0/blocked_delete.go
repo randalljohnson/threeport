@@ -13,6 +13,14 @@ import (
 	util "github.com/threeport/threeport/pkg/util/v0"
 )
 
+// ErrMsgAlreadyBeingDeleted is the 409 substring the client lib matches
+// to produce ErrDeleteInProgress when deletion is already underway.
+const ErrMsgAlreadyBeingDeleted = "already being deleted"
+
+// ErrMsgDeleteBlocked is the 409 substring the client lib matches to produce
+// ErrDeleteBlocked when attached objects or related instances remain.
+const ErrMsgDeleteBlocked = "cannot be deleted"
+
 // BlockedDeleteError reports a delete rejected by one or more attached
 // object references. Error() renders the message with id-only paths; the
 // API server upgrades to name-resolved paths when it can. AttachedRefs
@@ -43,8 +51,8 @@ func FormatBlockedDelete(e *BlockedDeleteError, namesByType map[string]map[uint]
 	writer.Flush()
 
 	return fmt.Sprintf(
-		"%s cannot be deleted while %d object(s) still reference it:\n\n%sRemove dependents first.",
-		baseLabel, len(e.AttachedRefs), buf.String(),
+		"%s %s while %d object(s) still reference it:\n\n%sRemove dependents first.",
+		baseLabel, ErrMsgDeleteBlocked, len(e.AttachedRefs), buf.String(),
 	)
 }
 
@@ -75,31 +83,6 @@ func FormatObjectPath(rawType string, id uint, names map[uint]string) string {
 		return fmt.Sprintf("%s/%s", tail, name)
 	}
 	return fmt.Sprintf("%s/%d", tail, id)
-}
-
-// NewBlockedDeleteErrorFromChildren returns a BlockedDeleteError anchored on
-// parent with one AttachedObjectReference per blocking child. Handlers use
-// this when a defined-instance-definition delete is refused because the
-// parent still has related child instances, so the 409 body lists each
-// blocker instead of a generic "has related X" line.
-func NewBlockedDeleteErrorFromChildren(parent lib.FullyQualifiedTypeProvider, children []lib.FullyQualifiedTypeProvider) *BlockedDeleteError {
-	parentType := parent.GetFullyQualifiedType()
-	parentIDPtr := util.ObjectID(parent)
-	refs := make([]AttachedObjectReference, 0, len(children))
-	for _, child := range children {
-		childType := child.GetFullyQualifiedType()
-		childIDPtr := util.ObjectID(child)
-		if childIDPtr == nil {
-			continue
-		}
-		refs = append(refs, AttachedObjectReference{
-			ObjectType:         util.Ptr(parentType),
-			ObjectID:           parentIDPtr,
-			AttachedObjectType: util.Ptr(childType),
-			AttachedObjectID:   childIDPtr,
-		})
-	}
-	return &BlockedDeleteError{AttachedRefs: refs}
 }
 
 // CheckBlockingAttachedObjectReferences returns a BlockedDeleteError if obj

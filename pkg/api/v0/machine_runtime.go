@@ -85,6 +85,18 @@ type MachineRuntimeInstance struct {
 	// The provider subnet identifier the machine attaches to
 	SubnetID *string `json:",omitempty" gorm:"type:text" validate:"optional"`
 
+	// IngressRules are the firewall ingress rules applied to the machine.
+	IngressRules *[]IngressRule `json:",omitempty" validate:"optional" gorm:"type:jsonb;serializer:json"`
+
+	// NetworkCIDR is the CIDR block for the VPC network the machine is placed in.
+	NetworkCIDR *string `json:",omitempty" validate:"optional" gorm:"column:network_cidr"`
+
+	// SubnetCIDR is the CIDR block for the subnet the machine's primary interface is placed in.
+	SubnetCIDR *string `json:",omitempty" validate:"optional" gorm:"column:subnet_cidr"`
+
+	// AssignPublicIP controls whether the primary network interface gets an external IP.
+	AssignPublicIP *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
+
 	// An inventory of all provider resources backing this machine
 	ResourceInventory *datatypes.JSON `json:",omitempty" validate:"optional"`
 

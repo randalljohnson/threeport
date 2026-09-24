@@ -5,7 +5,6 @@ package v0
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	apiserver_lib "github.com/threeport/threeport/pkg/api-server/lib/v0"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
@@ -714,10 +713,6 @@ func GetGcpGkeKubernetesRuntimeDefinitionByID(apiClient *http.Client, apiAddr st
 		return &gcpGkeKubernetesRuntimeDefinition, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
 	}
 
-	if len(response.Data) == 0 {
-		return &gcpGkeKubernetesRuntimeDefinition, errors.New("threeport API returned no object in response data")
-	}
-
 	jsonData, err := json.Marshal(response.Data[0])
 	if err != nil {
 		return &gcpGkeKubernetesRuntimeDefinition, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
@@ -819,10 +814,6 @@ func CreateGcpGkeKubernetesRuntimeDefinition(apiClient *http.Client, apiAddr str
 		return gcpGkeKubernetesRuntimeDefinition, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
 	}
 
-	if len(response.Data) == 0 {
-		return gcpGkeKubernetesRuntimeDefinition, errors.New("threeport API returned no object in response data")
-	}
-
 	jsonData, err := json.Marshal(response.Data[0])
 	if err != nil {
 		return gcpGkeKubernetesRuntimeDefinition, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
@@ -863,10 +854,6 @@ func UpdateGcpGkeKubernetesRuntimeDefinition(apiClient *http.Client, apiAddr str
 	)
 	if err != nil {
 		return gcpGkeKubernetesRuntimeDefinition, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
-	}
-
-	if len(response.Data) == 0 {
-		return gcpGkeKubernetesRuntimeDefinition, errors.New("threeport API returned no object in response data")
 	}
 
 	jsonData, err := json.Marshal(response.Data[0])
@@ -912,10 +899,6 @@ func ReplaceGcpGkeKubernetesRuntimeDefinition(apiClient *http.Client, apiAddr st
 		return gcpGkeKubernetesRuntimeDefinition, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
 	}
 
-	if len(response.Data) == 0 {
-		return gcpGkeKubernetesRuntimeDefinition, errors.New("threeport API returned no object in response data")
-	}
-
 	jsonData, err := json.Marshal(response.Data[0])
 	if err != nil {
 		return gcpGkeKubernetesRuntimeDefinition, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
@@ -945,10 +928,6 @@ func DeleteGcpGkeKubernetesRuntimeDefinition(apiClient *http.Client, apiAddr str
 	)
 	if err != nil {
 		return &gcpGkeKubernetesRuntimeDefinition, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
-	}
-
-	if len(response.Data) == 0 {
-		return &gcpGkeKubernetesRuntimeDefinition, errors.New("threeport API returned no object in response data")
 	}
 
 	jsonData, err := json.Marshal(response.Data[0])
@@ -1029,10 +1008,6 @@ func GetGcpGkeKubernetesRuntimeInstanceByID(apiClient *http.Client, apiAddr stri
 	)
 	if err != nil {
 		return &gcpGkeKubernetesRuntimeInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
-	}
-
-	if len(response.Data) == 0 {
-		return &gcpGkeKubernetesRuntimeInstance, errors.New("threeport API returned no object in response data")
 	}
 
 	jsonData, err := json.Marshal(response.Data[0])
@@ -1136,10 +1111,6 @@ func CreateGcpGkeKubernetesRuntimeInstance(apiClient *http.Client, apiAddr strin
 		return gcpGkeKubernetesRuntimeInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
 	}
 
-	if len(response.Data) == 0 {
-		return gcpGkeKubernetesRuntimeInstance, errors.New("threeport API returned no object in response data")
-	}
-
 	jsonData, err := json.Marshal(response.Data[0])
 	if err != nil {
 		return gcpGkeKubernetesRuntimeInstance, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
@@ -1180,10 +1151,6 @@ func UpdateGcpGkeKubernetesRuntimeInstance(apiClient *http.Client, apiAddr strin
 	)
 	if err != nil {
 		return gcpGkeKubernetesRuntimeInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
-	}
-
-	if len(response.Data) == 0 {
-		return gcpGkeKubernetesRuntimeInstance, errors.New("threeport API returned no object in response data")
 	}
 
 	jsonData, err := json.Marshal(response.Data[0])
@@ -1229,10 +1196,6 @@ func ReplaceGcpGkeKubernetesRuntimeInstance(apiClient *http.Client, apiAddr stri
 		return gcpGkeKubernetesRuntimeInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
 	}
 
-	if len(response.Data) == 0 {
-		return gcpGkeKubernetesRuntimeInstance, errors.New("threeport API returned no object in response data")
-	}
-
 	jsonData, err := json.Marshal(response.Data[0])
 	if err != nil {
 		return gcpGkeKubernetesRuntimeInstance, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
@@ -1262,10 +1225,6 @@ func DeleteGcpGkeKubernetesRuntimeInstance(apiClient *http.Client, apiAddr strin
 	)
 	if err != nil {
 		return &gcpGkeKubernetesRuntimeInstance, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
-	}
-
-	if len(response.Data) == 0 {
-		return &gcpGkeKubernetesRuntimeInstance, errors.New("threeport API returned no object in response data")
 	}
 
 	jsonData, err := json.Marshal(response.Data[0])
@@ -1346,10 +1305,6 @@ func GetGcpProviderByID(apiClient *http.Client, apiAddr string, id uint) (*v0.Gc
 	)
 	if err != nil {
 		return &gcpProvider, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
-	}
-
-	if len(response.Data) == 0 {
-		return &gcpProvider, errors.New("threeport API returned no object in response data")
 	}
 
 	jsonData, err := json.Marshal(response.Data[0])
@@ -1453,10 +1408,6 @@ func CreateGcpProvider(apiClient *http.Client, apiAddr string, gcpProvider *v0.G
 		return gcpProvider, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
 	}
 
-	if len(response.Data) == 0 {
-		return gcpProvider, errors.New("threeport API returned no object in response data")
-	}
-
 	jsonData, err := json.Marshal(response.Data[0])
 	if err != nil {
 		return gcpProvider, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
@@ -1497,10 +1448,6 @@ func UpdateGcpProvider(apiClient *http.Client, apiAddr string, gcpProvider *v0.G
 	)
 	if err != nil {
 		return gcpProvider, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
-	}
-
-	if len(response.Data) == 0 {
-		return gcpProvider, errors.New("threeport API returned no object in response data")
 	}
 
 	jsonData, err := json.Marshal(response.Data[0])
@@ -1546,10 +1493,6 @@ func ReplaceGcpProvider(apiClient *http.Client, apiAddr string, gcpProvider *v0.
 		return gcpProvider, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
 	}
 
-	if len(response.Data) == 0 {
-		return gcpProvider, errors.New("threeport API returned no object in response data")
-	}
-
 	jsonData, err := json.Marshal(response.Data[0])
 	if err != nil {
 		return gcpProvider, fmt.Errorf("failed to marshal response data from threeport API: %w", err)
@@ -1579,10 +1522,6 @@ func DeleteGcpProvider(apiClient *http.Client, apiAddr string, id uint) (*v0.Gcp
 	)
 	if err != nil {
 		return &gcpProvider, fmt.Errorf("call to threeport API returned unexpected response: %w", err)
-	}
-
-	if len(response.Data) == 0 {
-		return &gcpProvider, errors.New("threeport API returned no object in response data")
 	}
 
 	jsonData, err := json.Marshal(response.Data[0])

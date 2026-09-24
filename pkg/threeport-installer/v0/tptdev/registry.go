@@ -28,18 +28,12 @@ const (
 	registryPort  = "5001"
 )
 
-// dockerClient returns a client that speaks whatever API the daemon offers.
-// The library default is newer than the daemon on the GitHub-hosted runner.
-func dockerClient() (*client.Client, error) {
-	return client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-}
-
 // CreateLocalRegistry starts a Docker container to serve as a local container
 // registry.  If a local registry already exists with the <registryName> name,
 // it will return without error
 func CreateLocalRegistry() error {
 	ctx := context.Background()
-	cli, err := dockerClient()
+	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
@@ -105,7 +99,7 @@ func CreateLocalRegistry() error {
 // location, which may be a different cluster or none at all.
 func ConnectLocalRegistry(clusterName string, kubeconfigPath string) error {
 	ctx := context.Background()
-	cli, err := dockerClient()
+	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
@@ -150,7 +144,7 @@ func ConnectLocalRegistry(clusterName string, kubeconfigPath string) error {
 // container registry.
 func DeleteLocalRegistry() error {
 	ctx := context.Background()
-	cli, err := dockerClient()
+	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}

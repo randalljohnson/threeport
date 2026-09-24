@@ -106,8 +106,7 @@ type MachineRuntimeInstance struct {
 	// the assigned address into Hostname after provisioning when true.
 	AssignPublicIP *bool `json:",omitempty" validate:"optional" gorm:"default:false"`
 
-	// An inventory of all provider resources backing this machine, used for
-	// crash recovery and deprovisioning.
+	// An inventory of all provider resources backing this machine
 	ResourceInventory *datatypes.JSON `json:",omitempty" validate:"optional"`
 
 	// The machine runtime definition for this instance.  Optional because

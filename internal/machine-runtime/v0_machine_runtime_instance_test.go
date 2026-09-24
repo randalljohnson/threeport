@@ -676,17 +676,14 @@ func TestMachineRuntimeInstanceCreated_SSHConnectTimeout_ReturnsErrorWithDelay(t
 
 	// the operation timeout fires and reports the expired deadline as the cause
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), context.DeadlineExceeded.Error(), "the aborted connect must name the expired deadline in its message")
-	assert.Equal(t, int64(0), delay)
-	assert.Less(t, elapsed, 5*time.Second, "timeout must fire well before the held handshake would release")
-
-	// the abort surfaces as a connect failure the wrapper can substitute for
-	// the generic FailedCreate row
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
 	var errWithEvent *tp_errors.ErrWithEvent
-	require.ErrorAs(t, err, &errWithEvent, "reconciler should return *tp_errors.ErrWithEvent so the wrapper can substitute the specific reason")
+	require.ErrorAs(t, err, &errWithEvent)
 	require.NotNil(t, errWithEvent.Event.Reason)
 	assert.Equal(t, "SSHConnectFailed", *errWithEvent.Event.Reason)
-	assert.Empty(t, recorder.GetReasons(), "failure path should not call RecordEvent directly; the wrapper substitutes the event")
+	assert.Equal(t, int64(11), delay)
+	assert.Less(t, elapsed, 5*time.Second, "timeout must fire well before the held handshake would release")
+	assert.Empty(t, recorder.GetReasons())
 }
 
 // TestMachineRuntimeInstanceCreated_ConcurrentReconciles_NoRace covers concurrent

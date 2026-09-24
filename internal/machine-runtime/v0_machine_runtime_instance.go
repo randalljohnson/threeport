@@ -126,8 +126,7 @@ func v0MachineRuntimeInstanceCreated(
 	machineRuntimeInstance *v0.MachineRuntimeInstance,
 	log *logr.Logger,
 ) (int64, error) {
-	// load the parent definition early so the emit can name the married kind
-	// and the provider create path below can reuse it without a second lookup
+	// load the parent definition once for the provider create path below
 	var parentDef *v0.MachineRuntimeDefinition
 	if machineRuntimeInstance.MachineRuntimeDefinitionID != nil {
 		def, err := client.GetMachineRuntimeDefinitionByID(
@@ -139,29 +138,6 @@ func v0MachineRuntimeInstanceCreated(
 			return 0, fmt.Errorf("failed to get machine runtime definition by ID: %w", err)
 		}
 		parentDef = def
-	}
-
-	// a pinned host key means this pass can finish without a lifecycle marker.
-	// every other create path records one so the failure stays distinct from
-	// a reachability claim.
-	if machineRuntimeInstance.HostKey == nil || *machineRuntimeInstance.HostKey == "" {
-		var createExtras []string
-		if parentDef != nil && parentDef.InfraProvider != nil && *parentDef.InfraProvider != "" {
-			if marriedKind := v0.MachineRuntimeMarriedKind(*parentDef.InfraProvider, "instance"); marriedKind != "" {
-				createExtras = append(createExtras, marriedKind)
-			}
-		}
-		if recordErr := r.EventsRecorder.RecordEvent(
-			&v0.Event{
-				Type:   util.Ptr(event.TypeNormal),
-				Reason: util.Ptr(event.ReasonCreateInProgress),
-				Note:   util.Ptr(event.CreateNote(machineRuntimeInstance, createExtras...)),
-			},
-			*machineRuntimeInstance.ID,
-			machineRuntimeInstance.GetFullyQualifiedType(),
-		); recordErr != nil {
-			log.Error(recordErr, "failed to record CreateInProgress event")
-		}
 	}
 
 	// when the instance is provider-provisioned and has no hostname yet, create

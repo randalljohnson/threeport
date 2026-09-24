@@ -3,6 +3,7 @@
 package machineruntime
 
 import (
+	"errors"
 	"fmt"
 
 	logr "github.com/go-logr/logr"
@@ -93,5 +94,54 @@ func v0MachineRuntimeDefinitionDeleted(
 	machineRuntimeDefinition *v0.MachineRuntimeDefinition,
 	log *logr.Logger,
 ) (int64, error) {
-	return 0, nil
+	// emit a lifecycle marker so operators can see reconcile has begun
+	var deleteExtras []string
+	if machineRuntimeDefinition.InfraProvider != nil && *machineRuntimeDefinition.InfraProvider != "" {
+		if marriedKind := v0.MachineRuntimeMarriedKind(*machineRuntimeDefinition.InfraProvider, "definition"); marriedKind != "" {
+			deleteExtras = append(deleteExtras, marriedKind)
+		}
+	}
+	if recordErr := r.EventsRecorder.RecordEvent(
+		&v0.Event{
+			Type:   util.Ptr(event.TypeNormal),
+			Reason: util.Ptr(event.ReasonDeleteInProgress),
+			Note:   util.Ptr(event.DeleteNote(machineRuntimeDefinition, deleteExtras...)),
+		},
+		*machineRuntimeDefinition.ID,
+		machineRuntimeDefinition.GetFullyQualifiedType(),
+	); recordErr != nil {
+		log.Error(recordErr, "failed to record DeleteInProgress event")
+	}
+
+	// a deletion notification that was not scheduled indicates a problem
+	if machineRuntimeDefinition.DeletionScheduled == nil {
+		return 0, errors.New("deletion notification received but not scheduled")
+	}
+
+	// skip when deletion is already confirmed
+	if machineRuntimeDefinition.DeletionConfirmed != nil {
+		return controller.Done, nil
+	}
+
+	// delete the married provider definition; it is non-reconcilable, so the
+	// delete removes its row synchronously with no teardown to await
+	gcpGceMachineRuntimeDefinitions, err := client.GetGcpGceMachineRuntimeDefinitionsByQueryString(
+		r.APIClient,
+		r.APIServer,
+		fmt.Sprintf("machineruntimedefinitionid=%d", *machineRuntimeDefinition.ID),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get married GCE machine runtime definition: %w", err)
+	}
+	for _, gcpGceMachineRuntimeDefinition := range *gcpGceMachineRuntimeDefinitions {
+		if _, err := client.DeleteGcpGceMachineRuntimeDefinition(
+			r.APIClient,
+			r.APIServer,
+			*gcpGceMachineRuntimeDefinition.ID,
+		); err != nil {
+			return 0, fmt.Errorf("failed to delete married GCE machine runtime definition: %w", err)
+		}
+	}
+
+	return controller.Done, nil
 }

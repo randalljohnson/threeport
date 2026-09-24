@@ -46,17 +46,6 @@ type KubernetesRuntimeInfraGKE struct {
 	// The number of nodes initially created for the worker node pool.
 	WorkerNodeInitialCount int32
 
-	// The GCP machine type for the worker node pool (e.g. "e2-standard-2").
-	MachineType string
-
-	// The minimum number of nodes the worker node pool's autoscaler will
-	// scale down to.
-	MinNodeCount int32
-
-	// The maximum number of nodes the worker node pool's autoscaler will
-	// scale up to.
-	MaxNodeCount int32
-
 	// The email address of the GCP service account created for Threeport.
 	// This service account is used with Workload Identity to allow
 	// Threeport controllers to manage GCP resources.
@@ -240,11 +229,10 @@ func (i *KubernetesRuntimeInfraGKE) pulumiProgram() pulumi.RunFunc {
 		}
 
 		cluster, err := gkecontainer.NewCluster(ctx, i.RuntimeInstanceName, &gkecontainer.ClusterArgs{
-			Name:           pulumi.String(i.RuntimeInstanceName),
-			Location:       pulumi.String(i.Region),
-			Network:        network.Name,
-			Subnetwork:     subnet.Name,
-			ResourceLabels: GcpLabelsInput(i.RuntimeInstanceName),
+			Name:       pulumi.String(i.RuntimeInstanceName),
+			Location:   pulumi.String(i.Region),
+			Network:    network.Name,
+			Subnetwork: subnet.Name,
 
 			IpAllocationPolicy: &gkecontainer.ClusterIpAllocationPolicyArgs{
 				ClusterSecondaryRangeName:  pulumi.String("pods"),
@@ -284,7 +272,7 @@ func (i *KubernetesRuntimeInfraGKE) pulumiProgram() pulumi.RunFunc {
 			NodeCount: pulumi.Int(int(i.WorkerNodeInitialCount)),
 
 			NodeConfig: &gkecontainer.NodePoolNodeConfigArgs{
-				MachineType: pulumi.String(i.MachineType),
+				MachineType: pulumi.String("e2-medium"),
 				DiskSizeGb:  pulumi.Int(50),
 				DiskType:    pulumi.String("pd-standard"),
 				OauthScopes: pulumi.StringArray{
@@ -293,15 +281,14 @@ func (i *KubernetesRuntimeInfraGKE) pulumiProgram() pulumi.RunFunc {
 				Labels: pulumi.StringMap{
 					kube.ThreeportManagedByLabelKey: pulumi.String(kube.ThreeportManagedByLabelValue),
 				},
-				ResourceLabels: GcpLabelsInput(i.RuntimeInstanceName),
 				WorkloadMetadataConfig: &gkecontainer.NodePoolNodeConfigWorkloadMetadataConfigArgs{
 					Mode: pulumi.String("GKE_METADATA"),
 				},
 			},
 
 			Autoscaling: &gkecontainer.NodePoolAutoscalingArgs{
-				MinNodeCount:   pulumi.Int(int(i.MinNodeCount)),
-				MaxNodeCount:   pulumi.Int(int(i.MaxNodeCount)),
+				MinNodeCount:   pulumi.Int(1),
+				MaxNodeCount:   pulumi.Int(10),
 				LocationPolicy: pulumi.String("ANY"),
 			},
 

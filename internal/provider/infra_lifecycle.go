@@ -293,7 +293,7 @@ type InfraLifecycleProvider interface {
 	ConfirmCreation() error
 
 	// RecordSuccessfulCreate emits a CreateSuccessful event for the provider's
-	// object. The confirm path calls it after ConfirmCreation because the
+	// object. The OnSuccess path calls it after ConfirmCreation because the
 	// reconciler wrapper's wasReconciled gate suppresses its own emit.
 	RecordSuccessfulCreate() error
 
@@ -421,8 +421,16 @@ func HandleInfraCreate(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 
 			// check if deletion was scheduled during the create operation
 			latestSnap, err := p.GetReconciliation()
-			if err == nil && latestSnap.DeletionScheduled != nil {
-				log.Info("deletion was scheduled during create, skipping create notification to let delete proceed")
+			if err != nil {
+				return fmt.Errorf("failed to re-check reconciliation before confirmation: %w", err)
+			}
+			if latestSnap.DeletionScheduled != nil {
+				log.Info("deletion was scheduled during create, skipping confirmation to let delete proceed")
+				return nil
+			}
+
+			// short-circuit if a concurrent path already confirmed
+			if latestSnap.CreationConfirmed != nil {
 				return nil
 			}
 
@@ -431,6 +439,33 @@ func HandleInfraCreate(p InfraLifecycleProvider, log *logr.Logger) (int64, error
 				return fmt.Errorf("failed to publish create notification: %w", err)
 			}
 
+			// confirmation runs inline here so Reconciled flips as soon
+			// as Pulumi completes rather than waiting for the original
+			// NATS message to redeliver. The wrapper Nak-redelivers the
+			// original create message anyway; when it hits
+			// IsCreateComplete the CreationConfirmed short-circuit above
+			// catches it. The wrapper's wasReconciled gate then
+			// suppresses its own SuccessfulCreate emit, so this callback
+			// records the event directly via RecordSuccessfulCreate
+			// below to surface provisioning completion to the reader.
+			infra, err := p.BuildInfra()
+			if err != nil {
+				return fmt.Errorf("failed to build infra for create confirmation: %w", err)
+			}
+			if err := p.OnCreateConfirmed(infra); err != nil {
+				return fmt.Errorf("failed to run post-creation work: %w", err)
+			}
+			if err := p.ConfirmCreation(); err != nil {
+				return fmt.Errorf("failed to confirm creation: %w", err)
+			}
+
+			// emit provisioning-complete; log emit failures after ConfirmCreation
+			// so PersistFailure cannot mark a confirmed create as failed
+			if err := p.RecordSuccessfulCreate(); err != nil {
+				log.Error(err, "failed to record SuccessfulCreate event")
+			}
+
+			log.Info("creation confirmed")
 			return nil
 		},
 	}
@@ -731,6 +766,17 @@ func executeInfraCreate(config infraConfig) {
 			}
 			config.Log.Info("refreshed stack state against cloud reality")
 		}
+	} else if adoptable, ok := config.Infra.(AdoptableProvider); ok {
+		// no usable state means the create may have been interrupted after the
+		// cloud resources were made but before state reached the database. for
+		// providers with deterministic names, adopt any orphans so the deploy
+		// re-acquires them instead of colliding on the same name.
+		if err := adoptable.DiscoverAndAdopt(); err != nil {
+			config.Log.Error(err, "failed to discover and adopt orphaned resources")
+			persistFailure(config.Callbacks.PersistFailure, config.Log)
+			return
+		}
+		config.Log.Info("discovered and adopted any orphaned resources before create")
 	}
 
 	// start state streaming if provider supports it

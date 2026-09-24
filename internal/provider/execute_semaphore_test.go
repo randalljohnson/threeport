@@ -273,8 +273,12 @@ func TestExecuteInfraCreate_RestoreThenRefreshThenDeploy(t *testing.T) {
 	require.NotNil(t, oi.lastRestoredState())
 	require.JSONEq(t, string(*inventory), string(*oi.lastRestoredState()))
 
-	// check create outputs were saved and the create notification published
+	// success path ran the confirmation cascade; BuildInfra runs twice
+	// (initial deploy, then confirmation rebuild)
 	require.Equal(t, 1, fl.callCount("SaveCreateOutputs"))
+	require.Equal(t, 2, fl.callCount("BuildInfra"))
+	require.Equal(t, 1, fl.callCount("OnCreateConfirmed"))
+	require.Equal(t, 1, fl.callCount("ConfirmCreation"))
 	require.Equal(t, 1, fl.callCount("PublishCreateNotification"))
 }
 
@@ -298,11 +302,14 @@ func TestExecuteInfraCreate_NonStreamable_NoWatcher(t *testing.T) {
 	// wait for create to finish
 	waitForSemaphoreDrain(t)
 
-	// check deploy ran and outputs were saved and published
 	require.Equal(t, 1, fi.deployCallCount())
+	// success path ran the confirmation cascade; BuildInfra runs twice
 	require.Equal(t, 1, fl.callCount("SaveCreateOutputs"))
 	require.NotNil(t, fl.createOutputs())
 	require.JSONEq(t, string(*validStackState()), string(*fl.createOutputs()))
+	require.Equal(t, 2, fl.callCount("BuildInfra"))
+	require.Equal(t, 1, fl.callCount("OnCreateConfirmed"))
+	require.Equal(t, 1, fl.callCount("ConfirmCreation"))
 	require.Equal(t, 1, fl.callCount("PublishCreateNotification"))
 
 	// check stack state was not restored and state was not streamed
@@ -368,6 +375,7 @@ func TestExecuteInfraCreate_VerifyStateFails_PersistsFailure(t *testing.T) {
 	// check deploy ran and creation was marked failed
 	require.Equal(t, 1, fi.deployCallCount())
 	require.Equal(t, 1, fi.getStackStateCallCount())
+	// deploy succeeded but unrecognized state failed verification
 	require.Equal(t, 1, fl.callCount("SetCreationFailed"))
 
 	// check outputs were not saved and no create notification was published
@@ -416,6 +424,7 @@ func TestSemaphoreSerializesPerStack(t *testing.T) {
 	// share one stack key so the per-stack lock serializes both creates
 	const sharedKey = "shared-stack"
 
+	// two fakes share the same stack key so both callers contend on one lock
 	fi1 := newFakeInfra()
 	fi1.setDeploy(infraBlock, nil)
 	fl1 := newFakeLifecycle()

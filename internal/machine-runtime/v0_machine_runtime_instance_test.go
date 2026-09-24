@@ -33,9 +33,8 @@ import (
 // the server's actual key (no capture path); GetClient succeeds, Ping
 // succeeds, and the reachability signal lands as a log statement. On this
 // first-reachability pass the reconciler issues a single PATCH that stamps
-// creation_confirmed with Reconciled=true, and emits exactly one
-// CreateInProgress lifecycle marker at the top of the run; the wrapper's
-// SuccessfulCreate event still records the outcome.
+// creation_confirmed with Reconciled=true. The handler records no event.
+// The wrapper's SuccessfulCreate event records the outcome.
 func TestMachineRuntimeInstanceCreated_HappyPath(t *testing.T) {
 	key := machinetest.NewEncryptionKey(t)
 	signer := machinetest.NewSigner(t)

@@ -13,6 +13,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	v1 "k8s.io/api/core/v1"
+	kubeerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -27,12 +28,18 @@ const (
 	registryPort  = "5001"
 )
 
+// dockerClient returns a client that speaks whatever API the daemon offers.
+// The library default is newer than the daemon on the GitHub-hosted runner.
+func dockerClient() (*client.Client, error) {
+	return client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+}
+
 // CreateLocalRegistry starts a Docker container to serve as a local container
 // registry.  If a local registry already exists with the <registryName> name,
 // it will return without error
 func CreateLocalRegistry() error {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+	cli, err := dockerClient()
 	if err != nil {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
@@ -98,7 +105,7 @@ func CreateLocalRegistry() error {
 // location, which may be a different cluster or none at all.
 func ConnectLocalRegistry(clusterName string, kubeconfigPath string) error {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+	cli, err := dockerClient()
 	if err != nil {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
@@ -143,7 +150,7 @@ func ConnectLocalRegistry(clusterName string, kubeconfigPath string) error {
 // container registry.
 func DeleteLocalRegistry() error {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+	cli, err := dockerClient()
 	if err != nil {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
@@ -199,8 +206,11 @@ func applyK8sConfig(kubeconfigPath string) error {
 		},
 	}
 
+	// ignore already exists; the configmap body is static
 	if _, err = clientset.CoreV1().ConfigMaps("kube-public").Create(context.TODO(), configMap, metav1.CreateOptions{}); err != nil {
-		return fmt.Errorf("failed to create configmap for local registry: %w", err)
+		if !kubeerr.IsAlreadyExists(err) {
+			return fmt.Errorf("failed to create configmap for local registry: %w", err)
+		}
 	}
 
 	return nil

@@ -17,12 +17,19 @@ import (
 	installer "github.com/threeport/threeport/pkg/threeport-installer/v0"
 )
 
+// The api object groups to install, empty to detect the controller set from the cluster
 var tptctlReinstallApis string
+
+// A flag that drops the database and message broker state before reinstall
 var tptctlReinstallDropDatabase bool
+
+// The control plane name required before a database drop proceeds
 var tptctlReinstallConfirm string
+
+// A flag that recreates the records the API needs after an emptied database
 var tptctlReinstallRestoreBootstrap bool
 
-// ReinstallCmd sweeps installer-managed resources and reapplies the install.
+// ReinstallCmd deletes installer-managed control plane resources and reapplies the install.
 var ReinstallCmd = &cobra.Command{
 	Use:   "reinstall",
 	Short: "Sweep and reapply stateless control plane resources",
@@ -46,10 +53,11 @@ Use this for any spec, RBAC, or configmap change. Use
 	SilenceUsage: true,
 	PreRun:       CommandPreRunFunc,
 	Run: func(cmd *cobra.Command, args []string) {
+		// get client context
 		apiClient, config, apiEndpoint, requestedControlPlane := GetClientContext(cmd)
 		cliArgs.ControlPlaneName = requestedControlPlane
 
-		// require the control plane name as the confirmation token
+		// require the control plane name before a database drop
 		if tptctlReinstallDropDatabase && tptctlReinstallConfirm != requestedControlPlane {
 			cli.Error(fmt.Sprintf(
 				"--drop-database destroys the database of control plane %q and its data cannot be recovered; re-run with --confirm %s to proceed",
@@ -58,12 +66,14 @@ Use this for any spec, RBAC, or configmap change. Use
 			os.Exit(1)
 		}
 
+		// get the encryption key
 		encryptionKey, err := config.GetThreeportEncryptionKey(requestedControlPlane)
 		if err != nil {
 			cli.Error("failed to retrieve encryption key for control plane", err)
 			os.Exit(1)
 		}
 
+		// get the kubernetes runtime instance
 		kubernetesRuntimeInstance, err := client.GetThreeportControlPlaneKubernetesRuntimeInstance(
 			apiClient,
 			apiEndpoint,
@@ -73,6 +83,7 @@ Use this for any spec, RBAC, or configmap change. Use
 			os.Exit(1)
 		}
 
+		// get the control plane instance
 		controlPlaneInstance, err := client.GetSelfControlPlaneInstance(
 			apiClient,
 			apiEndpoint,
@@ -88,6 +99,7 @@ Use this for any spec, RBAC, or configmap change. Use
 			namespace = *controlPlaneInstance.Namespace
 		}
 
+		// get the kube client
 		dynamicKubeClient, mapper, err := kube.GetClient(
 			kubernetesRuntimeInstance,
 			false,
@@ -100,6 +112,7 @@ Use this for any spec, RBAC, or configmap change. Use
 			os.Exit(1)
 		}
 
+		// create the control plane installer
 		cpi, err := cliArgs.CreateInstaller()
 		if err != nil {
 			cli.Error("failed to create threeport control plane installer", err)
@@ -109,6 +122,22 @@ Use this for any spec, RBAC, or configmap change. Use
 		cpi.Opts.ControlPlaneName = requestedControlPlane
 		cpi.Opts.Debug = cliArgs.Debug
 
+		// refuse a gke restore that has no region before changing the cluster
+		if tptctlReinstallDropDatabase || tptctlReinstallRestoreBootstrap {
+			// the stored control plane carries the provider; the flag default does not
+			controlPlaneConfig, err := config.GetControlPlaneConfig(requestedControlPlane)
+			if err != nil {
+				cli.Error("failed to get threeport config", err)
+				os.Exit(1)
+			}
+			cpi.Opts.InfraProvider = controlPlaneConfig.Provider
+			if err := cli.RequireRestoredRuntimeLocation(cpi.Opts.InfraProvider, cpi.Opts.GcpRegion); err != nil {
+				cli.Error("cannot reinstall", err)
+				os.Exit(1)
+			}
+		}
+
+		// select the controllers to reinstall
 		selected, selectedNames, autoDetected, err := installer.SelectControllersForReinstall(
 			dynamicKubeClient,
 			cpi.Opts.Namespace,
@@ -129,9 +158,10 @@ Use this for any spec, RBAC, or configmap change. Use
 		))
 		cpi.Opts.ControllerList = selected
 
+		// detect whether api auth is enabled
 		cpi.Opts.AuthEnabled = installer.DetectAuthEnabled(dynamicKubeClient, cpi.Opts.Namespace)
 
-		// reuse the cluster CA so reinstall does not mint a new one
+		// load the cluster CA when auth is enabled so reinstall does not mint one
 		var authConfig *auth.AuthConfig
 		if cpi.Opts.AuthEnabled {
 			authConfig, err = cpi.LoadAuthConfigFromCluster(dynamicKubeClient, mapper)
@@ -141,68 +171,96 @@ Use this for any spec, RBAC, or configmap change. Use
 			}
 		}
 
+		// hold module replica counts for the restore after reinstall
 		var moduleScales []installer.ModuleDeploymentScale
+		restoreScaledModules := func() {
+			if len(moduleScales) == 0 {
+				return
+			}
+			if err := cpi.RestoreModuleScale(dynamicKubeClient, moduleScales); err != nil {
+				cli.Error("failed to restore module deployments", err)
+			}
+		}
+		// drop stored state when requested
 		if tptctlReinstallDropDatabase {
-			// scale modules down, drop schema, then reinstall and restore scale
+			// refuse a non-development tier before any deployment is scaled down
+			if err := cpi.RequireDevelopmentTier(dynamicKubeClient, mapper); err != nil {
+				cli.Error("cannot drop database", err)
+				os.Exit(1)
+			}
+
+			// get the control plane config
 			controlPlaneConfig, err := config.GetControlPlaneConfig(requestedControlPlane)
 			if err != nil {
 				cli.Error("failed to get threeport control plane config", err)
 				os.Exit(1)
 			}
 
-			moduleNamespaces, err := cpi.DiscoverModuleNamespaces(apiClient, controlPlaneConfig.APIServer)
+			// discover registered module controller deployments
+			moduleDeployments, err := cpi.DiscoverModuleDeployments(apiClient, controlPlaneConfig.APIServer)
 			if err != nil {
-				cli.Error("failed to discover registered module namespaces", err)
+				cli.Error("failed to discover registered module deployments", err)
 				os.Exit(1)
 			}
-			if len(moduleNamespaces) > 0 {
-				cli.Info(fmt.Sprintf(
-					"scaling down %d module namespace(s): %s",
-					len(moduleNamespaces), strings.Join(moduleNamespaces, ", "),
-				))
+			if len(moduleDeployments) > 0 {
+				cli.Info(fmt.Sprintf("scaling down %d module deployment(s)", len(moduleDeployments)))
 			}
 
-			moduleScales, err = cpi.ScaleDownModules(dynamicKubeClient, moduleNamespaces)
+			// scale module deployments to zero
+			moduleScales, err = cpi.ScaleDownModules(dynamicKubeClient, moduleDeployments)
 			if err != nil {
 				cli.Error("failed to scale down module deployments", err)
 				os.Exit(1)
 			}
 
+			// drop the control plane database
 			if err := cpi.DropDatabase(dynamicKubeClient, mapper); err != nil {
+				restoreScaledModules()
 				cli.Error("failed to drop control plane database", err)
 				os.Exit(1)
 			}
 
+			// drop message broker state
 			if err := cpi.DropMessageBrokerState(dynamicKubeClient, mapper); err != nil {
+				restoreScaledModules()
 				cli.Error("failed to drop control plane message broker state", err)
 				os.Exit(1)
 			}
 		}
 
+		// reinstall the control plane
 		if err := cpi.Reinstall(dynamicKubeClient, mapper, authConfig); err != nil {
+			restoreScaledModules()
 			cli.Error("failed to reinstall threeport control plane", err)
 			os.Exit(1)
 		}
 
+		// restore bootstrap objects when the database was emptied
 		if tptctlReinstallDropDatabase || tptctlReinstallRestoreBootstrap {
 			if err := cli.EnsureBootstrapObjects(cpi); err != nil {
+				restoreScaledModules()
 				cli.Error("failed to restore control plane bootstrap objects", err)
 				os.Exit(1)
 			}
 		}
 
+		// restore module deployment scale
 		if err := cpi.RestoreModuleScale(dynamicKubeClient, moduleScales); err != nil {
 			cli.Error("failed to restore module deployments", err)
 			os.Exit(1)
 		}
 
+		// report reinstall complete
 		cli.Complete("threeport control plane reinstalled")
 	},
 }
 
+// init registers the reinstall command and its flags.
 func init() {
+	// register the reinstall command
 	rootCmd.AddCommand(ReinstallCmd)
 
+	// register reinstall flags
 	ReinstallCmd.Flags().StringVarP(
 		&cliArgs.ControlPlaneName,
 		"name", "n", "", "Name of genesis control plane.",

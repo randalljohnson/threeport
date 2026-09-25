@@ -248,19 +248,22 @@ func GenReconcilers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							)
 							g.Line()
 
-							// If the object has any field with a "persist" tag set to "false", skip
-							// the retrieval of the latest object. Otherwise, generate the
-							// source code to retrieve the latest object.
-							if !objGroup.HasFieldWithTagValue(obj.Name, string(lib.PersistTag), lib.PersistFalse) {
-								getLatestObject(g, &obj, gen.ModulePath)
-							}
+							// a persist:false field is absent from the stored object, so that
+							// type keeps the notification payload and only copies the
+							// deletion schedule from the fresh read
+							getLatestObject(
+								g,
+								&obj,
+								gen.ModulePath,
+								!objGroup.HasFieldWithTagValue(obj.Name, string(lib.PersistTag), lib.PersistFalse),
+							)
 
 							g.Line()
 							g.Comment("treat a deletion-scheduled update as a delete")
 							g.Id("operation").Op(":=").Id("notif").Dot("Operation")
 							g.If(
-								Id(varObjectName).Dot("ScheduledForDeletion").Call().Op("!=").Nil().
-									Op("&&").Id("operation").Op("==").Qual(
+								Id(varObjectName).Dot("ScheduledForDeletion").Call().Op("!=").Nil().Op("&&").
+									Id("operation").Op("==").Qual(
 									"github.com/threeport/threeport/pkg/notifications/v0",
 									"NotificationOperationUpdated",
 								),
@@ -401,13 +404,13 @@ func GenReconcilers(gen *gen.Generator, sdkConfig *sdk.SdkConfig) error {
 							g.Comment("log and record event for successful reconciliation")
 							g.Id("successMsg").Op(":=").Qual("fmt", "Sprintf").Call(
 								Line().Lit(fmt.Sprintf("%s successfully reconciled for %%s operation", strcase.ToDelimited(obj.Name, ' '))),
-								Line().Qual("strings", "ToLower").Call(Id("string").Call(Id("notif").Dot("Operation"))),
+								Line().Qual("strings", "ToLower").Call(Id("string").Call(Id("operation"))),
 								Line(),
 							)
 							g.If(Id("err").Op(":=").Id("r").Dot("EventsRecorder").Dot("RecordEvent").Call(
 								Line().Op("&").Qual("github.com/threeport/threeport/pkg/api/v0", "Event").Values(Dict{
 									Id("Reason"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(
-										Qual("github.com/threeport/threeport/pkg/event/v0", "GetSuccessReasonForOperation").Call(Id("notif").Dot("Operation")),
+										Qual("github.com/threeport/threeport/pkg/event/v0", "GetSuccessReasonForOperation").Call(Id("operation")),
 									),
 									Id("Note"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(Id("successMsg")),
 									Id("Type"): Qual("github.com/threeport/threeport/pkg/util/v0", "Ptr").Call(
@@ -550,12 +553,15 @@ func emitInProgressEvent(g *Group, op, varObjectName string) {
 	)
 }
 
-// getLatestObject generates the source code for a controller's reconcile functions
-// to get the latest object if the "persist" field is not present or set to true.
+// getLatestObject generates the fetch of the stored object.
+// replaceObject swaps that fetch in for the notification payload.
+// The other path copies DeletionScheduled onto the payload so a
+// persist:false field from the notification is not dropped.
 func getLatestObject(
 	g *jen.Group,
 	obj *gen.ReconciledObject,
 	modulePath string,
+	replaceObject bool,
 ) {
 	objVar := strcase.ToLowerCamel(obj.Name)
 	latestObjVar := fmt.Sprintf("latest%s", obj.Name)
@@ -614,10 +620,29 @@ func getLatestObject(
 		Id("r").Dot("UnlockAndRequeue").Call(Id(objVar), Id("requeueDelay"), Id("lockReleased"), Id("msg")),
 		Continue(),
 	)
-	g.Id(objVar).Op("=").Id(fmt.Sprintf(
-		"latest%s",
-		obj.Name,
-	))
+	if replaceObject {
+		g.Id(objVar).Op("=").Id(latestObjVar)
+		return
+	}
+
+	// copy the deletion schedule and keep the notification payload
+	for _, version := range obj.Versions {
+		concrete := Op("*").Qual(
+			fmt.Sprintf("%s/pkg/api/%s", modulePath, version),
+			obj.Name,
+		)
+		g.If(
+			List(Id("current"), Id("ok")).Op(":=").Id(objVar).Assert(concrete).Op(";").Id("ok"),
+		).Block(
+			If(
+				List(Id("latest"), Id("latestOK")).Op(":=").Id(latestObjVar).Assert(concrete).Op(";").Id("latestOK"),
+			).Block(
+				If(Id("latest").Dot("DeletionScheduled").Op("!=").Nil()).Block(
+					Id("current").Dot("DeletionScheduled").Op("=").Id("latest").Dot("DeletionScheduled"),
+				),
+			),
+		)
+	}
 }
 
 // operationCase generates the source code for each create, update and delete

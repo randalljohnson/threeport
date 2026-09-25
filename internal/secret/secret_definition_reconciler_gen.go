@@ -119,6 +119,41 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 				continue
 			}
 
+			// retrieve latest version of object
+			var latestSecretDefinition tpapi_lib.ReconciledThreeportApiObject
+			var getLatestErr error
+			switch notif.ObjectVersion {
+			case "v0":
+				latestObject, err := client_v0.GetSecretDefinitionByID(
+					r.APIClient,
+					r.APIServer,
+					secretDefinition.GetId(),
+				)
+				latestSecretDefinition = latestObject
+				getLatestErr = err
+			default:
+				getLatestErr = errors.New("received unrecognized version of secret definition object")
+			}
+
+			// check if error is 404 - if object no longer exists, no need to requeue
+			if errors.Is(getLatestErr, tpclient_lib.ErrObjectNotFound) {
+				log.Info("object no longer exists - halting reconciliation")
+				r.ReleaseLock(secretDefinition, lockReleased, msg, true)
+				continue
+			}
+			if getLatestErr != nil {
+				log.Error(getLatestErr, "failed to get secret definition by ID from API")
+				r.UnlockAndRequeue(secretDefinition, requeueDelay, lockReleased, msg)
+				continue
+			}
+			if current, ok := secretDefinition.(*api_v0.SecretDefinition); ok {
+				if latest, latestOK := latestSecretDefinition.(*api_v0.SecretDefinition); latestOK {
+					if latest.DeletionScheduled != nil {
+						current.DeletionScheduled = latest.DeletionScheduled
+					}
+				}
+			}
+
 			// treat a deletion-scheduled update as a delete
 			operation := notif.Operation
 			if secretDefinition.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
@@ -422,12 +457,12 @@ func SecretDefinitionReconciler(r *controller.Reconciler) {
 			// log and record event for successful reconciliation
 			successMsg := fmt.Sprintf(
 				"secret definition successfully reconciled for %s operation",
-				strings.ToLower(string(notif.Operation)),
+				strings.ToLower(string(operation)),
 			)
 			if err := r.EventsRecorder.RecordEvent(
 				&api_v0.Event{
 					Note:   util.Ptr(successMsg),
-					Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
+					Reason: util.Ptr(event.GetSuccessReasonForOperation(operation)),
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				secretDefinition.GetId(),

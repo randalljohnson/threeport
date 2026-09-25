@@ -149,8 +149,14 @@ func ReconcilerTestInstanceReconciler(r *controller.Reconciler) {
 			}
 			reconcilerTestInstance = latestReconcilerTestInstance
 
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if reconcilerTestInstance.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("reconciler test instance scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if reconcilerTestInstance.ScheduledForDeletion() != nil {
 					log.Info("reconciler test instance scheduled for deletion - skipping create")
@@ -220,10 +226,6 @@ func ReconcilerTestInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
-				if reconcilerTestInstance.ScheduledForDeletion() != nil {
-					log.Info("reconciler test instance scheduled for deletion - skipping update")
-					break
-				}
 				// record in-progress before the custom handler so a later failure still has a start event
 				progressNote := event.UpdateNote()
 				if recordErr := r.EventsRecorder.RecordEvent(
@@ -419,7 +421,7 @@ func ReconcilerTestInstanceReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledReconcilerTestInstance := api_v0.ReconcilerTestInstance{
 					Common:         tpapi_v0.Common{ID: util.Ptr(reconcilerTestInstance.GetId())},
 					Reconciliation: tpapi_v0.Reconciliation{Reconciled: util.Ptr(true)},
@@ -450,12 +452,12 @@ func ReconcilerTestInstanceReconciler(r *controller.Reconciler) {
 			// log and record event for successful reconciliation
 			successMsg := fmt.Sprintf(
 				"reconciler test instance successfully reconciled for %s operation",
-				strings.ToLower(string(notif.Operation)),
+				strings.ToLower(string(operation)),
 			)
 			if err := r.EventsRecorder.RecordEvent(
 				&tpapi_v0.Event{
 					Note:   util.Ptr(successMsg),
-					Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
+					Reason: util.Ptr(event.GetSuccessReasonForOperation(operation)),
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				reconcilerTestInstance.GetId(),

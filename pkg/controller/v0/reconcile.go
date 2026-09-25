@@ -47,8 +47,8 @@ func ReconcileWorkerCount(concurrentReconciles int) int {
 	return concurrentReconciles
 }
 
-// StartReconcileWorkers starts ConcurrentReconciles copies of the
-// reconcile function, each with its own shutdown channel.
+// StartReconcileWorkers starts one reconcile loop per worker.
+// A count below 1 starts a single loop.
 func StartReconcileWorkers(
 	config ReconcilerConfig,
 	template Reconciler,

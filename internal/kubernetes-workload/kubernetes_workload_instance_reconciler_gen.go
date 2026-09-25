@@ -451,12 +451,12 @@ func KubernetesWorkloadInstanceReconciler(r *controller.Reconciler) {
 			// log and record event for successful reconciliation
 			successMsg := fmt.Sprintf(
 				"kubernetes workload instance successfully reconciled for %s operation",
-				strings.ToLower(string(notif.Operation)),
+				strings.ToLower(string(operation)),
 			)
 			if err := r.EventsRecorder.RecordEvent(
 				&api_v0.Event{
 					Note:   util.Ptr(successMsg),
-					Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
+					Reason: util.Ptr(event.GetSuccessReasonForOperation(operation)),
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				kubernetesWorkloadInstance.GetId(),

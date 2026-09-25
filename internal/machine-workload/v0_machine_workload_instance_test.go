@@ -418,6 +418,7 @@ func TestMachineWorkloadInstanceCreated_HappyPath(t *testing.T) {
 	require.NotNil(t, reconciled[0])
 	assert.True(t, *reconciled[0], "successful create should mark Reconciled=true")
 
+	// successful create clears CreationFailed
 	failed := f.patchedCreationFailed()
 	require.Len(t, failed, 1)
 	require.NotNil(t, failed[0])
@@ -468,6 +469,7 @@ func TestMachineWorkloadInstanceCreated_ScriptFails(t *testing.T) {
 	require.Len(t, reconciled, 1)
 	assert.False(t, *reconciled[0], "failed create must patch Reconciled=false")
 
+	// script failure sets CreationFailed
 	failed := f.patchedCreationFailed()
 	require.Len(t, failed, 1)
 	require.NotNil(t, failed[0])

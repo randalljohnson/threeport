@@ -68,18 +68,22 @@ func TestStartReconcileWorkersTreatsZeroAsOne(t *testing.T) {
 	var shutdownChans []chan bool
 	StartReconcileWorkers(config, Reconciler{}, &shutdownChans)
 
+	// wait for the substituted worker
 	select {
 	case <-ready:
 	case <-time.After(time.Second):
 		t.Fatal("worker did not start")
 	}
 
+	// one worker and one shutdown channel
 	if got := started.Load(); got != 1 {
 		t.Fatalf("started %d workers, want 1", got)
 	}
 	if len(shutdownChans) != 1 {
 		t.Fatalf("got %d shutdown channels, want 1", len(shutdownChans))
 	}
+
+	// shut the worker down
 	shutdownChans[0] <- true
 }
 

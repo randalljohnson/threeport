@@ -7,6 +7,7 @@ import (
 // TestGetControllerArgsPassesConcurrentReconciles covers every
 // controller receiving the shared worker-count flag.
 func TestGetControllerArgsPassesConcurrentReconciles(t *testing.T) {
+	// install with auth on and a shared worker count
 	cpi := NewInstaller()
 	cpi.Opts.AuthEnabled = true
 	cpi.Opts.ConcurrentReconciles = 4
@@ -14,6 +15,8 @@ func TestGetControllerArgsPassesConcurrentReconciles(t *testing.T) {
 	if len(ThreeportControllerList) == 0 {
 		t.Fatal("ThreeportControllerList is empty")
 	}
+
+	// every controller deployment receives the same flag
 	want := "-concurrent-reconciles=4"
 	for _, controller := range ThreeportControllerList {
 		args := cpi.getControllerArgs(*controller)

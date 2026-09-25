@@ -78,7 +78,7 @@ func v0MachineWorkloadInstanceCreated(
 	// run the create script and record results
 	wlStatus, scriptErr := runScript(r, machineWorkloadInstance, mri, mwd, *mwd.CreateScript, "create", log)
 
-	// patch Status; always send Reconciled so PATCH cannot keep a prior true
+	// patch status, reconciled, and creation-failed so a prior value cannot stick
 	patch := v0.MachineWorkloadInstance{
 		Common: v0.Common{ID: machineWorkloadInstance.ID},
 		Status: util.Ptr(string(wlStatus)),
@@ -141,7 +141,7 @@ func v0MachineWorkloadInstanceUpdated(
 	// run the update script and record results
 	wlStatus, scriptErr := runScript(r, machineWorkloadInstance, mri, mwd, *mwd.UpdateScript, "update", log)
 
-	// patch Status; always send Reconciled so PATCH cannot keep a prior true
+	// patch status, reconciled, and creation-failed so a prior value cannot stick
 	patch := v0.MachineWorkloadInstance{
 		Common: v0.Common{ID: machineWorkloadInstance.ID},
 		Status: util.Ptr(string(wlStatus)),

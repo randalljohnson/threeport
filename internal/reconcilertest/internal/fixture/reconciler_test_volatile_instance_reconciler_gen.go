@@ -120,8 +120,49 @@ func ReconcilerTestVolatileInstanceReconciler(r *controller.Reconciler) {
 				continue
 			}
 
+			// retrieve latest version of object
+			var latestReconcilerTestVolatileInstance tpapi_lib.ReconciledThreeportApiObject
+			var getLatestErr error
+			switch notif.ObjectVersion {
+			case "v0":
+				latestObject, err := client_v0.GetReconcilerTestVolatileInstanceByID(
+					r.APIClient,
+					r.APIServer,
+					reconcilerTestVolatileInstance.GetId(),
+				)
+				latestReconcilerTestVolatileInstance = latestObject
+				getLatestErr = err
+			default:
+				getLatestErr = errors.New("received unrecognized version of reconciler test volatile instance object")
+			}
+
+			// check if error is 404 - if object no longer exists, no need to requeue
+			if errors.Is(getLatestErr, tpclient_lib.ErrObjectNotFound) {
+				log.Info("object no longer exists - halting reconciliation")
+				r.ReleaseLock(reconcilerTestVolatileInstance, lockReleased, msg, true)
+				continue
+			}
+			if getLatestErr != nil {
+				log.Error(getLatestErr, "failed to get reconciler test volatile instance by ID from API")
+				r.UnlockAndRequeue(reconcilerTestVolatileInstance, requeueDelay, lockReleased, msg)
+				continue
+			}
+			if current, ok := reconcilerTestVolatileInstance.(*api_v0.ReconcilerTestVolatileInstance); ok {
+				if latest, latestOK := latestReconcilerTestVolatileInstance.(*api_v0.ReconcilerTestVolatileInstance); latestOK {
+					if latest.DeletionScheduled != nil {
+						current.DeletionScheduled = latest.DeletionScheduled
+					}
+				}
+			}
+
+			// treat a deletion-scheduled update as a delete
+			operation := notif.Operation
+			if reconcilerTestVolatileInstance.ScheduledForDeletion() != nil && operation == notifications.NotificationOperationUpdated {
+				log.Info("reconciler test volatile instance scheduled for deletion - treating update as delete")
+				operation = notifications.NotificationOperationDeleted
+			}
 			// determine which operation and act accordingly
-			switch notif.Operation {
+			switch operation {
 			case notifications.NotificationOperationCreated:
 				if reconcilerTestVolatileInstance.ScheduledForDeletion() != nil {
 					log.Info("reconciler test volatile instance scheduled for deletion - skipping create")
@@ -191,10 +232,6 @@ func ReconcilerTestVolatileInstanceReconciler(r *controller.Reconciler) {
 					continue
 				}
 			case notifications.NotificationOperationUpdated:
-				if reconcilerTestVolatileInstance.ScheduledForDeletion() != nil {
-					log.Info("reconciler test volatile instance scheduled for deletion - skipping update")
-					break
-				}
 				// record in-progress before the custom handler so a later failure still has a start event
 				progressNote := event.UpdateNote()
 				if recordErr := r.EventsRecorder.RecordEvent(
@@ -390,7 +427,7 @@ func ReconcilerTestVolatileInstanceReconciler(r *controller.Reconciler) {
 			}
 
 			// set the object's Reconciled field to true if not deleted
-			if notif.Operation != notifications.NotificationOperationDeleted {
+			if operation != notifications.NotificationOperationDeleted {
 				reconciledReconcilerTestVolatileInstance := api_v0.ReconcilerTestVolatileInstance{
 					Common:         tpapi_v0.Common{ID: util.Ptr(reconcilerTestVolatileInstance.GetId())},
 					Reconciliation: tpapi_v0.Reconciliation{Reconciled: util.Ptr(true)},
@@ -421,12 +458,12 @@ func ReconcilerTestVolatileInstanceReconciler(r *controller.Reconciler) {
 			// log and record event for successful reconciliation
 			successMsg := fmt.Sprintf(
 				"reconciler test volatile instance successfully reconciled for %s operation",
-				strings.ToLower(string(notif.Operation)),
+				strings.ToLower(string(operation)),
 			)
 			if err := r.EventsRecorder.RecordEvent(
 				&tpapi_v0.Event{
 					Note:   util.Ptr(successMsg),
-					Reason: util.Ptr(event.GetSuccessReasonForOperation(notif.Operation)),
+					Reason: util.Ptr(event.GetSuccessReasonForOperation(operation)),
 					Type:   util.Ptr(event.TypeNormal),
 				},
 				reconcilerTestVolatileInstance.GetId(),

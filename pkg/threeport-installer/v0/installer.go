@@ -159,9 +159,8 @@ type Options struct {
 	// API server applies its own default.
 	PaginationMode *string
 
-	// ConcurrentReconciles is the number of reconcile workers per
-	// object type in each controller. A value below 1 uses
-	// DefaultConcurrentReconciles.
+	// The number of reconcile workers per object type.
+	// A value below 1 uses the package default.
 	ConcurrentReconciles int
 }
 
@@ -233,7 +232,8 @@ func defaultInstallFunction(kubernetesRuntimeInstance *v0.KubernetesRuntimeInsta
 	return nil
 }
 
-// DefaultConcurrentReconciles is the starvation floor for reconcile workers.
+// DefaultConcurrentReconciles is the worker count used when the option is below 1.
+// Two workers keep one blocked reconcile from stalling the controller.
 const DefaultConcurrentReconciles = 2
 
 var defaultInstallerOptions = Options{

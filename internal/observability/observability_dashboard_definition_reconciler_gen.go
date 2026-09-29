@@ -159,7 +159,8 @@ func ObservabilityDashboardDefinitionReconciler(r *controller.Reconciler) {
 			case notifications.NotificationOperationCreated:
 				if observabilityDashboardDefinition.ScheduledForDeletion() != nil {
 					log.Info("observability dashboard definition scheduled for deletion - skipping create")
-					break
+					r.ReleaseLock(observabilityDashboardDefinition, lockReleased, msg, true)
+					continue
 				}
 				// record in-progress before the custom handler so a later failure still has a start event
 				progressNote := "creating"

@@ -159,7 +159,8 @@ func HelmWorkloadDefinitionReconciler(r *controller.Reconciler) {
 			case notifications.NotificationOperationCreated:
 				if helmWorkloadDefinition.ScheduledForDeletion() != nil {
 					log.Info("helm workload definition scheduled for deletion - skipping create")
-					break
+					r.ReleaseLock(helmWorkloadDefinition, lockReleased, msg, true)
+					continue
 				}
 				// record in-progress before the custom handler so a later failure still has a start event
 				progressNote := "creating"

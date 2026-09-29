@@ -160,7 +160,8 @@ func ReconcilerTestInstanceReconciler(r *controller.Reconciler) {
 			case notifications.NotificationOperationCreated:
 				if reconcilerTestInstance.ScheduledForDeletion() != nil {
 					log.Info("reconciler test instance scheduled for deletion - skipping create")
-					break
+					r.ReleaseLock(reconcilerTestInstance, lockReleased, msg, true)
+					continue
 				}
 				// record in-progress before the custom handler so a later failure still has a start event
 				progressNote := "creating"

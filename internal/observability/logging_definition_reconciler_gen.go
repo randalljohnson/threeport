@@ -159,7 +159,8 @@ func LoggingDefinitionReconciler(r *controller.Reconciler) {
 			case notifications.NotificationOperationCreated:
 				if loggingDefinition.ScheduledForDeletion() != nil {
 					log.Info("logging definition scheduled for deletion - skipping create")
-					break
+					r.ReleaseLock(loggingDefinition, lockReleased, msg, true)
+					continue
 				}
 				// record in-progress before the custom handler so a later failure still has a start event
 				progressNote := "creating"

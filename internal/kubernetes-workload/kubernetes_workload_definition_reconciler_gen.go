@@ -159,7 +159,8 @@ func KubernetesWorkloadDefinitionReconciler(r *controller.Reconciler) {
 			case notifications.NotificationOperationCreated:
 				if kubernetesWorkloadDefinition.ScheduledForDeletion() != nil {
 					log.Info("kubernetes workload definition scheduled for deletion - skipping create")
-					break
+					r.ReleaseLock(kubernetesWorkloadDefinition, lockReleased, msg, true)
+					continue
 				}
 				// record in-progress before the custom handler so a later failure still has a start event
 				progressNote := "creating"

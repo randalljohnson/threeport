@@ -159,7 +159,8 @@ func ObservabilityStackDefinitionReconciler(r *controller.Reconciler) {
 			case notifications.NotificationOperationCreated:
 				if observabilityStackDefinition.ScheduledForDeletion() != nil {
 					log.Info("observability stack definition scheduled for deletion - skipping create")
-					break
+					r.ReleaseLock(observabilityStackDefinition, lockReleased, msg, true)
+					continue
 				}
 				// record in-progress before the custom handler so a later failure still has a start event
 				progressNote := "creating"

@@ -159,7 +159,8 @@ func TerraformDefinitionReconciler(r *controller.Reconciler) {
 			case notifications.NotificationOperationCreated:
 				if terraformDefinition.ScheduledForDeletion() != nil {
 					log.Info("terraform definition scheduled for deletion - skipping create")
-					break
+					r.ReleaseLock(terraformDefinition, lockReleased, msg, true)
+					continue
 				}
 				// record in-progress before the custom handler so a later failure still has a start event
 				progressNote := "creating"

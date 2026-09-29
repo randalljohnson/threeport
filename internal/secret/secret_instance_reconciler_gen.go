@@ -159,7 +159,8 @@ func SecretInstanceReconciler(r *controller.Reconciler) {
 			case notifications.NotificationOperationCreated:
 				if secretInstance.ScheduledForDeletion() != nil {
 					log.Info("secret instance scheduled for deletion - skipping create")
-					break
+					r.ReleaseLock(secretInstance, lockReleased, msg, true)
+					continue
 				}
 				// record in-progress before the custom handler so a later failure still has a start event
 				progressNote := "creating"

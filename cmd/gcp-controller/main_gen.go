@@ -28,10 +28,10 @@ import (
 
 func main() {
 	// flags
-	var gcpGkeKubernetesRuntimeInstanceConcurrentReconciles = flag.Int(
-		"gcp-gke-kubernetes-runtime-instance-concurrent-reconciles",
-		1,
-		"Number of concurrent reconcilers to run for gcp gke kubernetes runtime instances",
+	var concurrentReconciles = flag.Int(
+		"concurrent-reconciles",
+		2,
+		"Number of concurrent reconcile workers to run for each object type",
 	)
 
 	var apiServer = flag.String("api-server", "threeport-api-server.threeport-control-plane.svc.cluster.local", "Threepoort REST API server endpoint")
@@ -137,7 +137,7 @@ func main() {
 	// configure and start reconcilers
 	var reconcilerConfigs []controller.ReconcilerConfig
 	reconcilerConfigs = append(reconcilerConfigs, controller.ReconcilerConfig{
-		ConcurrentReconciles: *gcpGkeKubernetesRuntimeInstanceConcurrentReconciles,
+		ConcurrentReconciles: *concurrentReconciles,
 		Name:                 "GcpGkeKubernetesRuntimeInstanceReconciler",
 		NotifSubject:         notif.GcpGkeKubernetesRuntimeInstanceSubject,
 		ReconcileFunc:        gcp.GcpGkeKubernetesRuntimeInstanceReconciler,
@@ -171,10 +171,6 @@ func main() {
 		ready.Store(true)
 		readyFlags = append(readyFlags, ready)
 
-		// create exit channel
-		shutdownChan := make(chan bool, 1)
-		shutdownChans = append(shutdownChans, shutdownChan)
-
 		// create reconciler
 		reconciler := controller.Reconciler{
 			APIClient:     apiClient,
@@ -191,13 +187,12 @@ func main() {
 			Log:              &log,
 			Name:             r.Name,
 			Ready:            ready,
-			Shutdown:         shutdownChan,
 			ShutdownWait:     &shutdownWait,
 			Sub:              sub,
 		}
 
-		// start reconciler
-		go r.ReconcileFunc(&reconciler)
+		// start reconcile workers sharing this pull subscription
+		controller.StartReconcileWorkers(r, reconciler, &shutdownChans)
 	}
 
 	log.Info(

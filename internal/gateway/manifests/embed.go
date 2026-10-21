@@ -19,8 +19,8 @@ var Ingress []byte
 //go:embed upstream/nginx/tcp/transport-server-tcp.yaml
 var TransportServer []byte
 
-//go:embed gateway/issuer.yaml
+//go:embed templates/issuer.yaml
 var Issuer []byte
 
-//go:embed gateway/certificate.yaml
+//go:embed templates/certificate.yaml
 var Certificate []byte

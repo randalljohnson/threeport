@@ -1,0 +1,25 @@
+apiVersion: vendir.k14s.io/v1alpha1
+directories:
+- contents:
+  - git:
+      commitTitle: 'feat: external secrets update (#33)...'
+      sha: eecad16ef9bf257ddbd4667335a10bc22413ef44
+      tags:
+      - v0.9.0
+    path: .
+  path: upstream/sso
+- contents:
+  - git:
+      commitTitle: Release 5.5.4 (#10475)
+      sha: f92a24e4fd2b52c72739c4a1f4f9bb6424bf5731
+      tags:
+      - v5.5.4
+    path: tcp
+  - git:
+      commitTitle: Release 5.5.4 (#10475)
+      sha: f92a24e4fd2b52c72739c4a1f4f9bb6424bf5731
+      tags:
+      - v5.5.4
+    path: ingress
+  path: upstream/nginx
+kind: LockConfig

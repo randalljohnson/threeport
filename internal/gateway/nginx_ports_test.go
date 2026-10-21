@@ -46,7 +46,11 @@ func TestGetIngressesYamlOneIngressPerHost(t *testing.T) {
 	require.NotContains(t, got[0], "name: echo-threeport-test-443")
 	require.Contains(t, got[0], "secretName: echo-threeport-test-tls")
 	require.Contains(t, got[0], "host: echo.threeport.test")
+	require.Contains(t, got[0], "ingressClassName: nginx")
 	require.Contains(t, got[0], "nginx.org/ssl-redirect: \"false\"")
+	require.NotContains(t, got[0], "server-snippets")
+	require.NotContains(t, got[0], "cafe.example.com")
+	require.NotContains(t, got[0], "/tea")
 }
 
 // TestGetIngressesYamlRejectsUnpublishedPort covers the ingress call site.

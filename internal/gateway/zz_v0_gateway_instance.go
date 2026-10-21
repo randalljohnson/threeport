@@ -12,7 +12,6 @@ import (
 	"gorm.io/datatypes"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	"github.com/threeport/threeport/internal/gateway/manifests"
 	runtime "github.com/threeport/threeport/internal/kubernetes-runtime"
 	workload_util "github.com/threeport/threeport/internal/kubernetes-workload/util"
 	v0 "github.com/threeport/threeport/pkg/api/v0"
@@ -496,16 +495,20 @@ func confirmGatewayPortsExposed(
 		return fmt.Errorf("failed to list tcp ports for runtime: %w", err)
 	}
 	listeners := tcpListeners(ports)
+	source, err := globalConfigurationYaml()
+	if err != nil {
+		return fmt.Errorf("failed to render global configuration: %w", err)
+	}
 	changed := false
 	if err := syncNamedSlice(
 		r,
 		kubernetesRuntimeInstance,
 		workloadResourceInstances,
 		"GlobalConfiguration",
-		"nginx-ingress",
+		globalConfigurationName,
 		"listeners",
 		listeners,
-		manifests.GlobalConfiguration,
+		source,
 		"global configuration",
 		false,
 		&changed,

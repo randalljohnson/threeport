@@ -1,0 +1,30 @@
+apiVersion: vendir.k14s.io/v1alpha1
+kind: Config
+directories:
+- path: upstream/sso
+  contents:
+  - path: .
+    git:
+      url: https://github.com/nukleros/support-services-operator.git
+      ref: eecad16ef9bf257ddbd4667335a10bc22413ef44
+    includePaths:
+    - config/samples/platform_v1alpha1_ingresscomponent.yaml
+    - config/samples/platform_v1alpha1_certificatescomponent.yaml
+    newRootPath: config/samples
+- path: upstream/nginx
+  contents:
+  - path: tcp
+    git:
+      url: https://github.com/nginx/kubernetes-ingress.git
+      ref: v5.5.4
+    includePaths:
+    - examples/custom-resources/basic-tcp-udp/global-configuration.yaml
+    - examples/custom-resources/basic-tcp-udp/transport-server-tcp.yaml
+    newRootPath: examples/custom-resources/basic-tcp-udp
+  - path: ingress
+    git:
+      url: https://github.com/nginx/kubernetes-ingress.git
+      ref: v5.5.4
+    includePaths:
+    - examples/ingress-resources/complete-example/cafe-ingress.yaml
+    newRootPath: examples/ingress-resources/complete-example

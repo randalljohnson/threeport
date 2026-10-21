@@ -31,6 +31,15 @@ const (
 
 	// externalDNSZoneType is the hosted zone type external-dns manages.
 	externalDNSZoneType = "public"
+
+	// nginxIngressClass is the IngressClass the support-services operator creates.
+	nginxIngressClass = "nginx"
+
+	// globalConfigurationName is the GlobalConfiguration shared by one runtime.
+	globalConfigurationName = "nginx-ingress"
+
+	// transportUpstreamName is the upstream a transport server passes traffic to.
+	transportUpstreamName = "backend"
 )
 
 // ingressRule returns the first rule, its http object, and that object's paths.
@@ -174,6 +183,27 @@ func setIngressPaths(object map[string]interface{}, paths []string) error {
 
 // setTransportBackend sets the service and port a transport server sends traffic to.
 func setTransportBackend(object map[string]interface{}, service string, port int64) error {
+	// name the upstream and point the action at it
+	if err := util.SetIndexedField(
+		object,
+		transportUpstreamName,
+		"spec",
+		"upstreams",
+		0,
+		"name",
+	); err != nil {
+		return fmt.Errorf("transport server has no upstreams: %w", err)
+	}
+	if err := unstructured.SetNestedField(
+		object,
+		transportUpstreamName,
+		"spec",
+		"action",
+		"pass",
+	); err != nil {
+		return err
+	}
+
 	// set the upstream service
 	if err := util.SetIndexedField(
 		object,
@@ -448,11 +478,21 @@ func getIngressesYaml(r *controller.Reconciler, gatewayDefinition *v0.GatewayDef
 	if err != nil {
 		return nil, err
 	}
+	// drop the sample annotations
+	unstructured.RemoveNestedField(ingress.Object, "metadata", "annotations")
 	if err := unstructured.SetNestedField(
 		ingress.Object,
 		getIngressName(gatewayDefinition, domain),
 		"metadata",
 		"name",
+	); err != nil {
+		return nil, err
+	}
+	if err := unstructured.SetNestedField(
+		ingress.Object,
+		nginxIngressClass,
+		"spec",
+		"ingressClassName",
 	); err != nil {
 		return nil, err
 	}
@@ -477,11 +517,19 @@ func getIngressesYaml(r *controller.Reconciler, gatewayDefinition *v0.GatewayDef
 	); err != nil {
 		return nil, fmt.Errorf("ingress has no rules: %w", err)
 	}
-	// set each distinct path on the one host rule
-	if len(paths) > 0 {
-		if err := setIngressPaths(ingress.Object, paths); err != nil {
-			return nil, err
-		}
+	// replace the sample paths with this gateway's paths
+	if len(paths) == 0 {
+		paths = []string{"/"}
+	}
+	if err := setIngressPaths(ingress.Object, paths); err != nil {
+		return nil, err
+	}
+	if err := setIngressBackend(
+		ingress.Object,
+		"placeholder",
+		int64(*(*gatewayHttpPorts)[0].Port),
+	); err != nil {
+		return nil, err
 	}
 	// redirect http when a port asks for it
 	if redirect {
@@ -496,7 +544,9 @@ func getIngressesYaml(r *controller.Reconciler, gatewayDefinition *v0.GatewayDef
 		}
 	}
 	// terminate tls at the ingress when a port enables it
-	if tlsEnabled {
+	if !tlsEnabled {
+		unstructured.RemoveNestedField(ingress.Object, "spec", "tls")
+	} else {
 		tls := []interface{}{
 			map[string]interface{}{
 				"hosts":      []interface{}{domain},
@@ -553,6 +603,14 @@ func getTransportServersYaml(r *controller.Reconciler, gatewayDefinition *v0.Gat
 			fmt.Sprintf("%s-%d", *gatewayDefinition.Name, *tcpPort.Port),
 			"metadata",
 			"name",
+		); err != nil {
+			return nil, err
+		}
+		if err := unstructured.SetNestedField(
+			server.Object,
+			nginxIngressClass,
+			"spec",
+			"ingressClassName",
 		); err != nil {
 			return nil, err
 		}
@@ -739,4 +797,34 @@ func tcpListeners(ports []int) []interface{} {
 		})
 	}
 	return listeners
+}
+
+// globalConfigurationYaml names the shared global configuration for this runtime.
+func globalConfigurationYaml() ([]byte, error) {
+	// decode the nginx sample and set the name and namespace
+	object, err := util.UnstructuredFromYaml(manifests.GlobalConfiguration)
+	if err != nil {
+		return nil, err
+	}
+	if err := unstructured.SetNestedField(
+		object.Object,
+		globalConfigurationName,
+		"metadata",
+		"name",
+	); err != nil {
+		return nil, err
+	}
+	if err := unstructured.SetNestedField(
+		object.Object,
+		installer.DNSManagerServiceAccountNamepace,
+		"metadata",
+		"namespace",
+	); err != nil {
+		return nil, err
+	}
+	rendered, err := util.UnstructuredToYaml(object)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(rendered), nil
 }

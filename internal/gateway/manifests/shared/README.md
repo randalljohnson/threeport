@@ -4,5 +4,5 @@
 Kubernetes runtime.  It rewrites its listeners from the TCP ports of every
 gateway on the runtime.
 
-`global-configuration.yaml` is a GlobalConfiguration named `nginx-ingress`.
-Its listeners are those ports.
+`global-configuration.yaml` under `upstream` is the nginx sample for that
+object.  Go names it `nginx-ingress` and sets its namespace and listeners.

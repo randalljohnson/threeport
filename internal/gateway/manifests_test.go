@@ -85,8 +85,22 @@ func TestSetTransportBackend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if service != "db" || port != int64(5432) {
-		t.Fatalf("upstream service %v port %v", service, port)
+	name, err := util.FieldAt(
+		server.Object,
+		"spec",
+		"upstreams",
+		0,
+		"name",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pass, _, err := unstructured.NestedString(server.Object, "spec", "action", "pass")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if service != "db" || port != int64(5432) || name != transportUpstreamName || pass != transportUpstreamName {
+		t.Fatalf("upstream service %v port %v name %v pass %v", service, port, name, pass)
 	}
 }
 

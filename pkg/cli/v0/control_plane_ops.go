@@ -807,10 +807,11 @@ func runBlueGreen(
 		return fmt.Errorf("failed to install restored control plane, source writers resumed: %w", installErr)
 	}
 
-	// record the new control plane once its API answers
+	// rename the current config entry once the new API answers
 	if apiUp && updateConfig {
-		if err := UpdateThreeportConfig(
+		if err := replaceThreeportConfig(
 			threeportConfig,
+			local.Name,
 			blueGreenControlPlane(local, newName, created.Opts.ExternalApiEndpoint),
 		); err != nil {
 			if installErr != nil {

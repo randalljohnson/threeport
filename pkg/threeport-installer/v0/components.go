@@ -891,7 +891,15 @@ GRANT ALL ON DATABASE threeport_api TO threeport;
 `,
 	}
 	if cpi.Opts.GcpBackupBucket != "" {
-		data[DbBackupScheduleFilename] = DatabaseBackupScheduleSQL(DatabaseBackupURI(cpi.Opts.GcpBackupBucket, cpi.Opts.Namespace))
+		schedule, err := DatabaseBackupScheduleSQL(
+			DatabaseBackupURI(cpi.Opts.GcpBackupBucket, cpi.Opts.Namespace),
+			nil,
+		)
+		// keep the init script when a schedule statement fails
+		if err != nil {
+			return data
+		}
+		data[DbBackupScheduleFilename] = schedule
 	}
 
 	return data
@@ -1093,6 +1101,17 @@ func (cpi *ControlPlaneInstaller) DeleteControlPlaneRoleBindings(
 ) error {
 	// delete the agent bindings
 	if err := cpi.DeleteAgentRoleBindings(kubeClient, mapper); err != nil {
+		return err
+	}
+
+	// delete the module install binding
+	binding := kubeObject(
+		"rbac.authorization.k8s.io/v1",
+		"ClusterRoleBinding",
+		"",
+		moduleInstallBindingName(cpi.Opts.Namespace),
+	)
+	if err := kube.DeleteResource(binding, kubeClient, *mapper); err != nil {
 		return err
 	}
 

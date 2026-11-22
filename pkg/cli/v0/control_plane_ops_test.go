@@ -38,6 +38,55 @@ func TestModuleInstallRequestComesFromTheSavedRecord(t *testing.T) {
 	require.Error(t, err)
 }
 
+// TestFinishedChildConfigRecordsTheNewAddress covers the client entry a child upgrade writes.
+// The source entry keeps its old name and address.
+func TestFinishedChildConfigRecordsTheNewAddress(t *testing.T) {
+	// copy the entry onto the finished name and address
+	entry := &ControlPlane{
+		Name:      "primary-12",
+		APIServer: "10.0.0.1:443",
+		Credentials: []Credential{
+			{Name: "primary-12", ClientCert: "cert"},
+		},
+	}
+	updated, err := finishedChildConfig(entry, &api.ControlPlaneInstance{
+		Instance:          api.Instance{Name: util.Ptr("primary-13")},
+		ApiServerEndpoint: util.Ptr("10.0.0.2:443"),
+	})
+	require.NoError(t, err)
+	require.Equal(t, "primary-13", updated.Name)
+	require.Equal(t, "10.0.0.2:443", updated.APIServer)
+	require.Equal(t, "primary-13", updated.Credentials[0].Name)
+	require.Equal(t, "primary-12", entry.Name)
+	require.Equal(t, "10.0.0.1:443", entry.APIServer)
+
+	// an instance with no address is refused
+	_, err = finishedChildConfig(entry, &api.ControlPlaneInstance{
+		Instance: api.Instance{Name: util.Ptr("primary-13")},
+	})
+	require.Error(t, err)
+}
+
+// TestChildAddressReadyWaitsForTheNewAddress covers the wait for a moved address.
+func TestChildAddressReadyWaitsForTheNewAddress(t *testing.T) {
+	// a pending request is not finished, even with a new address
+	old := "10.0.0.1:443"
+	pending := &api.ControlPlaneInstance{
+		FromNamespace:     util.Ptr("primary-12"),
+		ApiServerEndpoint: util.Ptr("10.0.0.2:443"),
+	}
+	require.False(t, childAddressReady(old, pending))
+
+	// the previous host is not finished
+	same := &api.ControlPlaneInstance{ApiServerEndpoint: util.Ptr(old)}
+	require.False(t, childAddressReady(old, same))
+
+	// a different host is finished, including when no previous address was stored
+	moved := &api.ControlPlaneInstance{ApiServerEndpoint: util.Ptr("10.0.0.2:443")}
+	require.True(t, childAddressReady(old, moved))
+	require.True(t, childAddressReady("", moved))
+}
+
 // TestChildBlueGreenUpdateStoresTheNewName covers the patch a child blue-green records.
 func TestChildBlueGreenUpdateStoresTheNewName(t *testing.T) {
 	// the new name is the deployment namespace, and the tag is this tptctl version

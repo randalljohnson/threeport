@@ -541,7 +541,7 @@ func runBlueGreen(
 		return fmt.Errorf("control plane %s: %w", util.DerefString(self.Name), err)
 	}
 	if rejectChild && sourceName != "" && sourceName != util.DerefString(self.Name) {
-		return delegateBlueGreen(local, currentClient, currentEndpoint, sourceName, newName, childTag, imageNamespace, imageTag, moduleInstall)
+		return delegateBlueGreen(threeportConfig, local, currentClient, currentEndpoint, sourceName, newName, childTag, imageNamespace, imageTag, moduleInstall)
 	}
 
 	// the connected control plane is the source
@@ -554,7 +554,7 @@ func runBlueGreen(
 	}
 	newNamespace := newName
 	if rejectChild && source.Instance.ParentControlPlaneInstanceID != nil {
-		return delegateBlueGreen(local, currentClient, currentEndpoint, sourceName, newName, childTag, imageNamespace, imageTag, moduleInstall)
+		return delegateBlueGreen(threeportConfig, local, currentClient, currentEndpoint, sourceName, newName, childTag, imageNamespace, imageTag, moduleInstall)
 	}
 	namespace := util.DerefString(source.Instance.FromNamespace)
 	if namespace == "" {
@@ -807,10 +807,11 @@ func runBlueGreen(
 		return fmt.Errorf("failed to install restored control plane, source writers resumed: %w", installErr)
 	}
 
-	// record the new control plane once its API answers
+	// rename the current config entry once the new API answers
 	if apiUp && updateConfig {
-		if err := UpdateThreeportConfig(
+		if err := replaceThreeportConfig(
 			threeportConfig,
+			local.Name,
 			blueGreenControlPlane(local, newName, created.Opts.ExternalApiEndpoint),
 		); err != nil {
 			if installErr != nil {
@@ -867,8 +868,9 @@ func runBlueGreen(
 }
 
 // delegateBlueGreen records a child blue-green for the control plane controller.
-// The new name is the deployment namespace, and the image namespace already stored is left as it is.
+// When the controller finishes, the client entry takes the new name and address.
 func delegateBlueGreen(
+	threeportConfig *ThreeportConfig,
 	local *ControlPlane,
 	currentClient *http.Client,
 	currentEndpoint string,
@@ -879,6 +881,16 @@ func delegateBlueGreen(
 	imageTag string,
 	moduleInstall string,
 ) error {
+	// the client entry renamed at the end has to exist before the request is stored
+	if threeportConfig == nil {
+		return fmt.Errorf("control plane config is unset")
+	}
+	stored, err := threeportConfig.GetControlPlaneConfig(sourceName)
+	if err != nil {
+		return err
+	}
+	entry := *stored
+
 	// load the child from the API this command is connected to
 	inst, err := client.GetControlPlaneInstanceByName(currentClient, currentEndpoint, sourceName)
 	if err != nil {
@@ -951,7 +963,26 @@ func delegateBlueGreen(
 		return fmt.Errorf("failed to record control plane %s: %w", newName, err)
 	}
 	fmt.Printf("Info: recorded blue-green request for %s\n", newName)
-	return waitForChildBlueGreen(currentClient, currentEndpoint, *inst.ID, util.DerefString(inst.Name))
+	if err := waitForChildBlueGreen(
+		currentClient,
+		currentEndpoint,
+		*inst.ID,
+		util.DerefString(inst.Name),
+		entry.APIServer,
+	); err != nil {
+		return err
+	}
+
+	// record the name and address the controller stored
+	finished, err := client.GetControlPlaneInstanceByID(currentClient, currentEndpoint, *inst.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get control plane %s: %w", sourceName, err)
+	}
+	updated, err := finishedChildConfig(&entry, finished)
+	if err != nil {
+		return err
+	}
+	return replaceThreeportConfig(threeportConfig, sourceName, updated)
 }
 
 // refuseSameChildName rejects a replacement that keeps the child's current name.
@@ -994,10 +1025,49 @@ func decryptedProviderCredentials(key string, stored *string) (string, error) {
 // childBlueGreenWait matches how long the controller keeps retrying one reconcile.
 const childBlueGreenWait = time.Hour
 
-// waitForChildBlueGreen returns when the controller clears the recorded request.
+// childAddressReady reports the request is cleared and the stored address moved.
+func childAddressReady(previousEndpoint string, inst *api.ControlPlaneInstance) bool {
+	// a pending request, or an address still on the old host, is not finished
+	if inst == nil || util.DerefString(inst.FromNamespace) != "" {
+		return false
+	}
+	endpoint := util.DerefString(inst.ApiServerEndpoint)
+	if endpoint == "" {
+		return false
+	}
+	if previousEndpoint == "" {
+		return true
+	}
+	return apiHost(endpoint) != apiHost(previousEndpoint)
+}
+
+// finishedChildConfig copies the client entry onto the finished name and address.
+func finishedChildConfig(entry *ControlPlane, finished *api.ControlPlaneInstance) (*ControlPlane, error) {
+	// the controller's row names the deployment and its load balancer
+	if entry == nil || finished == nil {
+		return nil, fmt.Errorf("control plane config is unset")
+	}
+	name := util.DerefString(finished.Name)
+	if name == "" {
+		name = util.DerefString(finished.Namespace)
+	}
+	endpoint := util.DerefString(finished.ApiServerEndpoint)
+	if name == "" || endpoint == "" {
+		return nil, fmt.Errorf("control plane %s has no name or api address", name)
+	}
+	return blueGreenControlPlane(entry, name, endpoint), nil
+}
+
+// waitForChildBlueGreen returns when the new API address is stored.
 // It returns an error when the wait passes an hour.
-func waitForChildBlueGreen(apiClient *http.Client, apiEndpoint string, id uint, name string) error {
-	// the controller clears FromNamespace after the new namespace is up
+func waitForChildBlueGreen(
+	apiClient *http.Client,
+	apiEndpoint string,
+	id uint,
+	name string,
+	previousEndpoint string,
+) error {
+	// wait until the stored address is the new load balancer
 	deadline := time.Now().Add(childBlueGreenWait)
 	for {
 		inst, err := client.GetControlPlaneInstanceByID(apiClient, apiEndpoint, id)
@@ -1009,7 +1079,7 @@ func waitForChildBlueGreen(apiClient *http.Client, apiEndpoint string, id uint, 
 			time.Sleep(5 * time.Second)
 			continue
 		}
-		if inst.FromNamespace == nil || *inst.FromNamespace == "" {
+		if childAddressReady(previousEndpoint, inst) {
 			return nil
 		}
 		if time.Now().After(deadline) {

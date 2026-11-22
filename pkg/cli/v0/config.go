@@ -516,6 +516,38 @@ func UpdateThreeportConfig(
 	return nil
 }
 
+// replaceThreeportConfig writes entry over the control plane named fromName.
+// The current control plane becomes entry's name. An entry that already uses that name is dropped.
+func replaceThreeportConfig(threeportConfig *ThreeportConfig, fromName string, entry *ControlPlane) error {
+	// write the new entry where the current name is, and drop a stale copy of the new name
+	replaced := false
+	kept := make([]ControlPlane, 0, len(threeportConfig.ControlPlanes))
+	for _, instance := range threeportConfig.ControlPlanes {
+		if instance.Name == fromName {
+			kept = append(kept, *entry)
+			replaced = true
+			continue
+		}
+		if instance.Name == entry.Name {
+			continue
+		}
+		kept = append(kept, instance)
+	}
+	if !replaced {
+		return fmt.Errorf("control plane %s is not in the config", fromName)
+	}
+
+	// record the renamed entry as the current control plane
+	threeportConfig.ControlPlanes = kept
+	viper.Set("ControlPlanes", threeportConfig.ControlPlanes)
+	viper.Set("CurrentControlPlane", entry.Name)
+	if err := viper.WriteConfig(); err != nil {
+		return fmt.Errorf("failed to write config to file: %w", err)
+	}
+
+	return nil
+}
+
 // DeleteThreeportConfigControlPlane updates a threeport config to remove a deleted
 // threeport control plane and the current control plane.
 func DeleteThreeportConfigControlPlane(threeportConfig *ThreeportConfig, deleteThreeportControlPlaneName string) {
